@@ -1,73 +1,58 @@
-import 'package:hive/hive.dart';
-import 'package:uuid/uuid.dart';
 import '../../domain/repositories/work_order_repository.dart';
 import '../../domain/models/work_order_model.dart';
-import '../../domain/models/work_order_activity_log.dart';
 import '../../domain/models/spare_part_model.dart';
 import '../../domain/enums/work_order_status.dart';
+import '../../domain/logic/work_order_state_machine.dart';
+import '../../domain/logic/work_order_activity_logger.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../../../auth/domain/enums/user_role.dart';
-import '../../../../core/database/hive_boxes.dart';
 import '../../../../core/errors/security_exceptions.dart';
 import '../../../../core/chronology/event_chronology.dart';
+import '../datasources/work_order_local_data_source.dart';
+import '../datasources/hive_work_order_local_data_source.dart';
+import '../datasources/work_order_remote_data_source.dart';
 
+/// Repository orchestrator for Work Orders.
+///
+/// Coordinates between [WorkOrderLocalDataSource] (Hive offline cache),
+/// optional [WorkOrderRemoteDataSource] (Supabase backend),
+/// and domain logic ([WorkOrderStateMachine], [WorkOrderActivityLogger]).
 class HiveWorkOrderRepository implements WorkOrderRepository {
-  Box<WorkOrderModel> get _box =>
-      Hive.box<WorkOrderModel>(HiveBoxes.workOrdersBox);
+  final WorkOrderLocalDataSource _localDataSource;
+  final WorkOrderRemoteDataSource? _remoteDataSource;
 
-  WorkOrderActivityLog _createLog({
-    required String stepName,
-    UserModel? caller,
-    required String actionSummary,
-    Map<String, dynamic>? details,
-    String? fallbackName,
-    String? fallbackEmail,
-    String? fallbackRole,
-  }) {
-    final chrono = EventChronology.now();
-    return WorkOrderActivityLog(
-      id: const Uuid().v4(),
-      stepName: stepName,
-      performedByName: caller?.name ?? fallbackName ?? 'System Automated',
-      performedByEmail:
-          caller?.email ?? fallbackEmail ?? 'system@cableops.local',
-      performedByRole:
-          caller?.role.code ?? fallbackRole ?? 'SYSTEM',
-      recordedAt: chrono.recordedAtUtc,
-      actionSummary: actionSummary,
-      details: details,
-      chronology: chrono,
-    );
-  }
+  HiveWorkOrderRepository({
+    WorkOrderLocalDataSource? localDataSource,
+    WorkOrderRemoteDataSource? remoteDataSource,
+  })  : _localDataSource =
+            localDataSource ?? HiveWorkOrderLocalDataSource(),
+        _remoteDataSource = remoteDataSource;
 
   @override
   Future<List<WorkOrderModel>> getAllWorkOrders() async {
-    return _box.values.toList();
+    return _localDataSource.getAllWorkOrders();
   }
 
   @override
   Future<WorkOrderModel?> getWorkOrderById(String id) async {
-    return _box.get(id);
+    return _localDataSource.getWorkOrderById(id);
   }
 
   @override
   Future<List<WorkOrderModel>> getWorkOrdersByStatus(
       WorkOrderStatus status) async {
-    return _box.values.where((wo) => wo.status == status).toList();
+    return _localDataSource.getWorkOrdersByStatus(status);
   }
 
   @override
   Future<List<WorkOrderModel>> getWorkOrdersForTechnician(
       String technicianId) async {
-    return _box.values
-        .where((wo) => wo.assignedToTechnicianId == technicianId)
-        .toList();
+    return _localDataSource.getWorkOrdersForTechnician(technicianId);
   }
 
   @override
   Future<WorkOrderModel> createWorkOrder(WorkOrderModel workOrder,
       {UserModel? caller}) async {
-    // Role check if caller is provided
     if (caller != null &&
         caller.role != UserRole.operator &&
         caller.role != UserRole.maintenanceSupervisor &&
@@ -79,7 +64,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     }
 
     final chrono = workOrder.chronology ?? EventChronology.now();
-    final initialLog = _createLog(
+    final initialLog = WorkOrderActivityLogger.createLog(
       stepName: 'REPORTED',
       caller: caller,
       actionSummary: 'Work order reported for machine ${workOrder.machineId}',
@@ -90,6 +75,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       },
       fallbackName: 'Operator Desk',
       fallbackRole: 'OPERATOR',
+      chronology: chrono,
     );
 
     final updated = workOrder.copyWith(
@@ -97,7 +83,8 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       activityLogs: [...workOrder.activityLogs, initialLog],
     );
 
-    await _box.put(workOrder.id, updated);
+    await _localDataSource.cacheWorkOrder(updated);
+    _remoteDataSource?.syncWorkOrder(updated);
     return updated;
   }
 
@@ -105,12 +92,12 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
   Future<void> updateWorkOrderStatus(
       String workOrderId, WorkOrderStatus status,
       {UserModel? caller}) async {
-    final wo = _box.get(workOrderId);
+    final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    _validateTransition(wo.status, status);
+    WorkOrderStateMachine.validateTransition(wo.status, status);
 
-    final log = _createLog(
+    final log = WorkOrderActivityLogger.createLog(
       stepName: 'STATUS_CHANGED',
       caller: caller,
       actionSummary:
@@ -131,7 +118,8 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
           : wo.completedAt,
       activityLogs: [...wo.activityLogs, log],
     );
-    await _box.put(workOrderId, updated);
+    await _localDataSource.cacheWorkOrder(updated);
+    _remoteDataSource?.syncWorkOrder(updated);
   }
 
   @override
@@ -147,10 +135,9 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       );
     }
 
-    final wo = _box.get(workOrderId);
+    final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    // Must be in open or assigned status
     if (wo.status != WorkOrderStatus.open &&
         wo.status != WorkOrderStatus.assigned) {
       throw IllegalStateTransitionException(
@@ -161,7 +148,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       );
     }
 
-    final log = _createLog(
+    final log = WorkOrderActivityLogger.createLog(
       stepName: 'ASSIGNED',
       caller: caller,
       actionSummary: 'Assigned to technician $technicianId',
@@ -179,7 +166,8 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       status: WorkOrderStatus.assigned,
       activityLogs: [...wo.activityLogs, log],
     );
-    await _box.put(workOrderId, updated);
+    await _localDataSource.cacheWorkOrder(updated);
+    _remoteDataSource?.syncWorkOrder(updated);
   }
 
   @override
@@ -194,10 +182,9 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       );
     }
 
-    final wo = _box.get(workOrderId);
+    final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    // Cross-technician verification
     if (wo.assignedToTechnicianId != null &&
         wo.assignedToTechnicianId != caller.id) {
       throw UnassignedTechnicianException(
@@ -208,9 +195,10 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       );
     }
 
-    _validateTransition(wo.status, WorkOrderStatus.inProgress);
+    WorkOrderStateMachine.validateTransition(
+        wo.status, WorkOrderStatus.inProgress);
 
-    final log = _createLog(
+    final log = WorkOrderActivityLogger.createLog(
       stepName: 'REPAIR_STARTED',
       caller: caller,
       actionSummary: 'Field technician commenced repair operations',
@@ -224,7 +212,8 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       startedAt: wo.startedAt ?? DateTime.now(),
       activityLogs: [...wo.activityLogs, log],
     );
-    await _box.put(workOrderId, updated);
+    await _localDataSource.cacheWorkOrder(updated);
+    _remoteDataSource?.syncWorkOrder(updated);
   }
 
   @override
@@ -239,7 +228,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       );
     }
 
-    final wo = _box.get(workOrderId);
+    final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
     if (caller != null &&
@@ -251,7 +240,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       );
     }
 
-    final log = _createLog(
+    final log = WorkOrderActivityLogger.createLog(
       stepName: 'SPARE_PART_ADDED',
       caller: caller,
       actionSummary:
@@ -266,13 +255,14 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       fallbackRole: 'MAINTENANCE_TECH',
     );
 
-    final updatedParts = List<SparePartModel>.from(wo.spareParts)
-      ..add(sparePart);
+    final updatedParts =
+        List<SparePartModel>.from(wo.spareParts)..add(sparePart);
     final updated = wo.copyWith(
       spareParts: updatedParts,
       activityLogs: [...wo.activityLogs, log],
     );
-    await _box.put(workOrderId, updated);
+    await _localDataSource.cacheWorkOrder(updated);
+    _remoteDataSource?.syncWorkOrder(updated);
   }
 
   @override
@@ -291,7 +281,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       );
     }
 
-    final wo = _box.get(workOrderId);
+    final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
     if (caller != null &&
@@ -303,9 +293,10 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       );
     }
 
-    _validateTransition(wo.status, WorkOrderStatus.completed);
+    WorkOrderStateMachine.validateTransition(
+        wo.status, WorkOrderStatus.completed);
 
-    final log = _createLog(
+    final log = WorkOrderActivityLogger.createLog(
       stepName: 'REPAIR_COMPLETED',
       caller: caller,
       actionSummary: 'Maintenance repair completed & root cause logged',
@@ -325,7 +316,8 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       actionsTaken: actionsTaken,
       activityLogs: [...wo.activityLogs, log],
     );
-    await _box.put(workOrderId, updated);
+    await _localDataSource.cacheWorkOrder(updated);
+    _remoteDataSource?.syncWorkOrder(updated);
   }
 
   @override
@@ -340,12 +332,13 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       );
     }
 
-    final wo = _box.get(workOrderId);
+    final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    _validateTransition(wo.status, WorkOrderStatus.verified);
+    WorkOrderStateMachine.validateTransition(
+        wo.status, WorkOrderStatus.verified);
 
-    final log = _createLog(
+    final log = WorkOrderActivityLogger.createLog(
       stepName: 'TEST_RUN_PASSED',
       caller: caller,
       actionSummary: 'Operator executed field test run: Status PASSED',
@@ -359,7 +352,8 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       status: WorkOrderStatus.verified,
       activityLogs: [...wo.activityLogs, log],
     );
-    await _box.put(workOrderId, updated);
+    await _localDataSource.cacheWorkOrder(updated);
+    _remoteDataSource?.syncWorkOrder(updated);
   }
 
   @override
@@ -375,12 +369,13 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       );
     }
 
-    final wo = _box.get(workOrderId);
+    final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    _validateTransition(wo.status, WorkOrderStatus.verifiedClosed);
+    WorkOrderStateMachine.validateTransition(
+        wo.status, WorkOrderStatus.verifiedClosed);
 
-    final log = _createLog(
+    final log = WorkOrderActivityLogger.createLog(
       stepName: 'CLOSED',
       caller: caller,
       actionSummary:
@@ -394,43 +389,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       status: WorkOrderStatus.verifiedClosed,
       activityLogs: [...wo.activityLogs, log],
     );
-    await _box.put(workOrderId, updated);
-  }
-
-  void _validateTransition(WorkOrderStatus current, WorkOrderStatus next) {
-    if (current == next) return;
-
-    bool valid = false;
-    switch (current) {
-      case WorkOrderStatus.open:
-        valid = (next == WorkOrderStatus.assigned);
-        break;
-      case WorkOrderStatus.assigned:
-        valid = (next == WorkOrderStatus.inProgress);
-        break;
-      case WorkOrderStatus.inProgress:
-        valid = (next == WorkOrderStatus.completed ||
-            next == WorkOrderStatus.pendingParts);
-        break;
-      case WorkOrderStatus.pendingParts:
-        valid = (next == WorkOrderStatus.inProgress);
-        break;
-      case WorkOrderStatus.completed:
-        valid = (next == WorkOrderStatus.verified);
-        break;
-      case WorkOrderStatus.verified:
-        valid = (next == WorkOrderStatus.verifiedClosed);
-        break;
-      case WorkOrderStatus.verifiedClosed:
-        valid = false; // Terminal state
-        break;
-    }
-
-    if (!valid) {
-      throw IllegalStateTransitionException(
-        fromStatus: current.name,
-        toStatus: next.name,
-      );
-    }
+    await _localDataSource.cacheWorkOrder(updated);
+    _remoteDataSource?.syncWorkOrder(updated);
   }
 }
