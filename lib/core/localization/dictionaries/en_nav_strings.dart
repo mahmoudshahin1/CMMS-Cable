@@ -1,0 +1,72 @@
+const Map<String, String> enNavStrings = {
+  // Header & Navigation
+  'app_title': 'Cable Manufacturing CMMS',
+  'shift_manager': 'Eng. Mahmoud',
+  'shift_sub': 'Shift A • Day Operational Manager',
+  'tab_factory': 'Factory Floor',
+  'tab_work_orders': 'Work Orders',
+  'tab_analytics': 'Analytics OEE',
+  'tab_my_tasks': 'My Tasks',
+  'tab_notifications': 'Alerts',
+  'tab_executive': 'Executive KPI',
+  'repair_request_btn': 'Repair Request',
+  'qr_scanner_btn': 'QR Scanner',
+  'theme_toggle': 'Toggle Theme',
+  'lang_toggle': 'العربية',
+  'settings_title': 'Settings & Profile',
+  'profile_section': 'User Profile Information',
+  'appearance_section': 'Appearance & Theme',
+  'accent_color_section': 'Primary Accent Color',
+  'language_section': 'System Language',
+  'dark_mode': 'Dark Mode',
+  'light_mode': 'Light Mode',
+  'permissions_title': 'Active Role Permissions',
+  'switch_account': 'Switch Persona',
+  'app_version': 'CMMS System Version',
+
+  // Factory Floor KPIs
+  'total_machines': 'TOTAL MACHINES',
+  'running': 'RUNNING',
+  'active_downtime': 'ACTIVE DOWNTIME',
+  'all_departments': 'All Departments',
+  'running_status': 'Running',
+  'speed': 'SPEED',
+  'production': 'PROD',
+  'report_issue': 'REPORT ISSUE',
+  'view_downtime': 'VIEW DOWNTIME',
+
+  // QR Scanner
+  'qr_scanner_title': 'Machine Barcode & QR Scanner',
+  'qr_scanner_ready': 'Industrial Scanner Ready',
+  'qr_point_camera': 'Point camera at machine QR plate',
+  'manual_code_lookup': 'Or enter machine code manually:',
+  'search_btn': 'Search',
+  'machine_detected': 'Machine Code Identified Successfully',
+  'report_breakdown_btn': 'Report Breakdown (Work Order)',
+  'log_downtime_btn': 'Log Downtime',
+
+  // Switch Persona Bottom Sheet
+  'switch_persona_title': 'Switch Active Persona (RBAC)',
+  'switch_persona_sub': 'Test screen rendering & button-level access gates',
+  'dept_users_header': 'Department Leads (7 Departments)',
+  'plant_wide_header': 'Plant Management & Field Technicians',
+  'switched_to_user': 'Switched to {name} ({detail})',
+  'open_settings_btn': 'Open Settings & Customize Theme',
+
+  // Settings Screen — Permissions
+  'perm_log_downtime': 'Log Downtime & Breakdown Reports',
+  'perm_assign_tech': 'Dispatch & Assign Technicians',
+  'perm_start_repair': 'Accept Ticket & Start Field Repair',
+  'perm_spare_parts': 'Record Spare Parts Consumed',
+  'perm_complete_repair': 'Record Root Cause & Complete Repair',
+  'perm_confirm_test': 'Confirm Production Test Run',
+  'perm_reclassify': 'Reclassify Downtime Type',
+  'perm_approve_close': 'Approve & Close Work Order',
+  'perm_view_analytics': 'View Plant Analytics & KPIs',
+
+  // Settings Screen — Extra
+  'current_shift_label': 'Current Shift: Shift 1 (Day)',
+  'accent_color_hint': 'Choose your preferred accent color to customize buttons and UI elements:',
+  'hive_db_active': 'Local Hive Offline-First Database Active',
+  'company_label': 'Energya Cables (Elsewedy Helal)',
+};

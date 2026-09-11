@@ -1,0 +1,72 @@
+const Map<String, String> arNavStrings = {
+  // Header & Navigation
+  'app_title': 'نظام صيانة مصنع الكابلات',
+  'shift_manager': 'م. محمود علي',
+  'shift_sub': 'الوردية الأولى • مدير تشغيل المصنع',
+  'tab_factory': 'أرضية المصنع',
+  'tab_work_orders': 'أوامر الصيانة',
+  'tab_analytics': 'تحليلات OEE',
+  'tab_my_tasks': 'مهامي المسندة',
+  'tab_notifications': 'التنبيهات',
+  'tab_executive': 'لوحة المؤشرات',
+  'repair_request_btn': 'طلب إصلاح',
+  'qr_scanner_btn': 'مسح QR',
+  'theme_toggle': 'تبديل الوضع',
+  'lang_toggle': 'English',
+  'settings_title': 'الإعدادات والملف الشخصي',
+  'profile_section': 'الملف الشخصي للمستخدم',
+  'appearance_section': 'المظهر ونمط العرض',
+  'accent_color_section': 'لون التطبيق الرئيسي (Accent Color)',
+  'language_section': 'لغة النظام',
+  'dark_mode': 'الوضع الداكن',
+  'light_mode': 'الوضع الفاتح',
+  'permissions_title': 'الصلاحيات المعتمدة لهذا الدور',
+  'switch_account': 'تبديل الحساب',
+  'app_version': 'إصدار نظام الصيانة',
+
+  // Factory Floor KPIs
+  'total_machines': 'إجمالي الماكينات',
+  'running': 'قيد التشغيل',
+  'active_downtime': 'ماكينات متوقفة',
+  'all_departments': 'جميع الأقسام',
+  'running_status': 'تعمل',
+  'speed': 'السرعة',
+  'production': 'الإنتاج',
+  'report_issue': 'إبلاغ عن عطل',
+  'view_downtime': 'سجل التوقف',
+
+  // QR Scanner
+  'qr_scanner_title': 'قارئ الباركود و QR للماكينات',
+  'qr_scanner_ready': 'الماسح الصناعي جاهز للالتقاط',
+  'qr_point_camera': 'وجّه الكاميرا نحو لوحة QR المعدنية المثبتة على الماكينة',
+  'manual_code_lookup': 'أو أدخل كود الماكينة يدوياً:',
+  'search_btn': 'بحث',
+  'machine_detected': 'تم التعرف على الماكينة بنجاح',
+  'report_breakdown_btn': 'إبلاغ عن عطل (أمر صيانة)',
+  'log_downtime_btn': 'تسجيل توقف مباشر',
+
+  // Switch Persona Bottom Sheet
+  'switch_persona_title': 'تبديل الحساب النشط (RBAC)',
+  'switch_persona_sub': 'اختبار عرض الشاشات وصلاحيات الأزرار',
+  'dept_users_header': 'مسؤولو الأقسام (7 أقسام)',
+  'plant_wide_header': 'الإدارة العامة والفنيون',
+  'switched_to_user': 'تم التحويل إلى {name} ({detail})',
+  'open_settings_btn': 'فتح الإعدادات وتخصيص الألوان والثيم',
+
+  // Settings Screen — Permissions
+  'perm_log_downtime': 'تسجيل بلاغات الأعطال والتوقف',
+  'perm_assign_tech': 'فرز وتوزيع التذاكر وتعيين الفنيين',
+  'perm_start_repair': 'استلام التذكرة وبدء الإصلاح الميداني',
+  'perm_spare_parts': 'تسجيل قطع الغيار المستهلكة',
+  'perm_complete_repair': 'تسجيل السبب الجذري وإتمام الإصلاح',
+  'perm_confirm_test': 'تأكيد اختبار التشغيل بخام الإنتاج',
+  'perm_reclassify': 'إعادة تصنيف نوع العطل',
+  'perm_approve_close': 'اعتماد وإغلاق أمر الصيانة نهائياً',
+  'perm_view_analytics': 'استعراض تحليلات ومؤشرات المصنع',
+
+  // Settings Screen — Extra
+  'current_shift_label': 'الوردية الحالية: الوردية الأولى (نهار)',
+  'accent_color_hint': 'اختر لون التطبيق الرئيسي المفضل لديك لتخصيص الأزرار والعناصر:',
+  'hive_db_active': 'قاعدة بيانات محلية Hive Offline-First نشطة',
+  'company_label': 'إنرجيا كابلز (السويدي هلال) • قطاع كابلات إنرجيا',
+};
