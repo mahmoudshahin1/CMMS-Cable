@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cable Ops CMMS - العرض التقديمي التنفيذي ودليل النظام</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-white: #f8fafc;
+      --text-muted: #94a3b8;
+      --cyan: #06b6d4;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --crimson: #ef4444;
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Cairo', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-white);
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Print / PDF Controls */
+    .top-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 15px 25px;
+      margin-bottom: 30px;
+    }
+
+    .btn-print {
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-family: 'Cairo', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-print:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    /* Slide Box */
+    .slide-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 40px;
+      margin-bottom: 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+    }
+
+    .slide-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .badge-cyan { background: rgba(6, 182, 212, 0.15); color: var(--cyan); border: 1px solid var(--cyan); }
+    .badge-emerald { background: rgba(16, 185, 129, 0.15); color: var(--emerald); border: 1px solid var(--emerald); }
+    .badge-crimson { background: rgba(239, 68, 68, 0.15); color: var(--crimson); border: 1px solid var(--crimson); }
+    .badge-amber { background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid var(--amber); }
+
+    .slide-title {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--text-white);
+      margin-bottom: 8px;
+    }
+
+    .slide-subtitle {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 30px;
+    }
+
+    /* Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .box-item {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+    }
+
+    .box-item.crimson-left { border-right: 4px solid var(--crimson); }
+    .box-item.amber-left { border-right: 4px solid var(--amber); }
+    .box-item.blue-left { border-right: 4px solid var(--blue); }
+    .box-item.purple-left { border-right: 4px solid var(--purple); }
+    .box-item.emerald-left { border-right: 4px solid var(--emerald); }
+    .box-item.cyan-left { border-right: 4px solid var(--cyan); }
+
+    .item-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-white);
+      margin-bottom: 10px;
+    }
+
+    .item-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .item-highlight {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    /* Handshake Timeline */
+    .workflow-step {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+    }
+
+    .step-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan);
+      margin-bottom: 8px;
+    }
+
+    .step-name {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .step-role {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 12px;
+      background: #334155;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+
+    /* Tables */
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .styled-table th {
+      background-color: #0f172a;
+      color: var(--cyan);
+      padding: 14px;
+      text-align: right;
+      font-size: 14px;
+      font-weight: 700;
+      border-bottom: 2px solid var(--card-border);
+    }
+
+    .styled-table td {
+      padding: 14px;
+      background: rgba(30, 41, 59, 0.5);
+      border-bottom: 1px solid var(--card-border);
+      font-size: 13.5px;
+      color: var(--text-white);
+    }
+
+    .styled-table tr:nth-child(even) td {
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    /* Metrics Hero */
+    .metric-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 46px;
+      font-weight: 900;
+      margin-bottom: 4px;
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background-color: #0b1120 !important;
+        color: #f8fafc !important;
+        padding: 0;
+      }
+      .top-actions {
+        display: none !important;
+      }
+      .slide-card {
+        box-shadow: none !important;
+        border: 1px solid #334155 !important;
+        margin-bottom: 0 !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        min-height: 96vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Top Action Bar -->
+  <div class="top-actions">
+    <div>
+      <h2 style="font-size: 20px; font-weight: 700;">📂 وثيقة العرض التقديمي والشرح التنفيذي للنظام</h2>
+      <p style="font-size: 13px; color: var(--text-muted);">نظام Cable Ops CMMS • إدارة مصانع الكابلات والتحول الرقمي لعمليات الصيانة</p>
+    </div>
+    <div>
+      <button class="btn-print" onclick="window.print()">
+        <span>🖨️ طباعة أو حفظ كـ PDF</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- SLIDE 1: COVER -->
+  <div class="slide-card">
+    <span class="slide-badge badge-cyan">CABLE INDUSTRY ENTERPRISE CMMS</span>
+    <h1 class="slide-title" style="font-size: 38px; color: #fff;">نظام Cable Ops CMMS</h1>
+    <p class="slide-subtitle" style="font-size: 18px;">
+      نظام رقمي متكامل لإدارة عمليات صيانة مصانع الكابلات، تتبع التوقفات، وحساب الكفاءة التشغيلية (OEE) بدقة متناهية
+    </p>
+
+    <div class="grid-3" style="margin-top: 40px;">
+      <div class="box-item cyan-left">
+        <div class="item-title" style="color: var(--cyan);">جاهزية تشغيلية كاملة</div>
+        <div class="item-desc">تطبيق ميداني يعمل على الهواتف والأجهزة اللوحية، مبني لدعم طبيعة مصانع الكابلات الثقيلة ومسح أكواد QR.</div>
+      </div>
+      <div class="box-item emerald-left">
+        <div class="item-title" style="color: var(--emerald);">تغطية 54 ماكينة و 7 أقسام</div>
+        <div class="item-desc">تغطية شاملة لكل مراحل التصنيع (سحب النحاس والألومنيوم، التجديل، العزل، التغليف، التدريع، والتسليم).</div>
+      </div>
+      <div class="box-item amber-left">
+        <div class="item-title" style="color: var(--amber);">محرك الشفتات الثلاثة (24/7)</div>
+        <div class="item-desc">معالجة استمرار الأعطال عبر الشفتات بدقة بالدقيقة لمنع أي نزاع أو تضارب في حسابات الإنتاج.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM (BEFORE) -->
+  <div class="slide-card">
+    <span class="slide-badge badge-crimson">MANUFACTURING PAIN POINTS • المشاكل قبل النظام</span>
+    <h2 class="slide-title">التحديات والمشاكل التشغيلية قبل تطبيق النظام</h2>
+    <p class="slide-subtitle">نقاط الاختناق والهدر التي كانت تؤدي لتراجع إنتاجية المصنع وضياع الوقت</p>
+
+    <div class="grid-2">
+      <div class="box-item crimson-left">
+        <div class="item-title">1. تأخر الإبلاغ وفترات التوقف العمياء (Reporting Lag)</div>
+        <div class="item-desc">
+          عند حدوث عطل بسيط أو توقف مفاجئ للماكينة، كان المشغل يتأخر في إبلاغ الصيانة من 20 إلى 45 دقيقة بالبحث عن فني أو تسجيل ورقي، مما يهدر وقتاً كبيراً قبل بدء الإصلاح الفعلي.
+        </div>
+        <div class="item-highlight" style="background: rgba(239, 68, 68, 0.2); color: var(--crimson);">
+          النتيجة: ارتفاع وقت التوقف غير المخطط (Unplanned Downtime)
+        </div>
+      </div>
+
+      <div class="box-item amber-left">
+        <div class="item-title">2. لعبة إلقاء اللوم المتبادل (The Blame Game)</div>
+        <div class="item-desc">
+          الإنتاج يلوم الصيانة على بطء الإصلاح وجودة الماكينات، والصيانة تلوم المشغلين على سوء الاستخدام أو رداءة الخامة. غياب سجل رقمي موحد أدى إلى ضياع الحقيقة والسبب الجذري للأعطال.
+        </div>
+        <div class="item-highlight" style="background: rgba(245, 158, 11, 0.2); color: var(--amber);">
+          النتيجة: تكرار نفس الأعطال دون حل أسبابها الحقيقية
+        </div>
+      </div>
+
+      <div class="box-item blue-left">
+        <div class="item-title">3. مشاكل تسليم الشفتات (Shift Handover Gaps)</div>
+        <div class="item-desc">
+          عندما يحدث عطل في آخر ساعة من الشفت (مثلاً 15:00 ويستمر حتى 16:30 في الشفت التالي)، ترفض الشفت الجديدة تحمل دقائق التوقف في تقريرها، ويحدث تلاعب واختلاف في حساب ساعات العمل.
+        </div>
+        <div class="item-highlight" style="background: rgba(59, 130, 246, 0.2); color: var(--blue);">
+          النتيجة: تقارير كفاءة (OEE) غير دقيقة ومزيفة
+        </div>
+      </div>
+
+      <div class="box-item purple-left">
+        <div class="item-title">4. الدفاتر الورقية وضياع قطع الغيار (Paper Logs)</div>
+        <div class="item-desc">
+          السجلات الورقية كانت تتلف بزيوت الماكينات أو تضيع بالكامل، ويتم تعبئة البيانات بأثر رجعي بتواريخ غير دقيقة، مع عدم وجود حصر دقيق لقطع الغيار المستهلكة في كل أمر صيانة.
+        </div>
+        <div class="item-highlight" style="background: rgba(139, 92, 246, 0.2); color: var(--purple);">
+          النتيجة: فشل في تدقيق الجودة ISO وصعوبة حساب تكلفة الصيانة
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: THE SOLUTION (HOW WE SOLVED IT) -->
+  <div class="slide-card">
+    <span class="slide-badge badge-emerald">THE ARCHITECTURAL SOLUTION • كيف قمنا بحلها</span>
+    <h2 class="slide-title">حلول نظام Cable Ops CMMS المبتكرة</h2>
+    <p class="slide-subtitle">تحويل العمليات من ردود أفعال عشوائية إلى نظام رقمي صارم عالي الكفاءة</p>
+
+    <div class="grid-2">
+      <div class="box-item emerald-left">
+        <div class="item-title">⚡ الإبلاغ الفوري عبر QR Code في ثوانٍ</div>
+        <div class="item-desc">
+          يمسح المشغل كود QR المثبت على الماكينة، فيتعرف التطبيق على الخط وقسمه تلقائياً، ويختار المشغل نوع العطل بضغطة زر واحدة. فوراً يظهر إشعار في لوحة المشرف مع توثيق وقت التوقف بالثانية.
+        </div>
+      </div>
+
+      <div class="box-item cyan-left">
+        <div class="item-title">📱 صمود كامل بدون إنترنت (Offline-First Architecture)</div>
+        <div class="item-desc">
+          مصانع الكابلات والحديد مليئة بالمناطق المعدنية المعزولة عن شبكة الـ Wi-Fi. النظام يعتمد على قاعدة بيانات محلية فائقة السرعة (Hive NoSQL) تسمح للعمال بتسجيل كل شيء بدون انقطاع مع حفظ ومزامنة فورية.
+        </div>
+      </div>
+
+      <div class="box-item amber-left">
+        <div class="item-title">⏱️ ساعة إيقاف رقمية لحساب MTTR بدقة</div>
+        <div class="item-desc">
+          عند وصول الفني يضغط "بدء الإصلاح"، فتبدأ ساعة الإيقاف بتسجيل زمن الإصلاح الفعلي بدقة، وتحديد ما إذا كان التأخير في استجابة الفني أو في وقت الإصلاح الميكانيكي/الكهربائي.
+        </div>
+      </div>
+
+      <div class="box-item blue-left">
+        <div class="item-title">🔄 المحرك الذكي لتوزيع توقفات الشفتات (Cross-Shift)</div>
+        <div class="item-desc">
+          إذا بدأ العطل في شفت وانتهى في أخرى، يقوم النظام آلياً وبدون تدخل بشري بتقسيم الدقائق بدقة (مثلاً 90 دقيقة للشفت الأولى و90 دقيقة للشفت الثانية)، مما يحقق عدالة تامة في تقييم أداء الشفتات.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: 5-STEP HANDSHAKE WORKFLOW -->
+  <div class="slide-card">
+    <span class="slide-badge badge-cyan">CLOSED-LOOP HANDSHAKE • دورة العمل المغلقة</span>
+    <h2 class="slide-title">دورة العمل الخماسية الصارمة (The 5-Step Lifecycle)</h2>
+    <p class="slide-subtitle">تسلسل رقمي مغلق لا يمكن تجاوزه، يضمن مسؤولية كل طرف ومنع تشغيل الماكينة قبل التأكد من جودتها</p>
+
+    <div class="grid-5" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
+      
+      <div class="workflow-step" style="border-top: 4px solid var(--crimson);">
+        <div class="step-number">خطوة 1</div>
+        <div class="step-name">الإبلاغ عن العطل</div>
+        <div class="step-role" style="color: var(--crimson);">مشغل الخط</div>
+        <p class="item-desc">مسح QR أو اختيار الماكينة، تحديد نوع التوقف، وبدء احتساب وقت التوقف.</p>
+        <span class="item-highlight" style="background: rgba(239, 68, 68, 0.2); color: var(--crimson);">PENDING</span>
+      </div>
+
+      <div class="workflow-step" style="border-top: 4px solid var(--blue);">
+        <div class="step-number">خطوة 2</div>
+        <div class="step-name">الفرز والتكليف</div>
+        <div class="step-role" style="color: var(--blue);">مشرف الصيانة</div>
+        <p class="item-desc">تحديد درجة الأهمية (Critical/High) وتعيين الفني المتخصص (كهرباء/ميكانيكا).</p>
+        <span class="item-highlight" style="background: rgba(59, 130, 246, 0.2); color: var(--blue);">ASSIGNED</span>
+      </div>
+
+      <div class="workflow-step" style="border-top: 4px solid var(--purple);">
+        <div class="step-number">خطوة 3</div>
+        <div class="step-name">الإصلاح الميداني</div>
+        <div class="step-role" style="color: var(--purple);">فني الصيانة</div>
+        <p class="item-desc">بدء المؤقت، استهلاك قطع الغيار، معالجة العطل، وكتابة السبب الجذري.</p>
+        <span class="item-highlight" style="background: rgba(139, 92, 246, 0.2); color: var(--purple);">IN_PROGRESS</span>
+      </div>
+
+      <div class="workflow-step" style="border-top: 4px solid var(--cyan);">
+        <div class="step-number">خطوة 4</div>
+        <div class="step-name">اختبار الجودة والتأكيد</div>
+        <div class="step-role" style="color: var(--cyan);">مشغل الخط</div>
+        <p class="item-desc">تشغيل الماكينة والتأكد من مطابقة الكابل للمواصفات قبل توقيع الاستلام.</p>
+        <span class="item-highlight" style="background: rgba(6, 182, 212, 0.2); color: var(--cyan);">VERIFIED</span>
+      </div>
+
+      <div class="workflow-step" style="border-top: 4px solid var(--emerald);">
+        <div class="step-number">خطوة 5</div>
+        <div class="step-name">الاعتماد والإغلاق</div>
+        <div class="step-role" style="color: var(--emerald);">مشرف الصيانة</div>
+        <p class="item-desc">مراجعة تقرير الإصلاح وتكلفة قطع الغيار وختم أمر الصيانة بصورة نهائية.</p>
+        <span class="item-highlight" style="background: rgba(16, 185, 129, 0.2); color: var(--emerald);">CLOSED</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SLIDE 5: RBAC & GOVERNANCE -->
+  <div class="slide-card">
+    <span class="slide-badge badge-amber">SECURITY & GOVERNANCE • مصفوفة الصلاحيات</span>
+    <h2 class="slide-title">مصفوفة الصلاحيات والحوكمة الصارمة (RBAC Matrix)</h2>
+    <p class="slide-subtitle">عزل الأدوار لمنع التلاعب ومنع أي طرف من إغلاق أو تعديل أوامر الصيانة دون إذن</p>
+
+    <table class="styled-table">
+      <thead>
+        <tr>
+          <th>الدور الوظيفي (Role)</th>
+          <th>نطاق الصلاحية (Scope)</th>
+          <th>الإجراءات المسموح بها (Permitted Actions)</th>
+          <th>القيود الصارمة (Restrictions)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight: 700; color: var(--cyan);">مشغل الخط (Operator)</td>
+          <td>خط الإنتاج المعين له</td>
+          <td>مسح كود الماكينة، تسجيل العطل، رؤية أوامر عمل خطه، وتأكيد اختبار الجودة (VERIFIED).</td>
+          <td style="color: #fca5a5;">ممنوع تكليف الفنيين، ممنوع بدء الإصلاح الفني، وممنوع إغلاق التذكرة نهائياً.</td>
+        </tr>
+        <tr>
+          <td style="font-weight: 700; color: var(--purple);">فني الصيانة (Technician)</td>
+          <td>الأوامر المسندة إليه فقط</td>
+          <td>بدء مؤقت الإصلاح، تسجيل قطع الغيار المستهلكة، كتابة السبب الجذري، وطلب الاختبار.</td>
+          <td style="color: #fca5a5;">ممنوع إنشاء أوامر صيانة لنفسه، وممنوع اعتماد الإغلاق النهائي.</td>
+        </tr>
+        <tr>
+          <td style="font-weight: 700; color: var(--blue);">مشرف الصيانة (Supervisor)</td>
+          <td>صيانة المصنع بالكامل</td>
+          <td>فرز البلاغات، تكليف الفنيين، الموافقة على صرف القطع، والإغلاق النهائي للأمر (CLOSED).</td>
+          <td style="color: #fca5a5;">لا يمكنه تجاوز اختبار تشغيل المشغل، ولا يمكنه تعديل التواريخ السابقة.</td>
+        </tr>
+        <tr>
+          <td style="font-weight: 700; color: var(--emerald);">مدير المصنع (Plant Manager)</td>
+          <td>المصنع كاملاً (شامل)</td>
+          <td>الاطلاع على لوحة OEE، تحليلات Pareto لأسباب الأعطال، ومؤشرات MTTR و MTBF.</td>
+          <td style="color: #fca5a5;">صلاحية قراءة فقط (Read-Only) لمنع التدخل في سير العمل الميداني.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SLIDE 6: BUSINESS IMPACT & ROI -->
+  <div class="slide-card">
+    <span class="slide-badge badge-emerald">BUSINESS ROI • الأثر والعائد الاستثماري</span>
+    <h2 class="slide-title">الأثر التشغيلي والعائد المالي لنظام Cable Ops CMMS</h2>
+    <p class="slide-subtitle">تحويل المصنع من بيئة عمل دفاعية إلى بيئة إنتاجية متوقعة وعالية الكفاءة</p>
+
+    <div class="grid-3" style="margin-bottom: 25px;">
+      <div class="box-item crimson-left" style="text-align: center;">
+        <div class="metric-value" style="color: var(--crimson);">-35%</div>
+        <div class="item-title">انخفاض وقت التوقف غير المخطط</div>
+        <div class="item-desc">بفضل سرعة الإبلاغ بالـ QR والمؤقت الميداني المباشر الذي يلغي هدر الانتظار.</div>
+      </div>
+
+      <div class="box-item cyan-left" style="text-align: center;">
+        <div class="metric-value" style="color: var(--cyan);">100%</div>
+        <div class="item-title">وضوح أسباب التوقف ونسبتها</div>
+        <div class="item-desc">فصل كامل ومبرهن بين توقفات خامات الإنتاج وبين الأعطال الفنية والكهربائية.</div>
+      </div>
+
+      <div class="box-item amber-left" style="text-align: center;">
+        <div class="metric-value" style="color: var(--amber);">صفر</div>
+        <div class="item-title">نزاعات في تسليم الشفتات</div>
+        <div class="item-desc">بفضل الحساب الآلي للتوقفات المستمرة وتوزيعها بالدقيقة بين الشفت السابقة والتالية.</div>
+      </div>
+    </div>
+
+    <div class="box-item emerald-left" style="background: rgba(16, 185, 129, 0.1);">
+      <div class="item-title" style="color: var(--emerald); font-size: 19px;">🏆 الجاهزية للتطبيق والاعتماد في مصانع الكابلات</div>
+      <div class="item-desc" style="color: #fff; font-size: 15px;">
+        نظام Cable Ops CMMS مكتمل البنية، ويوفر لإدارة المصنع رؤية حقيقية بالبيانات الحية الموثوقة، مع شهادة تدقيق كاملة تتوافق مع معايير الجودة الدولية (ISO 9001).
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
