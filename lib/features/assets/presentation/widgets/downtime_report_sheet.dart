@@ -1,26 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:uuid/uuid.dart';
-import '../../domain/models/machine_model.dart';
-import '../../domain/enums/department_type.dart';
-import '../../../downtime/domain/enums/downtime_category.dart';
-import '../../../downtime/domain/models/downtime_log_model.dart';
-import '../../../downtime/presentation/cubit/downtime_cubit.dart';
-import '../cubit/machine_cubit.dart';
-import '../../domain/enums/machine_status.dart';
-import '../../../work_orders/presentation/cubit/work_order_cubit.dart';
-import '../../../work_orders/domain/models/work_order_model.dart';
-import '../../../work_orders/domain/enums/work_order_type.dart';
-import '../../../work_orders/domain/enums/work_order_status.dart';
-import '../../../work_orders/domain/enums/priority.dart';
-import '../../../work_orders/presentation/screens/create_repair_request_screen.dart';
-import '../../../work_orders/presentation/screens/work_orders_list_screen.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/swipe_action_button.dart';
-import '../../../../core/chronology/event_chronology.dart';
-import '../../../../core/widgets/shift_chronology_badge.dart';
-import '../../../../core/localization/app_strings.dart';
 
+import '../../../../core/localization/app_strings.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/shift_chronology_badge.dart';
+import '../../../../core/widgets/swipe_action_button.dart';
+import '../../../downtime/domain/enums/downtime_category.dart';
+import '../../../work_orders/presentation/screens/create_repair_request_screen.dart';
+import '../../domain/models/machine_model.dart';
+import 'downtime_sheet/downtime_category_selector.dart';
+import 'downtime_sheet/downtime_machine_identity_card.dart';
+import 'downtime_sheet/downtime_reason_notes_section.dart';
+import 'downtime_sheet/downtime_sheet_controller.dart';
+
+/// Modal bottom sheet for immediate shop-floor logging of an unplanned downtime event.
 class DowntimeReportSheet extends StatefulWidget {
   final MachineModel machine;
 
@@ -34,10 +26,9 @@ class _DowntimeReportSheetState extends State<DowntimeReportSheet> {
   DowntimeCategory _selectedCategory = DowntimeCategory.mechanicalBreakdown;
   final TextEditingController _reasonController = TextEditingController();
   bool _isMaintenanceRequested = true;
-
   bool _isSubmitting = false;
 
-  final List<String> _quickReasons = [
+  final List<String> _quickReasons = const [
     'Wire Break',
     'Crosshead Temp High',
     'Motor Overload Trip',
@@ -57,96 +48,13 @@ class _DowntimeReportSheetState extends State<DowntimeReportSheet> {
     if (_isSubmitting) return;
     setState(() => _isSubmitting = true);
     try {
-      final reason = _reasonController.text.trim().isEmpty
-          ? _selectedCategory.displayName
-          : _reasonController.text.trim();
-
-      final chrono = EventChronology.now();
-      final newLog = DowntimeLogModel(
-        id: const Uuid().v4(),
-        machineId: widget.machine.id,
-        reportedById: 'OP-104',
-        startTime: chrono.recordedAtUtc,
+      await DowntimeSheetController.submitDowntime(
+        context: context,
+        machine: widget.machine,
         category: _selectedCategory,
-        reason: reason,
+        reasonText: _reasonController.text,
         isMaintenanceRequested: _isMaintenanceRequested,
-        startChronology: chrono,
       );
-
-      // 1. Log Downtime
-      await context.read<DowntimeCubit>().reportDowntime(newLog);
-      if (!mounted) return;
-
-      // 2. Automatically create Work Order so it ALWAYS appears in Track Orders
-      if (_isMaintenanceRequested || _selectedCategory.isMaintenance) {
-        final workOrderId = const Uuid().v4();
-        final desc = context.trArgs('downtime_wo_desc', {
-          'name': widget.machine.name,
-          'code': widget.machine.code,
-          'dept': widget.machine.department.localizedName(context.isArabic),
-          'reason': reason,
-        });
-        final newWorkOrder = WorkOrderModel(
-          id: workOrderId,
-          title: '${widget.machine.code}: $reason',
-          description: desc,
-          machineId: widget.machine.id,
-          type: WorkOrderType.breakdown,
-          status: WorkOrderStatus.open,
-          priority: Priority.high,
-          createdAt: chrono.recordedAtUtc,
-          chronology: chrono,
-          spareParts: const [],
-        );
-        if (mounted) {
-          await context.read<WorkOrderCubit>().createWorkOrder(newWorkOrder);
-        }
-      }
-
-      // 3. Update Machine Status
-      if (mounted) {
-        await context.read<MachineCubit>().updateMachineStatus(
-              widget.machine.id,
-              _selectedCategory.isMaintenance
-                  ? MachineStatus.downtimeMaintenance
-                  : MachineStatus.downtimeProcess,
-            );
-      }
-
-      if (mounted) {
-        Navigator.of(context).pop();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.downMaintenanceRed,
-            content: Row(
-              children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.white),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    context.trArgs('downtime_logged_snack', {
-                      'code': widget.machine.code,
-                    }),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            action: SnackBarAction(
-              label: context.tr('track_orders_btn'),
-              textColor: Colors.white,
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const WorkOrdersListScreen(),
-                  ),
-                );
-              },
-            ),
-          ),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -188,176 +96,32 @@ class _DowntimeReportSheetState extends State<DowntimeReportSheet> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Header Identity Card
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: context.isDarkMode
-                    ? AppColors.slateCard
-                    : AppColors.energyaLightSurface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.borderColor),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.downMaintenanceRed.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.warning_amber_rounded,
-                      color: AppColors.downMaintenanceRed,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${widget.machine.code} - ${widget.machine.name}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: context.textPrimaryColor,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.machine.department.displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: context.isDarkMode
-                                ? AppColors.cyberCyan
-                                : context.brandPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            DowntimeMachineIdentityCard(machine: widget.machine),
             const SizedBox(height: 12),
-
-            // Automated Shift & Live Plant Chronology Banner
             const ShiftChronologyBadge(),
             const SizedBox(height: 16),
-
-            Text(
-              '1. SELECT DOWNTIME CATEGORY',
-              style: TextStyle(
-                color: context.textMutedColor,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // Category Grid
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: DowntimeCategory.values.map((cat) {
-                final isSelected = _selectedCategory == cat;
-                return ChoiceChip(
-                  label: Text(cat.displayName),
-                  selected: isSelected,
-                  onSelected: (val) {
-                    if (val) {
-                      setState(() {
-                        _selectedCategory = cat;
-                        _isMaintenanceRequested = cat.isMaintenance;
-                      });
-                    }
-                  },
-                  selectedColor: cat.isMaintenance
-                      ? AppColors.downMaintenanceRed
-                      : AppColors.downProcessOrange,
-                  backgroundColor: context.isDarkMode
-                      ? AppColors.slateCard
-                      : AppColors.energyaLightSurface,
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : context.textSecondaryColor,
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                );
-              }).toList(),
+            DowntimeCategorySelector(
+              selectedCategory: _selectedCategory,
+              onCategorySelected: (cat) {
+                setState(() {
+                  _selectedCategory = cat;
+                  _isMaintenanceRequested = cat.isMaintenance;
+                });
+              },
             ),
             const SizedBox(height: 20),
-
-            Text(
-              '2. QUICK REASON CHIPS / NOTES',
-              style: TextStyle(
-                color: context.textMutedColor,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // Quick Reasons
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: _quickReasons.map((reason) {
-                return ActionChip(
-                  label: Text(reason),
-                  backgroundColor: context.isDarkMode
-                      ? AppColors.slateCard
-                      : AppColors.energyaLightSurface,
-                  side: BorderSide(color: context.borderColor),
-                  labelStyle: TextStyle(
-                    color: context.isDarkMode
-                        ? AppColors.cyberCyan
-                        : context.brandPrimary,
-                    fontSize: 11,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _reasonController.text = reason;
-                    });
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 10),
-
-            TextField(
-              controller: _reasonController,
-              decoration: InputDecoration(
-                hintText: 'Enter specific downtime cause / notes...',
-                hintStyle: TextStyle(color: context.textMutedColor, fontSize: 13),
-                filled: true,
-                fillColor: context.isDarkMode
-                    ? AppColors.slateCard
-                    : AppColors.energyaLightSurface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: context.borderColor),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              ),
-              style: TextStyle(color: context.textPrimaryColor, fontSize: 14),
+            DowntimeReasonNotesSection(
+              reasonController: _reasonController,
+              quickReasons: _quickReasons,
+              onQuickReasonSelected: (reason) {
+                setState(() => _reasonController.text = reason);
+              },
             ),
             const SizedBox(height: 16),
-
-            // Maintenance Request Switch
             SwitchListTile(
               value: _isMaintenanceRequested,
-              onChanged: (val) => setState(() => _isMaintenanceRequested = val),
+              onChanged: (val) =>
+                  setState(() => _isMaintenanceRequested = val),
               activeThumbColor: context.isDarkMode
                   ? AppColors.cyberCyan
                   : context.brandPrimary,
@@ -376,8 +140,6 @@ class _DowntimeReportSheetState extends State<DowntimeReportSheet> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Button to open Full Repair Request Form
             OutlinedButton.icon(
               onPressed: () {
                 Navigator.of(context).pop();
@@ -394,9 +156,10 @@ class _DowntimeReportSheetState extends State<DowntimeReportSheet> {
                     ? AppColors.cyberCyan
                     : context.brandPrimary,
                 side: BorderSide(
-                    color: context.isDarkMode
-                        ? AppColors.cyberCyan
-                        : context.brandPrimary),
+                  color: context.isDarkMode
+                      ? AppColors.cyberCyan
+                      : context.brandPrimary,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -405,12 +168,13 @@ class _DowntimeReportSheetState extends State<DowntimeReportSheet> {
               icon: const Icon(Icons.assignment_rounded, size: 18),
               label: Text(
                 context.tr('detailed_wo_btn'),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12.5,
+                ),
               ),
             ),
             const SizedBox(height: 14),
-
-            // Swipe Action Confirmation Button
             SwipeActionButton(
               label: 'Swipe to Submit Downtime',
               onSwipeCompleted: _submitDowntime,
