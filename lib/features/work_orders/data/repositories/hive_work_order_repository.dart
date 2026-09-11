@@ -4,8 +4,8 @@ import '../../domain/models/spare_part_model.dart';
 import '../../domain/enums/work_order_status.dart';
 import '../../domain/logic/work_order_state_machine.dart';
 import '../../domain/logic/work_order_activity_logger.dart';
+import '../../domain/logic/work_order_security_guard.dart';
 import '../../../auth/domain/models/user_model.dart';
-import '../../../auth/domain/enums/user_role.dart';
 import '../../../../core/errors/security_exceptions.dart';
 import '../../../../core/chronology/event_chronology.dart';
 import '../datasources/work_order_local_data_source.dart';
@@ -16,7 +16,7 @@ import '../datasources/work_order_remote_data_source.dart';
 ///
 /// Coordinates between [WorkOrderLocalDataSource] (Hive offline cache),
 /// optional [WorkOrderRemoteDataSource] (Supabase backend),
-/// and domain logic ([WorkOrderStateMachine], [WorkOrderActivityLogger]).
+/// and domain logic ([WorkOrderStateMachine], [WorkOrderActivityLogger], [WorkOrderSecurityGuard]).
 class HiveWorkOrderRepository implements WorkOrderRepository {
   final WorkOrderLocalDataSource _localDataSource;
   final WorkOrderRemoteDataSource? _remoteDataSource;
@@ -53,15 +53,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
   @override
   Future<WorkOrderModel> createWorkOrder(WorkOrderModel workOrder,
       {UserModel? caller}) async {
-    if (caller != null &&
-        caller.role != UserRole.operator &&
-        caller.role != UserRole.maintenanceSupervisor &&
-        caller.role != UserRole.productionSupervisor) {
-      throw UnauthorizedRoleException(
-        requiredRole: 'Operator or Supervisor',
-        actualRole: caller.role.name,
-      );
-    }
+    WorkOrderSecurityGuard.validateCreate(caller);
 
     final chrono = workOrder.chronology ?? EventChronology.now();
     final initialLog = WorkOrderActivityLogger.createLog(
@@ -126,14 +118,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
   Future<void> assignTechnician(
       String workOrderId, String technicianId, String supervisorId,
       {UserModel? caller}) async {
-    if (caller != null && caller.role != UserRole.maintenanceSupervisor) {
-      throw UnauthorizedRoleException(
-        requiredRole: 'Maintenance Supervisor',
-        actualRole: caller.role.name,
-        message:
-            'SECURITY ERROR: Only Maintenance Supervisors can assign technicians.',
-      );
-    }
+    WorkOrderSecurityGuard.validateAssign(caller);
 
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
@@ -173,28 +158,10 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
   @override
   Future<void> startRepair(String workOrderId,
       {required UserModel caller}) async {
-    if (caller.role != UserRole.maintenanceTech) {
-      throw UnauthorizedRoleException(
-        requiredRole: 'Maintenance Technician',
-        actualRole: caller.role.name,
-        message:
-            'SECURITY ERROR: Only Maintenance Technicians can start repair work.',
-      );
-    }
-
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    if (wo.assignedToTechnicianId != null &&
-        wo.assignedToTechnicianId != caller.id) {
-      throw UnassignedTechnicianException(
-        expectedTechId: wo.assignedToTechnicianId!,
-        actualTechId: caller.id,
-        message:
-            'SECURITY ERROR: This ticket is assigned to a different technician.',
-      );
-    }
-
+    WorkOrderSecurityGuard.validateStartRepair(caller, wo);
     WorkOrderStateMachine.validateTransition(
         wo.status, WorkOrderStatus.inProgress);
 
@@ -202,9 +169,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       stepName: 'REPAIR_STARTED',
       caller: caller,
       actionSummary: 'Field technician commenced repair operations',
-      details: {
-        'machineId': wo.machineId,
-      },
+      details: {'machineId': wo.machineId},
     );
 
     final updated = wo.copyWith(
@@ -219,26 +184,10 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
   @override
   Future<void> addSparePart(String workOrderId, SparePartModel sparePart,
       {UserModel? caller}) async {
-    if (caller != null && caller.role != UserRole.maintenanceTech) {
-      throw UnauthorizedRoleException(
-        requiredRole: 'Maintenance Technician',
-        actualRole: caller.role.name,
-        message:
-            'SECURITY ERROR: Only Maintenance Technicians can record spare parts.',
-      );
-    }
-
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    if (caller != null &&
-        wo.assignedToTechnicianId != null &&
-        wo.assignedToTechnicianId != caller.id) {
-      throw UnassignedTechnicianException(
-        expectedTechId: wo.assignedToTechnicianId!,
-        actualTechId: caller.id,
-      );
-    }
+    WorkOrderSecurityGuard.validateAddSparePart(caller, wo);
 
     final log = WorkOrderActivityLogger.createLog(
       stepName: 'SPARE_PART_ADDED',
@@ -272,27 +221,10 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     required String actionsTaken,
     UserModel? caller,
   }) async {
-    if (caller != null && caller.role != UserRole.maintenanceTech) {
-      throw UnauthorizedRoleException(
-        requiredRole: 'Maintenance Technician',
-        actualRole: caller.role.name,
-        message:
-            'SECURITY ERROR: Only Maintenance Technicians can complete repairs.',
-      );
-    }
-
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    if (caller != null &&
-        wo.assignedToTechnicianId != null &&
-        wo.assignedToTechnicianId != caller.id) {
-      throw UnassignedTechnicianException(
-        expectedTechId: wo.assignedToTechnicianId!,
-        actualTechId: caller.id,
-      );
-    }
-
+    WorkOrderSecurityGuard.validateComplete(caller, wo);
     WorkOrderStateMachine.validateTransition(
         wo.status, WorkOrderStatus.completed);
 
@@ -323,14 +255,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
   @override
   Future<void> confirmTestRun(String workOrderId,
       {required UserModel caller}) async {
-    if (caller.role != UserRole.operator) {
-      throw UnauthorizedRoleException(
-        requiredRole: 'Operator',
-        actualRole: caller.role.name,
-        message:
-            'SECURITY ERROR: Only Line Operators can confirm field test runs.',
-      );
-    }
+    WorkOrderSecurityGuard.validateConfirmTestRun(caller);
 
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
@@ -359,15 +284,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
   @override
   Future<void> approveAndClose(String workOrderId,
       {required UserModel caller}) async {
-    if (caller.role != UserRole.maintenanceSupervisor &&
-        caller.role != UserRole.productionSupervisor) {
-      throw UnauthorizedRoleException(
-        requiredRole: 'Supervisor',
-        actualRole: caller.role.name,
-        message:
-            'SECURITY ERROR: Only Supervisors can approve and close work orders.',
-      );
-    }
+    WorkOrderSecurityGuard.validateApproveAndClose(caller);
 
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
@@ -380,9 +297,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       caller: caller,
       actionSummary:
           'Work order officially approved and closed by supervisor',
-      details: {
-        'supervisorId': caller.id,
-      },
+      details: {'supervisorId': caller.id},
     );
 
     final updated = wo.copyWith(
