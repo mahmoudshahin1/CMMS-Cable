@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../work_orders/presentation/screens/create_repair_request_screen.dart';
 import '../../domain/models/machine_model.dart';
-import '../../domain/enums/machine_status.dart';
-import '../../domain/enums/department_type.dart';
 import 'downtime_report_sheet.dart';
-import '../../../../core/localization/app_strings.dart';
+import 'scanner/scanned_machine_metrics_card.dart';
 
+/// Modal sheet opened upon scanning an asset QR code to show live state and quick actions.
 class ScannedMachineSheet extends StatelessWidget {
   final MachineModel machine;
 
@@ -14,8 +15,6 @@ class ScannedMachineSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDowntime = machine.status.isDowntime;
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -36,7 +35,6 @@ class ScannedMachineSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Drag handle
             Center(
               child: Container(
                 width: 40,
@@ -48,8 +46,6 @@ class ScannedMachineSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Header: Machine Identified
             Row(
               children: [
                 Container(
@@ -61,11 +57,13 @@ class ScannedMachineSheet extends StatelessWidget {
                         .withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.qr_code_2_rounded,
-                      color: context.isDarkMode
-                          ? AppColors.cyberCyan
-                          : context.brandPrimary,
-                      size: 24),
+                  child: Icon(
+                    Icons.qr_code_2_rounded,
+                    color: context.isDarkMode
+                        ? AppColors.cyberCyan
+                        : context.brandPrimary,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -102,9 +100,10 @@ class ScannedMachineSheet extends StatelessWidget {
                         : AppColors.lightBg,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                        color: context.isDarkMode
-                            ? AppColors.cyberCyan
-                            : context.brandPrimary),
+                      color: context.isDarkMode
+                          ? AppColors.cyberCyan
+                          : context.brandPrimary,
+                    ),
                   ),
                   child: Text(
                     machine.code,
@@ -120,66 +119,14 @@ class ScannedMachineSheet extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-
-            // Machine specs mini cards
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: context.isDarkMode
-                    ? AppColors.darkNavy
-                    : AppColors.energyaLightSurface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: context.borderColor),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildMetric(
-                      context: context,
-                      label: context.tr('dept_label'),
-                      value: machine.department.localizedName(context.isArabic),
-                      icon: Icons.domain_rounded,
-                      color: context.isDarkMode
-                          ? AppColors.electricBlue
-                          : context.brandPrimary,
-                    ),
-                  ),
-                  Container(width: 1, height: 36, color: context.borderColor),
-                  Expanded(
-                    child: _buildMetric(
-                      context: context,
-                      label: context.tr('current_status_label'),
-                      value: machine.status.displayName,
-                      icon: Icons.circle,
-                      color: isDowntime
-                          ? AppColors.downMaintenanceRed
-                          : AppColors.runningEmerald,
-                    ),
-                  ),
-                  Container(width: 1, height: 36, color: context.borderColor),
-                  Expanded(
-                    child: _buildMetric(
-                      context: context,
-                      label: context.tr('instant_speed_label'),
-                      value: '${machine.currentSpeedMpm.toInt()} m/min',
-                      icon: Icons.speed_rounded,
-                      color: context.isDarkMode
-                          ? AppColors.cyberCyan
-                          : context.brandPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            ScannedMachineMetricsCard(machine: machine),
             const SizedBox(height: 20),
-
-            // Immediate Action 1: Create Repair Request
             SizedBox(
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.of(context).pop(); // Close sheet
+                  Navigator.of(context).pop();
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) =>
@@ -200,19 +147,20 @@ class ScannedMachineSheet extends StatelessWidget {
                 icon: const Icon(Icons.add_task_rounded, size: 20),
                 label: Text(
                   context.tr('report_breakdown_immediate'),
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 10),
-
-            // Immediate Action 2: Report Downtime Sheet
             SizedBox(
               width: double.infinity,
               height: 46,
               child: OutlinedButton.icon(
                 onPressed: () {
-                  Navigator.of(context).pop(); // Close scanned sheet
+                  Navigator.of(context).pop();
                   showModalBottomSheet(
                     context: context,
                     isScrollControlled: true,
@@ -228,62 +176,23 @@ class ScannedMachineSheet extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                icon: const Icon(Icons.warning_amber_rounded,
-                    color: AppColors.idleAmber, size: 20),
+                icon: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: AppColors.idleAmber,
+                  size: 20,
+                ),
                 label: Text(
                   context.tr('log_downtime_operational'),
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 8),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildMetric({
-    required BuildContext context,
-    required String label,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 12, color: color),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: context.textMutedColor,
-                    fontSize: 9.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: context.textPrimaryColor,
-              fontSize: 11.5,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }
