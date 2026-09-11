@@ -21,9 +21,13 @@ extension AppStringsExtension on BuildContext {
   String tr(String key) {
     String langCode = 'en';
     try {
-      langCode = read<LocaleCubit>().state.languageCode;
+      langCode = select<LocaleCubit, String>((c) => c.state.languageCode);
     } catch (_) {
-      langCode = Localizations.maybeLocaleOf(this)?.languageCode ?? 'en';
+      try {
+        langCode = read<LocaleCubit>().state.languageCode;
+      } catch (_) {
+        langCode = Localizations.maybeLocaleOf(this)?.languageCode ?? 'en';
+      }
     }
     return AppStrings.get(key, langCode);
   }
@@ -38,14 +42,26 @@ extension AppStringsExtension on BuildContext {
   }
 
   /// Read-only locale check (safe in callbacks and build methods alike)
-  String trRead(String key) => tr(key);
-
-  bool get isArabic {
+  String trRead(String key) {
     String langCode = 'en';
     try {
       langCode = read<LocaleCubit>().state.languageCode;
     } catch (_) {
       langCode = Localizations.maybeLocaleOf(this)?.languageCode ?? 'en';
+    }
+    return AppStrings.get(key, langCode);
+  }
+
+  bool get isArabic {
+    String langCode = 'en';
+    try {
+      langCode = select<LocaleCubit, String>((c) => c.state.languageCode);
+    } catch (_) {
+      try {
+        langCode = read<LocaleCubit>().state.languageCode;
+      } catch (_) {
+        langCode = Localizations.maybeLocaleOf(this)?.languageCode ?? 'en';
+      }
     }
     return langCode == 'ar';
   }

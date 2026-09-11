@@ -6,6 +6,7 @@ import '../../features/auth/domain/enums/user_role.dart';
 import '../../features/work_orders/presentation/cubit/work_order_cubit.dart';
 import '../../features/work_orders/presentation/cubit/work_order_state.dart';
 import '../../features/work_orders/domain/enums/work_order_status.dart';
+import '../localization/locale_cubit.dart';
 import 'role_nav_config.dart';
 import 'widgets/desktop_sidebar.dart';
 import 'widgets/desktop_topbar.dart';
@@ -25,46 +26,51 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthCubit, AuthState>(
-      builder: (context, authState) {
-        final currentUser =
-            authState is Authenticated ? authState.user : null;
-        final currentRole =
-            currentUser?.role ?? UserRole.maintenanceSupervisor;
+    return BlocBuilder<LocaleCubit, Locale>(
+      builder: (context, locale) {
+        return BlocBuilder<AuthCubit, AuthState>(
+          builder: (context, authState) {
+            final currentUser =
+                authState is Authenticated ? authState.user : null;
+            final currentRole =
+                currentUser?.role ?? UserRole.maintenanceSupervisor;
 
-        // Reset tab index if role changed to avoid index out of range
-        if (_lastRole != currentRole) {
-          _lastRole = currentRole;
-          _currentIndex = 0;
-        }
-
-        return BlocBuilder<WorkOrderCubit, WorkOrderState>(
-          builder: (context, woState) {
-            final assignedCount = _countAssignedOrders(woState, currentUser);
-            final config = RoleNavConfig.build(
-              context,
-              currentRole,
-              assignedCount,
-            );
-
-            final safeIndex = _currentIndex < config.screens.length
-                ? _currentIndex
-                : 0;
-
-            final isWideScreen =
-                MediaQuery.of(context).size.width >= 850;
-
-            if (isWideScreen) {
-              return _buildDesktopLayout(
-                context,
-                config,
-                safeIndex,
-                currentUser,
-                currentRole,
-              );
+            // Reset tab index if role changed to avoid index out of range
+            if (_lastRole != currentRole) {
+              _lastRole = currentRole;
+              _currentIndex = 0;
             }
 
-            return _buildMobileLayout(config, safeIndex);
+            return BlocBuilder<WorkOrderCubit, WorkOrderState>(
+              builder: (context, woState) {
+                final assignedCount =
+                    _countAssignedOrders(woState, currentUser);
+                final config = RoleNavConfig.build(
+                  context,
+                  currentRole,
+                  assignedCount,
+                );
+
+                final safeIndex = _currentIndex < config.screens.length
+                    ? _currentIndex
+                    : 0;
+
+                final isWideScreen =
+                    MediaQuery.of(context).size.width >= 850;
+
+                if (isWideScreen) {
+                  return _buildDesktopLayout(
+                    context,
+                    config,
+                    safeIndex,
+                    currentUser,
+                    currentRole,
+                  );
+                }
+
+                return _buildMobileLayout(config, safeIndex);
+              },
+            );
           },
         );
       },
