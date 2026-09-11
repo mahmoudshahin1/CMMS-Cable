@@ -5,8 +5,8 @@ import '../../domain/enums/work_order_status.dart';
 import '../../domain/logic/work_order_state_machine.dart';
 import '../../domain/logic/work_order_activity_logger.dart';
 import '../../domain/logic/work_order_security_guard.dart';
+import '../../domain/logic/work_order_handshake_mutator.dart';
 import '../../../auth/domain/models/user_model.dart';
-import '../../../../core/errors/security_exceptions.dart';
 import '../../../../core/chronology/event_chronology.dart';
 import '../datasources/work_order_local_data_source.dart';
 import '../datasources/hive_work_order_local_data_source.dart';
@@ -16,7 +16,7 @@ import '../datasources/work_order_remote_data_source.dart';
 ///
 /// Coordinates between [WorkOrderLocalDataSource] (Hive offline cache),
 /// optional [WorkOrderRemoteDataSource] (Supabase backend),
-/// and domain logic ([WorkOrderStateMachine], [WorkOrderActivityLogger], [WorkOrderSecurityGuard]).
+/// and domain logic ([WorkOrderStateMachine], [WorkOrderActivityLogger], [WorkOrderSecurityGuard], [WorkOrderHandshakeMutator]).
 class HiveWorkOrderRepository implements WorkOrderRepository {
   final WorkOrderLocalDataSource _localDataSource;
   final WorkOrderRemoteDataSource? _remoteDataSource;
@@ -27,6 +27,11 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
   })  : _localDataSource =
             localDataSource ?? HiveWorkOrderLocalDataSource(),
         _remoteDataSource = remoteDataSource;
+
+  Future<void> _persistAndSync(WorkOrderModel updated) async {
+    await _localDataSource.cacheWorkOrder(updated);
+    _remoteDataSource?.syncWorkOrder(updated);
+  }
 
   @override
   Future<List<WorkOrderModel>> getAllWorkOrders() async {
@@ -51,8 +56,10 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
   }
 
   @override
-  Future<WorkOrderModel> createWorkOrder(WorkOrderModel workOrder,
-      {UserModel? caller}) async {
+  Future<WorkOrderModel> createWorkOrder(
+    WorkOrderModel workOrder, {
+    UserModel? caller,
+  }) async {
     WorkOrderSecurityGuard.validateCreate(caller);
 
     final chrono = workOrder.chronology ?? EventChronology.now();
@@ -75,15 +82,16 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       activityLogs: [...workOrder.activityLogs, initialLog],
     );
 
-    await _localDataSource.cacheWorkOrder(updated);
-    _remoteDataSource?.syncWorkOrder(updated);
+    await _persistAndSync(updated);
     return updated;
   }
 
   @override
   Future<void> updateWorkOrderStatus(
-      String workOrderId, WorkOrderStatus status,
-      {UserModel? caller}) async {
+    String workOrderId,
+    WorkOrderStatus status, {
+    UserModel? caller,
+  }) async {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
@@ -110,108 +118,55 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
           : wo.completedAt,
       activityLogs: [...wo.activityLogs, log],
     );
-    await _localDataSource.cacheWorkOrder(updated);
-    _remoteDataSource?.syncWorkOrder(updated);
+    await _persistAndSync(updated);
   }
 
   @override
   Future<void> assignTechnician(
-      String workOrderId, String technicianId, String supervisorId,
-      {UserModel? caller}) async {
-    WorkOrderSecurityGuard.validateAssign(caller);
-
+    String workOrderId,
+    String technicianId,
+    String supervisorId, {
+    UserModel? caller,
+  }) async {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    if (wo.status != WorkOrderStatus.open &&
-        wo.status != WorkOrderStatus.assigned) {
-      throw IllegalStateTransitionException(
-        fromStatus: wo.status.name,
-        toStatus: WorkOrderStatus.assigned.name,
-        message:
-            'Cannot assign technician while work order is in [${wo.status.name}] status.',
-      );
-    }
-
-    final log = WorkOrderActivityLogger.createLog(
-      stepName: 'ASSIGNED',
-      caller: caller,
-      actionSummary: 'Assigned to technician $technicianId',
-      details: {
-        'technicianId': technicianId,
-        'supervisorId': supervisorId,
-      },
-      fallbackName: supervisorId,
-      fallbackRole: 'MAINTENANCE_SUPERVISOR',
+    final updated = WorkOrderHandshakeMutator.applyAssign(
+      wo,
+      technicianId,
+      supervisorId,
+      caller,
     );
-
-    final updated = wo.copyWith(
-      assignedToTechnicianId: technicianId,
-      assignedBySupervisorId: supervisorId,
-      status: WorkOrderStatus.assigned,
-      activityLogs: [...wo.activityLogs, log],
-    );
-    await _localDataSource.cacheWorkOrder(updated);
-    _remoteDataSource?.syncWorkOrder(updated);
+    await _persistAndSync(updated);
   }
 
   @override
-  Future<void> startRepair(String workOrderId,
-      {required UserModel caller}) async {
+  Future<void> startRepair(
+    String workOrderId, {
+    required UserModel caller,
+  }) async {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    WorkOrderSecurityGuard.validateStartRepair(caller, wo);
-    WorkOrderStateMachine.validateTransition(
-        wo.status, WorkOrderStatus.inProgress);
-
-    final log = WorkOrderActivityLogger.createLog(
-      stepName: 'REPAIR_STARTED',
-      caller: caller,
-      actionSummary: 'Field technician commenced repair operations',
-      details: {'machineId': wo.machineId},
-    );
-
-    final updated = wo.copyWith(
-      status: WorkOrderStatus.inProgress,
-      startedAt: wo.startedAt ?? DateTime.now(),
-      activityLogs: [...wo.activityLogs, log],
-    );
-    await _localDataSource.cacheWorkOrder(updated);
-    _remoteDataSource?.syncWorkOrder(updated);
+    final updated = WorkOrderHandshakeMutator.applyStartRepair(wo, caller);
+    await _persistAndSync(updated);
   }
 
   @override
-  Future<void> addSparePart(String workOrderId, SparePartModel sparePart,
-      {UserModel? caller}) async {
+  Future<void> addSparePart(
+    String workOrderId,
+    SparePartModel sparePart, {
+    UserModel? caller,
+  }) async {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    WorkOrderSecurityGuard.validateAddSparePart(caller, wo);
-
-    final log = WorkOrderActivityLogger.createLog(
-      stepName: 'SPARE_PART_ADDED',
-      caller: caller,
-      actionSummary:
-          'Installed spare part: ${sparePart.name} (x${sparePart.quantityUsed})',
-      details: {
-        'partNumber': sparePart.partNumber,
-        'name': sparePart.name,
-        'quantity': sparePart.quantityUsed,
-        'unitCost': sparePart.unitCost,
-      },
-      fallbackName: 'Technician',
-      fallbackRole: 'MAINTENANCE_TECH',
+    final updated = WorkOrderHandshakeMutator.applyAddSparePart(
+      wo,
+      sparePart,
+      caller,
     );
-
-    final updatedParts =
-        List<SparePartModel>.from(wo.spareParts)..add(sparePart);
-    final updated = wo.copyWith(
-      spareParts: updatedParts,
-      activityLogs: [...wo.activityLogs, log],
-    );
-    await _localDataSource.cacheWorkOrder(updated);
-    _remoteDataSource?.syncWorkOrder(updated);
+    await _persistAndSync(updated);
   }
 
   @override
@@ -224,87 +179,36 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    WorkOrderSecurityGuard.validateComplete(caller, wo);
-    WorkOrderStateMachine.validateTransition(
-        wo.status, WorkOrderStatus.completed);
-
-    final log = WorkOrderActivityLogger.createLog(
-      stepName: 'REPAIR_COMPLETED',
-      caller: caller,
-      actionSummary: 'Maintenance repair completed & root cause logged',
-      details: {
-        'rootCause': rootCause,
-        'actionsTaken': actionsTaken,
-        'totalSparePartsUsed': wo.spareParts.length,
-      },
-      fallbackName: 'Technician',
-      fallbackRole: 'MAINTENANCE_TECH',
-    );
-
-    final updated = wo.copyWith(
-      status: WorkOrderStatus.completed,
-      completedAt: DateTime.now(),
+    final updated = WorkOrderHandshakeMutator.applyComplete(
+      wo,
       rootCause: rootCause,
       actionsTaken: actionsTaken,
-      activityLogs: [...wo.activityLogs, log],
+      caller: caller,
     );
-    await _localDataSource.cacheWorkOrder(updated);
-    _remoteDataSource?.syncWorkOrder(updated);
+    await _persistAndSync(updated);
   }
 
   @override
-  Future<void> confirmTestRun(String workOrderId,
-      {required UserModel caller}) async {
-    WorkOrderSecurityGuard.validateConfirmTestRun(caller);
-
+  Future<void> confirmTestRun(
+    String workOrderId, {
+    required UserModel caller,
+  }) async {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    WorkOrderStateMachine.validateTransition(
-        wo.status, WorkOrderStatus.verified);
-
-    final log = WorkOrderActivityLogger.createLog(
-      stepName: 'TEST_RUN_PASSED',
-      caller: caller,
-      actionSummary: 'Operator executed field test run: Status PASSED',
-      details: {
-        'machineId': wo.machineId,
-        'testRunResult': 'PASSED',
-      },
-    );
-
-    final updated = wo.copyWith(
-      status: WorkOrderStatus.verified,
-      activityLogs: [...wo.activityLogs, log],
-    );
-    await _localDataSource.cacheWorkOrder(updated);
-    _remoteDataSource?.syncWorkOrder(updated);
+    final updated = WorkOrderHandshakeMutator.applyConfirmTestRun(wo, caller);
+    await _persistAndSync(updated);
   }
 
   @override
-  Future<void> approveAndClose(String workOrderId,
-      {required UserModel caller}) async {
-    WorkOrderSecurityGuard.validateApproveAndClose(caller);
-
+  Future<void> approveAndClose(
+    String workOrderId, {
+    required UserModel caller,
+  }) async {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    WorkOrderStateMachine.validateTransition(
-        wo.status, WorkOrderStatus.verifiedClosed);
-
-    final log = WorkOrderActivityLogger.createLog(
-      stepName: 'CLOSED',
-      caller: caller,
-      actionSummary:
-          'Work order officially approved and closed by supervisor',
-      details: {'supervisorId': caller.id},
-    );
-
-    final updated = wo.copyWith(
-      status: WorkOrderStatus.verifiedClosed,
-      activityLogs: [...wo.activityLogs, log],
-    );
-    await _localDataSource.cacheWorkOrder(updated);
-    _remoteDataSource?.syncWorkOrder(updated);
+    final updated = WorkOrderHandshakeMutator.applyApproveAndClose(wo, caller);
+    await _persistAndSync(updated);
   }
 }
