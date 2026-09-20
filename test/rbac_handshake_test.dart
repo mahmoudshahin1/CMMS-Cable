@@ -6,20 +6,28 @@ import 'package:orning_and_evening_remembrances/features/auth/domain/enums/app_p
 import 'package:orning_and_evening_remembrances/features/auth/data/mock_users.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/enums/work_order_status.dart';
 import 'package:orning_and_evening_remembrances/features/assets/domain/enums/machine_status.dart';
+import 'helpers/fake_auth_repository.dart';
 
 void main() {
   group('RBAC AuthCubit & Permission Matrix Tests', () {
     late AuthCubit authCubit;
 
     setUp(() {
-      authCubit = AuthCubit();
+      authCubit = AuthCubit(FakeAuthRepository());
     });
 
     tearDown(() {
       authCubit.close();
     });
 
-    test('Initial user defaults to Maintenance Supervisor', () {
+    test('Initial state is Unauthenticated without Supabase session', () async {
+      // Allow _initAuth to complete (async)
+      await Future.delayed(Duration.zero);
+      expect(authCubit.state, isA<Unauthenticated>());
+    });
+
+    test('switchUser transitions to Authenticated with correct role', () {
+      authCubit.switchUser(MockUsers.maintenanceSupervisor);
       expect(authCubit.state, isA<Authenticated>());
       final user = (authCubit.state as Authenticated).user;
       expect(user.role, equals(UserRole.maintenanceSupervisor));

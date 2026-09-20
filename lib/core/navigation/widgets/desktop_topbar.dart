@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../localization/app_strings.dart';
+import '../../../features/auth/domain/enums/user_role.dart';
+import '../../../features/auth/presentation/widgets/role_guard.dart';
 import '../../../features/work_orders/presentation/screens/create_repair_request_screen.dart';
 
 /// Desktop top bar with breadcrumb navigation and quick-action buttons.
@@ -55,30 +57,36 @@ class DesktopTopbar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const CreateRepairRequestScreen(),
+          RoleGuard(
+            allowedRoles: const [
+              UserRole.operator,
+              UserRole.maintenanceSupervisor,
+            ],
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const CreateRepairRequestScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.energyaAccentOrange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.energyaAccentOrange,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 8,
               ),
-            ),
-            icon: const Icon(Icons.add_task_rounded, size: 16),
-            label: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                context.tr('repair_request_btn'),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+              icon: const Icon(Icons.add_task_rounded, size: 16),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  context.tr('repair_request_btn'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),

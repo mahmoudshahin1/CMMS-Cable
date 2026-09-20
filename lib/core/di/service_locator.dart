@@ -24,9 +24,20 @@ import '../../features/work_orders/data/repositories/hive_work_order_repository.
 import '../../features/work_orders/domain/repositories/work_order_repository.dart';
 import '../../features/work_orders/presentation/cubit/work_order_cubit.dart';
 
+// Auth Feature
+import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/data/repositories/supabase_auth_repository.dart';
+
 final getIt = GetIt.instance;
 
 Future<void> setupServiceLocator() async {
+  // ---------------------------------------------------------------------------
+  // Auth Repository (Supabase)
+  // ---------------------------------------------------------------------------
+  getIt.registerLazySingleton<AuthRepository>(
+    () => SupabaseAuthRepository(),
+  );
+
   // ---------------------------------------------------------------------------
   // DataSources: Local (Hive Cache) & Remote (Supabase Sync)
   // ---------------------------------------------------------------------------

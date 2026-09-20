@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../assets/domain/enums/department_type.dart';
 import '../../../assets/domain/models/machine_model.dart';
-import '../../../auth/data/mock_users.dart';
 import '../../domain/enums/priority.dart';
 import '../../domain/enums/work_order_status.dart';
 import '../../domain/enums/work_order_type.dart';
@@ -183,10 +182,11 @@ class WorkOrderListCard extends StatelessWidget {
                           color: AppColors.subduedViolet,
                         ),
                         const SizedBox(width: 3),
-                        Text(
-                          MockUsers.findById(
-                            workOrder.assignedToTechnicianId!,
-                          ).name.split(' ').first,
+                         Text(
+                          // Shows short ID — will be resolved when tech name is stored in WorkOrder
+                          workOrder.assignedToTechnicianId!.length > 8
+                              ? workOrder.assignedToTechnicianId!.substring(0, 8)
+                              : workOrder.assignedToTechnicianId!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(

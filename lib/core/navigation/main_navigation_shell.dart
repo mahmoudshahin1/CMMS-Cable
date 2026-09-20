@@ -10,6 +10,7 @@ import '../localization/locale_cubit.dart';
 import 'role_nav_config.dart';
 import 'widgets/desktop_sidebar.dart';
 import 'widgets/desktop_topbar.dart';
+import 'widgets/animated_bottom_nav_bar.dart';
 
 /// Root navigation shell that switches between mobile bottom-nav
 /// and desktop sidebar layouts based on screen width.
@@ -30,8 +31,9 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       builder: (context, locale) {
         return BlocBuilder<AuthCubit, AuthState>(
           builder: (context, authState) {
-            final currentUser =
-                authState is Authenticated ? authState.user : null;
+            final currentUser = authState is Authenticated
+                ? authState.user
+                : null;
             final currentRole =
                 currentUser?.role ?? UserRole.maintenanceSupervisor;
 
@@ -43,8 +45,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
             return BlocBuilder<WorkOrderCubit, WorkOrderState>(
               builder: (context, woState) {
-                final assignedCount =
-                    _countAssignedOrders(woState, currentUser);
+                final assignedCount = _countAssignedOrders(
+                  woState,
+                  currentUser,
+                );
                 final config = RoleNavConfig.build(
                   context,
                   currentRole,
@@ -55,8 +59,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                     ? _currentIndex
                     : 0;
 
-                final isWideScreen =
-                    MediaQuery.of(context).size.width >= 850;
+                final isWideScreen = MediaQuery.of(context).size.width >= 850;
 
                 if (isWideScreen) {
                   return _buildDesktopLayout(
@@ -130,10 +133,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   Widget _buildMobileLayout(RoleNavConfig config, int safeIndex) {
     return Scaffold(
       body: IndexedStack(index: safeIndex, children: config.screens),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: safeIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: config.navItems,
+      bottomNavigationBar: AnimatedBottomNavBar(
+        tabs: config.tabs,
+        selectedIndex: safeIndex,
+        onTabSelected: (index) => setState(() => _currentIndex = index),
       ),
     );
   }

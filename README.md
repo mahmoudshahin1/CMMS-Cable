@@ -4,14 +4,15 @@
 ### Advanced Machinery Monitoring, Maintenance & Operational Lifecycle Management System
 **نظام إدارة الصيانة الشامل والعمليات الصناعية المتطورة لمصانع الكابلات**
 
-![CMMS Hero Banner](docs/images/hero_banner.png)
+![Energya Cables CMMS](assets/images/energya_logo.png)
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
+[![Supabase](https://img.shields.io/badge/Backend-Supabase_Cloud_DB-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 [![State Management](https://img.shields.io/badge/State_Management-BLoC_/_Cubit-8B5CF6?style=for-the-badge)](https://bloclibrary.dev)
-[![Database](https://img.shields.io/badge/Storage-Hive_Local_DB-FFB703?style=for-the-badge)](https://docs.hivedb.dev)
+[![Local Cache](https://img.shields.io/badge/Cache-Hive_Offline_First-FFB703?style=for-the-badge)](https://docs.hivedb.dev)
 [![Architecture](https://img.shields.io/badge/Architecture-Clean_Feature--First-06D6A0?style=for-the-badge)]()
-[![Tests](https://img.shields.io/badge/Tests-23%2F23_Passing-brightgreen?style=for-the-badge)]()
+[![Tests](https://img.shields.io/badge/Tests-29%2F29_Passing-brightgreen?style=for-the-badge)]()
 [![Localization](https://img.shields.io/badge/Languages-100%25_Arabic_%7C_100%25_English-EF476F?style=for-the-badge)]()
 
 </div>
@@ -20,175 +21,180 @@
 
 ## 📌 Overview | نظرة عامة
 
-**Energya Cables Industrial CMMS** is a mission-critical, enterprise-grade Computerized Maintenance Management System engineered specifically for heavy industrial cable manufacturing plants. 
+**Energya Cables Industrial CMMS** is a mission-critical, enterprise-grade Computerized Maintenance Management System engineered specifically for heavy industrial cable manufacturing facilities. 
 
-The platform bridges factory-floor operators, specialized electrical/mechanical maintenance technicians, shift supervisors, and executive plant managers into a synchronized, real-time workflow. Built with **Flutter**, **Clean Architecture**, and **Offline-First Hive persistence**, the application operates reliably in demanding industrial environments with zero latency.
+The platform bridges factory-floor machine operators, specialized electrical and mechanical technicians, shift supervisors, and executive plant leadership into a unified, real-time operational workflow. Built with **Flutter**, **Clean Architecture**, **Supabase Cloud Backend**, and **Offline-First Hive persistence**, the system guarantees high-availability operations under demanding shop-floor conditions.
 
-نظام **Energya Cables CMMS** هو منصة صناعية متكاملة لإدارة صيانة وتشغيل خطوط إنتاج الكابلات، يربط بين مشغلي الماكينات، وفنيي الصيانة (كهرباء وميكانيكا)، ومشرفي الورادي، ومدير المصنع في بيئة رقمية آمنة وموثوقة تعمل بدون انقطاع.
-
----
-
-## 📱 Mobile & Responsive Previews | لقطات من التطبيق
-
-<div align="center">
-
-![Mobile Dark and Light UI](docs/images/mobile_mockup.png)
-
-*Sleek Dual Theme System: Cyber Navy (Dark Mode) & Energya Industrial Clean (Light Mode)*
-
-</div>
+نظام **Energya Cables CMMS** هو منصة صناعية متكاملة لإدارة صيانة وتشغيل خطوط إنتاج الكابلات، يربط بين مشغلي الماكينات الـ 7، وفنيي الصيانة التخصصيين (كهرباء وميكانيكا)، ومشرفي الورادي، والإدارة العامة للمصنع في بيئة رقمية آمنة وموثوقة تعمل لحظياً مع دعم العمل دون اتصال.
 
 ---
 
-## ✨ Core Pillars & Architectural Innovations | أبرز الميزات والمعمارية
+## 🏗️ System Architecture & Dual Storage Model | معمارية النظام ومزامنة البيانات
 
-### 1. 🛡️ 3-Tier RBAC & 5-Step Handshake Lifecycle
-A rigorous, state-machine-governed workflow prevents operational fraud and unauthorized status overrides:
+The system implements a resilient **Hybrid Cloud & Local Cache Architecture**:
+
+```mermaid
+graph TD
+    A[Flutter Client UI] -->|State Management| B[AuthCubit & Feature Cubits]
+    B -->|Clean Repository Pattern| C[AuthRepository / Feature Repositories]
+    C -->|Network Available| D[☁️ Supabase Cloud Backend]
+    D -->|PostgreSQL & Auth| E[(Cloud PostgreSQL DB & RLS)]
+    C -->|Always Synchronized| F[⚡ Hive Local Offline Storage]
+    F -->|Zero Latency Reads| A
+```
+
+- **☁️ Supabase Cloud Backend**: Handles secure user authentication, centralized `user_profiles`, machine statuses, breakdown tickets, and audit trails with PostgreSQL Row-Level Security (RLS).
+- **⚡ Hive Local Database**: Provides instantaneous offline-first caching for shop-floor tablets and workstations, ensuring zero latency when viewing machine telemetry and creating local logs.
+- **🔄 Fault-Tolerant Hybrid Strategy**: Network calls gracefully fall back to cached credentials and local data boxes during factory connectivity interruptions.
+
+---
+
+## 👥 Factory Org Structure & 12 Pre-Configured Accounts | الأدوار وحسابات المصنع
+
+The system is fully provisioned with **12 dedicated accounts** mirroring the actual cable plant hierarchy:
+
+| Role / Line | Dedicated Account | Specialty / Assigned Unit | Permissions & Access Scope |
+| :--- | :--- | :--- | :--- |
+| 👔 **Plant General Manager** | `manager.prod@cable.com` | Plant-Wide Operations | Executive dashboards, OEE metrics, MTTR/MTBF analytics, read-only plant-wide oversight |
+| 📋 **Maintenance Supervisor** | `eng.maint@cable.com` | Maintenance Engineering | Technician dispatch, ticket reassignment, technical validation, verified ticket closure |
+| 🏭 **Production Supervisor** | `prod.sup@cable.com` | Production Coordination | Cross-line monitoring, shift output analysis, breakdown oversight |
+| ⚡ **Electrical Technician** | `tech.elec@cable.com` | **Electrical** Specialty | Start electrical work orders, record spare parts, document electrical root causes |
+| 🔧 **Mechanical Technician** | `tech.mech@cable.com` | **Mechanical** Specialty | Start mechanical work orders, record replaced parts, execute repair timers |
+| 🧵 **Drawing Line Operator** | `op.drawing@cable.com` | Line 1: Wire Drawing | Report Line 1 breakdowns, view machine telemetry, confirm test runs |
+| 🌀 **Stranding Line Operator**| `operator@cable.com` | Line 2: Rigid Stranding | Report Line 2 breakdowns, view machine telemetry, confirm test runs |
+| ⚡ **CCV Line Operator** | `op.ccv@cable.com` | Line 3: CCV Insulation | Report Line 3 breakdowns, view machine telemetry, confirm test runs |
+| 🛡️ **Extrusion Line Operator**| `op.extrusion@cable.com`| Line 4: Sheathing / Extrusion | Report Line 4 breakdowns, view machine telemetry, confirm test runs |
+| 📦 **Assembly Line Operator** | `op.assembly@cable.com` | Line 5: Drum Twisting / Assembly | Report Line 5 breakdowns, view machine telemetry, confirm test runs |
+| 🛡️ **Screening Line Operator**| `op.screening@cable.com`| Line 6: Copper Wire Screening | Report Line 6 breakdowns, view machine telemetry, confirm test runs |
+| ⛓️ **Armouring Line Operator**| `op.tape@cable.com` | Line 7: Steel Tape Armouring | Report Line 7 breakdowns, view machine telemetry, confirm test runs |
+
+> **Default Initial Password for Seed Accounts:** `Cable@2026!`
+
+---
+
+## 🛡️ 5-Step Handshake Lifecycle & Strict RBAC | دورة حياة أمر الصيانة ومصفوفة الأمان
+
+The lifecycle strictly prevents illegal state transitions and unauthorized role actions:
+
 ```mermaid
 graph LR
-    A[1. Open / Reported\nOperator] --> B[2. Assigned\nSupervisor]
-    B --> C[3. In Progress\nTechnician]
-    C --> D[4. Completed\nTechnician]
-    D --> E[5. Verified Closed\nSupervisor]
+    A[1. Open / Reported<br/>Operator Only] -->|Supervisor Dispatches| B[2. Assigned<br/>Specialist Matched]
+    B -->|Technician Starts Work| C[3. In Progress<br/>Repair Timer Active]
+    C -->|Parts & Cause Logged| D[4. Completed<br/>Technician Submits]
+    D -->|Quality Verified| E[5. Closed & Handed Over<br/>Supervisor Verification]
 ```
-- **Operator**: Reports breakdowns and confirms test-run machine restart. Cannot complete tickets or assign personnel.
-- **Maintenance Technician**: Assigned by speciality (Electrical / Mechanical). Executes repair timer, records spare parts, documents root cause and actions taken. Cannot approve or close tickets.
-- **Maintenance Supervisor**: Dispatches technicians, reassigns tickets, validates work quality, and executes final verified closure.
-- **Plant Manager**: High-level read-only executive visibility over plant-wide OEE, MTTR/MTBF metrics, and downtime Pareto distributions.
 
-### 2. ⏱️ 3-Shift Plant Chronology & Minute-Precise OEE Allocation
-Custom industrial engine designed specifically for continuous 24/7 manufacturing plants:
-- **Shift 1 (Morning)**: `07:30` → `15:29` (Same production calendar date)
-- **Shift 2 (Evening)**: `15:30` → `22:59` (Same production calendar date)
-- **Shift 3 (Night)**: `23:00` → `07:29` (Midnight-spanning; logs after `00:00` are strictly allocated to yesterday's production date)
-- **Cross-Shift OEE Splitter**: When a breakdown spans across shift handovers, downtime minutes are mathematically decomposed and allocated to the exact shifts for tamper-proof OEE and availability KPI reporting.
-
-### 3. 📜 Full-Page Scroll Architecture (`CustomScrollView` & Slivers)
-- Complete UI viewport optimization using `CustomScrollView`, `SliverLayoutBuilder`, and `SliverGrid`.
-- Scrolling anywhere on the screen seamlessly scrolls the entire page upwards, giving **100% vertical real estate** to machine cards and work orders.
-- Native `RefreshIndicator` support across all screens for instant one-touch pull-to-refresh.
-
-### 4. 🌐 100% Arabic & English Language Isolation
-- Zero text overlap or hardcoded string mixing.
-- Full RTL and LTR directionality alignment.
-- Dynamic localized arguments interpolation (`trArgs`) for live metrics, shift labels, and machine codes.
-
-### 5. 🎨 Industrial Dual-Theme System
-- **Dark Mode**: Cyber Deep Navy (`#0A0E1A`), Slate Cards (`#161F30`), and Electric Blue / Cyber Cyan accents for high-contrast low-glare visibility in factory control rooms.
-- **Light Mode**: Energya Clean Industrial White with Deep Navy primary and High-Visibility Safety Orange accents.
-- Unified typography (`Cairo` for Arabic, `Inter` for English) with mathematically consistent text style interpolation.
+- **Operator**: Can only report breakdowns for their assigned line and confirm machine test runs after repair. Cannot complete tickets or dispatch technicians.
+- **Maintenance Technician**: Restricted to assigned work orders matching their trade (Electrical/Mechanical). Replaces spare parts, records root causes. Cannot approve or close tickets.
+- **Maintenance Supervisor**: Dispatches technicians, validates technical execution, and executes final verified closure.
+- **Plant Manager**: Executive high-level monitoring over plant OEE, downtime Pareto charts, and plant availability.
 
 ---
 
-## 👥 Role Permissions Matrix | مصفوفة الصلاحيات والأدوار
+## 💻 Industrial UI/UX & Modular Code Architecture | الواجهة وتفكيك الكود المعياري
 
-| Action / Capability | 👷 Operator | 🔧 Maintenance Tech | 📋 Shift Supervisor | 👔 Plant Manager |
-| :--- | :---: | :---: | :---: | :---: |
-| **Report Machine Breakdown** | ✅ | ❌ | ✅ | ❌ |
-| **View Department Machines** | ✅ (Scoped) | ❌ | ✅ (All/Scoped) | ✅ (All Plant) |
-| **Start Assigned Repair Work** | ❌ | ✅ (Assigned Only) | ❌ | ❌ |
-| **Record Replaced Spare Parts**| ❌ | ✅ | ❌ | ❌ |
-| **Assign / Dispatch Technicians** | ❌ | ❌ | ✅ | ❌ |
-| **Confirm Machine Test Run** | ✅ | ❌ | ✅ | ❌ |
-| **Final Verified Ticket Closure** | ❌ | ❌ | ✅ | ❌ |
-| **Executive OEE & Pareto Analytics** | ❌ | ❌ | ✅ | ✅ (Full Access) |
+### 🎨 Design & Accessibility
+- **Energya Industrial Branding**: High-contrast, clean visual design featuring Energya Power Cables branding.
+- **Dynamic Dual Theme**:
+  - **Cyber Dark**: Deep industrial navy (`#0A0E1A`), slate containers (`#161F30`), and cyan accents for factory floor control panels.
+  - **Clean Light**: Glare-free white/slate layout with high-visibility safety orange indicators.
+- **100% Arabic & English Isolation**: Real-time language toggling with dynamic RTL/LTR layout flipping, zero text overlap, and full Cairo/Inter typography support.
+- **Quick Role Selector**: Convenient one-tap credentials population for rapid QA, testing, and factory role demonstration.
 
----
+### 📐 Strict Modular Clean Architecture (Code Length $\le 250$ Lines)
+All presentation layers are strictly partitioned into single-responsibility sub-widgets:
 
-## 📂 Project Architecture | هيكل المشروع
-
-```
-lib/
-├── core/
-│   ├── chronology/             # Shift engine & cross-shift breakdown splitter
-│   ├── database/               # Hive service & offline persistence adapters
-│   ├── di/                     # GetIt dependency injection setup
-│   ├── localization/           # 100% isolated strings dictionary & LocaleCubit
-│   ├── theme/                  # Industrial Light & Dark theme definitions & cubit
-│   ├── utils/                  # Responsive helpers (Mobile, Tablet, Desktop)
-│   └── widgets/                # Reusable industrial UI components & badges
-├── features/
-│   ├── assets/                 # Plant overview, machinery cards, QR scanning
-│   ├── work_orders/            # 5-step handshake lifecycle & activity timeline
-│   ├── downtime/               # Downtime logging & shift minute tracking
-│   ├── analytics/              # OEE radial gauge & Pareto downtime distribution
-│   └── auth/                   # 3-tier RBAC, user models & settings
-└── main.dart                   # MultiBlocProvider & responsive navigation shell
-```
+| Modular Component | Path | Responsibility | Lines |
+| :--- | :--- | :--- | :---: |
+| [login_screen.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/screens/login_screen.dart) | `lib/features/auth/presentation/screens/` | Screen orchestration, lifecycle & animations | **214** |
+| [login_form_card.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_form_card.dart) | `lib/features/auth/presentation/widgets/login/` | Form container, input validation & sign-in trigger | **247** |
+| [login_quick_access.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_quick_access.dart) | `lib/features/auth/presentation/widgets/login/` | Quick-access account selection chips by role | **197** |
+| [login_top_bar.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_top_bar.dart) | `lib/features/auth/presentation/widgets/login/` | Floating action bar for language & theme toggles | **146** |
+| [login_form_fields.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_form_fields.dart) | `lib/features/auth/presentation/widgets/login/` | Standardized input fields styling & text field labels | **93** |
+| [login_background.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_background.dart) | `lib/features/auth/presentation/widgets/login/` | Industrial gradient canvas & ambient glow effects | **76** |
+| [login_header_logo.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_header_logo.dart) | `lib/features/auth/presentation/widgets/login/` | Elevated Energya brand logo with fallback banner | **52** |
 
 ---
 
 ## 🧪 Testing & Quality Assurance | الاختبارات وضمان الجودة
 
-The repository includes a comprehensive, automated test suite covering:
-1. **RBAC Handshake Tests**: Persona switching, role guards, and operational boundaries.
-2. **3-Tier Defense-in-Depth Tests**: Anti-tamper verification, cross-technician rejection, illegal state skip prevention.
-3. **Shift Chronology Tests**: Boundary precision, post-midnight production date mapping, multi-shift downtime minute splitter.
-4. **Theme Toggle Interpolation Tests**: Asymmetry prevention and `TextStyle.lerp` mathematical stability.
+The repository includes a comprehensive, automated test suite with **29 passing tests**:
+1. **RBAC Handshake & Guards**: Enforces role boundaries, preventing technicians and operators from unauthorized actions.
+2. **Theme Toggle Interpolation Stability**: Prevents `TextStyle.lerp` inherited style crashes during live theme switching.
+3. **Dynamic Arabic/English Directionality**: Validates runtime text switching and layout adaptation.
+4. **Shift Chronology & Cross-Shift Splitter**: Guarantees post-midnight shift allocation and minute-accurate OEE calculations.
+5. **Futuristic Navigation Bar**: Tests responsive switching between desktop sidebar and mobile navigation.
 
-Run all tests via terminal:
 ```bash
+# Run the automated test suite
 flutter test
 ```
-```
-00:06 +23: All tests passed!
+```text
+00:09 +29: All tests passed!
 ```
 
-Verify static analysis:
 ```bash
-flutter analyze
+# Run strict static code analysis
+dart analyze lib/ test/
 ```
-```
-Analyzing orning_and_evening_remembrances...
-No issues found! (ran in 9.7s)
+```text
+Analyzing lib, test...
+No issues found!
 ```
 
 ---
 
-## 🚀 Getting Started | طريقة التشغيل
+## 🚀 Getting Started | طريقة التثبيت والتشغيل
 
 ### Prerequisites
-- [Flutter SDK](https://flutter.dev) (v3.19 or later)
-- [Dart SDK](https://dart.dev) (v3.3 or later)
+- [Flutter SDK](https://flutter.dev) (v3.19 or higher)
+- [Dart SDK](https://dart.dev) (v3.3 or higher)
 - Git
 
-### Installation & Run
+### 1. Clone the Repository
 ```bash
-# 1. Clone the repository
 git clone https://github.com/mahmoudshahin1/CMMS-Cable.git
-
-# 2. Navigate to project directory
 cd CMMS-Cable
+```
 
-# 3. Fetch dependencies
+### 2. Install Dependencies
+```bash
 flutter pub get
+```
 
-# 4. Run automated tests
+### 3. Database & Supabase Provisioning
+Execute the pre-configured SQL script in your Supabase SQL Editor to provision schemas, tables, and the 12 factory seed accounts:
+- Open [`supabase_fix_and_provision_all.sql`](supabase_fix_and_provision_all.sql) in Supabase Studio SQL Editor and click **Run**.
+
+### 4. Run Automated Tests
+```bash
 flutter test
+```
 
-# 5. Launch the application
-flutter run
+### 5. Launch Application
+```bash
+# For Chrome Web:
+flutter run -d chrome
+
+# For Windows Desktop:
+flutter run -d windows
 ```
 
 ---
 
-## 🛠️ Technology Stack | حزمة التقنيات المستخدمة
+## 🛠️ Technology Stack | حزمة التقنيات
 
 - **Framework**: [Flutter](https://flutter.dev) & [Dart](https://dart.dev)
+- **Cloud Backend**: [Supabase](https://supabase.com) (PostgreSQL, Auth, Row-Level Security)
 - **State Management**: [flutter_bloc](https://pub.dev/packages/flutter_bloc) / Cubit
-- **Local Storage**: [Hive](https://pub.dev/packages/hive) & [Hive Flutter](https://pub.dev/packages/hive_flutter)
+- **Offline Persistence**: [Hive](https://pub.dev/packages/hive) & [Hive Flutter](https://pub.dev/packages/hive_flutter)
 - **Dependency Injection**: [get_it](https://pub.dev/packages/get_it)
-- **Typography**: [google_fonts](https://pub.dev/packages/google_fonts) (Cairo & Inter)
-- **Visuals & Charts**: Custom Canvas, Custom Painter, Material 3 Design
-- **Architecture**: Clean Architecture (Domain, Data, Presentation)
+- **Design & Theming**: Modern Material 3, Custom Glassmorphism, Google Fonts (`Cairo` & `Inter`)
 
 ---
 
 ## 📄 License
-
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
 
 <div align="center">
 Developed with ❤️ for Advanced Industrial Cable Manufacturing Excellence.

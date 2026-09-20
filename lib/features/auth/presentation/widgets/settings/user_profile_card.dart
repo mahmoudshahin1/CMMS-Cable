@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../../core/localization/app_strings.dart';
+import '../../../../../app.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../domain/enums/user_role.dart';
 import '../../../domain/models/user_model.dart';
-import '../switch_persona_bottom_sheet.dart';
+import '../../cubit/auth_cubit.dart';
 
 /// Card showing current user profile details, role, department, and persona switch trigger.
 class UserProfileCard extends StatelessWidget {
@@ -152,7 +153,7 @@ class UserProfileCard extends StatelessWidget {
             alignment: WrapAlignment.spaceBetween,
             children: [
               Text(
-                context.tr('current_shift_label'),
+                user.email,
                 style: TextStyle(
                   color: context.textSecondaryColor,
                   fontSize: 12,
@@ -160,27 +161,45 @@ class UserProfileCard extends StatelessWidget {
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: () => SwitchPersonaBottomSheet.show(context),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('تسجيل الخروج'),
+                      content: const Text('هل تريد تسجيل الخروج من حسابك؟'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          child: const Text('إلغاء'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(true),
+                          child: const Text(
+                            'تسجيل الخروج',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true && context.mounted) {
+                    final authCubit = context.read<AuthCubit>();
+                    appNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+                    await authCubit.signOut();
+                  }
+                },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: context.isDarkMode
-                      ? AppColors.cyberCyan
-                      : context.brandPrimary,
-                  side: BorderSide(
-                    color: (context.isDarkMode
-                            ? AppColors.cyberCyan
-                            : context.brandPrimary)
-                        .withValues(alpha: 0.6),
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  foregroundColor: Colors.red,
+                  side: BorderSide(color: Colors.red.withValues(alpha: 0.6)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-                label: Text(
-                  context.tr('switch_account'),
-                  style: const TextStyle(fontSize: 11.5),
+                icon: const Icon(Icons.logout_rounded, size: 16),
+                label: const Text(
+                  'تسجيل الخروج',
+                  style: TextStyle(fontSize: 11.5),
                 ),
               ),
             ],

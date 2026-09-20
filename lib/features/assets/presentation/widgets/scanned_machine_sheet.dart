@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/domain/enums/user_role.dart';
+import '../../../auth/presentation/widgets/role_guard.dart';
 import '../../../work_orders/presentation/screens/create_repair_request_screen.dart';
 import '../../domain/models/machine_model.dart';
 import 'downtime_report_sheet.dart';
@@ -121,35 +123,41 @@ class ScannedMachineSheet extends StatelessWidget {
             const SizedBox(height: 16),
             ScannedMachineMetricsCard(machine: machine),
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          CreateRepairRequestScreen(initialMachine: machine),
+            RoleGuard(
+              allowedRoles: const [
+                UserRole.operator,
+                UserRole.maintenanceSupervisor,
+              ],
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            CreateRepairRequestScreen(initialMachine: machine),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: context.isDarkMode
+                        ? AppColors.downMaintenanceRed
+                        : AppColors.energyaAccentOrange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: context.isDarkMode
-                      ? AppColors.downMaintenanceRed
-                      : AppColors.energyaAccentOrange,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    elevation: 2,
                   ),
-                  elevation: 2,
-                ),
-                icon: const Icon(Icons.add_task_rounded, size: 20),
-                label: Text(
-                  context.tr('report_breakdown_immediate'),
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.bold,
+                  icon: const Icon(Icons.add_task_rounded, size: 20),
+                  label: Text(
+                    context.tr('report_breakdown_immediate'),
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),

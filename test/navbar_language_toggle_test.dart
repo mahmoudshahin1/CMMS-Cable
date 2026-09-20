@@ -7,6 +7,7 @@ import 'package:orning_and_evening_remembrances/core/navigation/main_navigation_
 import 'package:orning_and_evening_remembrances/features/auth/domain/enums/user_role.dart';
 import 'package:orning_and_evening_remembrances/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:orning_and_evening_remembrances/features/auth/data/mock_users.dart';
+import 'helpers/fake_auth_repository.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/presentation/cubit/work_order_cubit.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/repositories/work_order_repository.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/models/work_order_model.dart';
@@ -69,7 +70,7 @@ void main() {
   group('Navigation Bar Dynamic Language Switching Tests', () {
     testWidgets('RoleNavConfig labels dynamically reflect Arabic vs English', (tester) async {
       final localeCubit = LocaleCubit();
-      final authCubit = AuthCubit()..switchUser(MockUsers.plantManager);
+      final authCubit = AuthCubit(FakeAuthRepository())..switchUser(MockUsers.plantManager);
 
       await tester.pumpWidget(
         MultiBlocProvider(
@@ -120,7 +121,7 @@ void main() {
 
     testWidgets('MainNavigationShell bottom bar rebuilds on LocaleCubit emit', (tester) async {
       final localeCubit = LocaleCubit();
-      final authCubit = AuthCubit()..switchUser(MockUsers.electricalTech);
+      final authCubit = AuthCubit(FakeAuthRepository())..switchUser(MockUsers.electricalTech);
       final workOrderCubit = WorkOrderCubit(_FakeWorkOrderRepository());
       final machineCubit = MachineCubit(_FakeMachineRepository());
 
@@ -138,23 +139,25 @@ void main() {
         ),
       );
 
-      // Initial Arabic state for technician
+      // Initial Arabic state for technician (selected tab is index 0)
       expect(find.text('مهامي المسندة'), findsOneWidget);
-      expect(find.text('التنبيهات'), findsOneWidget);
 
       // Toggle to English
       localeCubit.toggleLanguage();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 400));
 
-      // Verified English tabs appear
+      // Verified English active tab appears
       expect(find.text('My Tasks'), findsOneWidget);
+
+      // Switch to notifications tab
+      await tester.tap(find.byIcon(Icons.notifications_active_rounded));
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Alerts'), findsOneWidget);
 
-      // Toggle back to Arabic
+      // Toggle back to Arabic while on notifications tab
       localeCubit.toggleLanguage();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.text('مهامي المسندة'), findsOneWidget);
       expect(find.text('التنبيهات'), findsOneWidget);
     });
   });

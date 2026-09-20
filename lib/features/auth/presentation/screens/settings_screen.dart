@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../app.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
@@ -18,12 +19,17 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthCubit, AuthState>(
-      builder: (context, authState) {
-        final currentUser =
-            authState is Authenticated ? authState.user : null;
+    return BlocListener<AuthCubit, AuthState>(
+      listenWhen: (previous, current) => current is! Authenticated,
+      listener: (context, state) {
+        appNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+      },
+      child: BlocBuilder<AuthCubit, AuthState>(
+        builder: (context, authState) {
+          final currentUser =
+              authState is Authenticated ? authState.user : null;
 
-        return Scaffold(
+          return Scaffold(
           appBar: AppBar(
             title: Text(context.tr('settings_title')),
           ),
@@ -48,6 +54,7 @@ class SettingsScreen extends StatelessWidget {
           ),
         );
       },
-    );
-  }
+    ),
+  );
+}
 }

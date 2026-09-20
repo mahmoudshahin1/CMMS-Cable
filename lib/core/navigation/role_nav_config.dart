@@ -7,16 +7,48 @@ import '../../features/analytics/presentation/screens/plant_analytics_screen.dar
 import '../theme/app_colors.dart';
 import '../localization/app_strings.dart';
 
+/// Atomic model representing a single navigation tab in the app.
+class RoleNavTab {
+  final IconData icon;
+  final String label;
+  final int badgeCount;
+
+  const RoleNavTab({
+    required this.icon,
+    required this.label,
+    this.badgeCount = 0,
+  });
+}
+
+/// Provides role-based navigation configuration, screens, and localized tabs.
 class RoleNavConfig {
   final List<Widget> screens;
-  final List<BottomNavigationBarItem> navItems;
-  final List<({IconData icon, String label})> sidebarItems;
+  final List<RoleNavTab> tabs;
 
   const RoleNavConfig({
     required this.screens,
-    required this.navItems,
-    required this.sidebarItems,
+    required this.tabs,
   });
+
+  /// Backward-compatible getter returning standard [BottomNavigationBarItem]s.
+  List<BottomNavigationBarItem> get navItems => tabs.map((tab) {
+        Widget iconWidget = Icon(tab.icon);
+        if (tab.badgeCount > 0) {
+          iconWidget = Badge(
+            label: Text('${tab.badgeCount}'),
+            backgroundColor: AppColors.downMaintenanceRed,
+            child: iconWidget,
+          );
+        }
+        return BottomNavigationBarItem(
+          icon: iconWidget,
+          label: tab.label,
+        );
+      }).toList();
+
+  /// Items formatted for the desktop sidebar navigation.
+  List<({IconData icon, String label})> get sidebarItems =>
+      tabs.map((tab) => (icon: tab.icon, label: tab.label)).toList();
 
   static RoleNavConfig build(
     BuildContext context,
@@ -30,29 +62,15 @@ class RoleNavConfig {
             WorkOrdersListScreen(assignedOnly: true),
             TechnicianNotificationsScreen(),
           ],
-          navItems: [
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.assignment_turned_in_rounded),
-              label: context.tr('tab_my_tasks'),
-            ),
-            BottomNavigationBarItem(
-              icon: Badge(
-                isLabelVisible: assignedCount > 0,
-                label: Text('$assignedCount'),
-                backgroundColor: AppColors.downMaintenanceRed,
-                child: const Icon(Icons.notifications_active_rounded),
-              ),
-              label: context.tr('tab_notifications'),
-            ),
-          ],
-          sidebarItems: [
-            (
+          tabs: [
+            RoleNavTab(
               icon: Icons.assignment_turned_in_rounded,
               label: context.tr('tab_my_tasks'),
             ),
-            (
+            RoleNavTab(
               icon: Icons.notifications_active_rounded,
               label: context.tr('tab_notifications'),
+              badgeCount: assignedCount,
             ),
           ],
         );
@@ -60,19 +78,12 @@ class RoleNavConfig {
       case UserRole.operator:
         return RoleNavConfig(
           screens: const [PlantOverviewScreen(), WorkOrdersListScreen()],
-          navItems: [
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.factory_rounded),
+          tabs: [
+            RoleNavTab(
+              icon: Icons.factory_rounded,
               label: context.tr('tab_factory'),
             ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.build_rounded),
-              label: context.tr('tab_work_orders'),
-            ),
-          ],
-          sidebarItems: [
-            (icon: Icons.factory_rounded, label: context.tr('tab_factory')),
-            (
+            RoleNavTab(
               icon: Icons.build_rounded,
               label: context.tr('tab_work_orders'),
             ),
@@ -86,27 +97,16 @@ class RoleNavConfig {
             PlantOverviewScreen(),
             WorkOrdersListScreen(),
           ],
-          navItems: [
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.insights_rounded),
-              label: context.tr('tab_executive'),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.factory_rounded),
-              label: context.tr('tab_factory'),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.inventory_2_rounded),
-              label: context.tr('tab_work_orders'),
-            ),
-          ],
-          sidebarItems: [
-            (
+          tabs: [
+            RoleNavTab(
               icon: Icons.insights_rounded,
               label: context.tr('tab_executive'),
             ),
-            (icon: Icons.factory_rounded, label: context.tr('tab_factory')),
-            (
+            RoleNavTab(
+              icon: Icons.factory_rounded,
+              label: context.tr('tab_factory'),
+            ),
+            RoleNavTab(
               icon: Icons.inventory_2_rounded,
               label: context.tr('tab_work_orders'),
             ),
@@ -121,27 +121,16 @@ class RoleNavConfig {
             WorkOrdersListScreen(),
             PlantAnalyticsScreen(),
           ],
-          navItems: [
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.factory_rounded),
+          tabs: [
+            RoleNavTab(
+              icon: Icons.factory_rounded,
               label: context.tr('tab_factory'),
             ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.build_rounded),
-              label: context.tr('tab_work_orders'),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.bar_chart_rounded),
-              label: context.tr('tab_analytics'),
-            ),
-          ],
-          sidebarItems: [
-            (icon: Icons.factory_rounded, label: context.tr('tab_factory')),
-            (
+            RoleNavTab(
               icon: Icons.build_rounded,
               label: context.tr('tab_work_orders'),
             ),
-            (
+            RoleNavTab(
               icon: Icons.bar_chart_rounded,
               label: context.tr('tab_analytics'),
             ),

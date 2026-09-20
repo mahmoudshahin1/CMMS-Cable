@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import '../../domain/enums/user_role.dart';
-import 'switch_persona_bottom_sheet.dart';
+// switch_persona_bottom_sheet removed — persona switching is disabled
 import '../../../../core/theme/app_colors.dart';
 
 class PersonaIndicatorChip extends StatelessWidget {
@@ -26,10 +26,8 @@ class PersonaIndicatorChip extends StatelessWidget {
         final role = user.role;
         final roleColor = role.roleColor;
 
-        return InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () => SwitchPersonaBottomSheet.show(context),
-          child: Container(
+        // Display-only chip — no tap action (persona switching disabled)
+        return Container(
             padding: EdgeInsets.symmetric(
               horizontal: compact ? 6 : 8,
               vertical: compact ? 3 : 5,
@@ -75,12 +73,6 @@ class PersonaIndicatorChip extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_drop_down_rounded,
-                          color: roleColor,
-                          size: 16,
-                        ),
                       ],
                     ),
                     Container(
@@ -99,12 +91,11 @@ class PersonaIndicatorChip extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ],
+                   ],
                 ),
               ],
             ),
-          ),
-        );
+          );
       },
     );
   }
