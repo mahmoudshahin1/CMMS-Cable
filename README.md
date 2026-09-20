@@ -4,7 +4,7 @@
 ### Advanced Machinery Monitoring, Maintenance & Operational Lifecycle Management System
 **نظام إدارة الصيانة الشامل والعمليات الصناعية المتطورة لمصانع الكابلات**
 
-![Energya Cables CMMS](assets/images/energya_logo.png)
+![CMMS Hero Banner](docs/images/hero_banner.png)
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
@@ -19,13 +19,84 @@
 
 ---
 
-## 📌 Overview | نظرة عامة
+## 📌 Executive Summary | نبذة عن النظام
 
-**Energya Cables Industrial CMMS** is a mission-critical, enterprise-grade Computerized Maintenance Management System engineered specifically for heavy industrial cable manufacturing facilities. 
+**Energya Cables Industrial CMMS** is a mission-critical, enterprise-grade Computerized Maintenance Management System engineered specifically for continuous, heavy-duty industrial cable manufacturing facilities (10th of Ramadan / Sadat City plants).
 
-The platform bridges factory-floor machine operators, specialized electrical and mechanical technicians, shift supervisors, and executive plant leadership into a unified, real-time operational workflow. Built with **Flutter**, **Clean Architecture**, **Supabase Cloud Backend**, and **Offline-First Hive persistence**, the system guarantees high-availability operations under demanding shop-floor conditions.
+In high-speed cable production, an unrecorded 15-minute extruder halt or drawing line friction fault can cascade into significant tonnage losses and delayed shipments. This platform eliminates paper-based shift logs and unauthorized overrides by providing a **tamper-proof, role-governed digital pipeline** connecting:
+1. **7 Production Line Operators** (Wire Drawing, Stranding, CCV Insulation, Sheathing, Drum Twisting, Screening, and Armouring).
+2. **Specialized Maintenance Technicians** (Electrical & Mechanical trades).
+3. **Shift Maintenance & Production Supervisors**.
+4. **Plant General Management**.
 
-نظام **Energya Cables CMMS** هو منصة صناعية متكاملة لإدارة صيانة وتشغيل خطوط إنتاج الكابلات، يربط بين مشغلي الماكينات الـ 7، وفنيي الصيانة التخصصيين (كهرباء وميكانيكا)، ومشرفي الورادي، والإدارة العامة للمصنع في بيئة رقمية آمنة وموثوقة تعمل لحظياً مع دعم العمل دون اتصال.
+Built with **Flutter**, **Clean Feature-First Architecture**, **Supabase Cloud Backend**, and **Offline-First Hive persistence**, the system guarantees uninterrupted operation in high-interference factory floors with zero latency.
+
+---
+
+## 📸 Visual Tour & System Screenshots | جولة مصورة داخل النظام
+
+### 1. Modern Industrial Authentication & Quick-Access Portal
+*Equipped with Energya Power Cables identity, dynamic Arabic/English flipping, live dark/light mode toggle, and instant one-tap role selection for plant personnel:*
+
+<div align="center">
+
+| 🌙 Cyber Dark Mode (الوضع الليلي الصناعي) | ☀️ Clean Light Mode (الوضع النهاري عالي التباين) |
+| :---: | :---: |
+| ![Login Dark](docs/images/login_dark.png) | ![Login Light](docs/images/login_light.png) |
+
+</div>
+
+---
+
+### 2. Factory Floor Operator View (أرضية المصنع لمشغلي الخطوط)
+*Real-time machine status cards, telemetry (production speed m/min, produced km), department OEE gauges (88.4%), and immediate single-tap breakdown reporting:*
+
+<div align="center">
+
+![Factory Floor Operator View](docs/images/factory_floor_operator.png)
+
+*Line Operator Screen — Buncher 630 Lines with live running parameters, active alerts, and line-scoped visibility*
+
+</div>
+
+---
+
+### 3. Work Orders Management & Handshake Lifecycle (أوامر الصيانة ودورة المصادقة)
+*Multi-level management dashboard for dispatching specialists, tracking active timers, viewing replaced spare parts, and auditing cross-shift breakdowns:*
+
+<div align="center">
+
+![Work Orders Desktop View](docs/images/work_orders_desktop.png)
+
+*Desktop View — Work Orders with severity tagging (Critical / Medium / Preventive), assigned technician badges, and status filters*
+
+</div>
+
+---
+
+### 4. 5-Step Handshake & Cross-Shift Chronology Audit Log
+*Tamper-proof digital lifecycle preventing unauthorized closure and accurately decomposing cross-shift breakdown minutes for OEE calculation:*
+
+<div align="center">
+
+![Work Order Handshake Detail](docs/images/work_order_handshake_detail.png)
+
+*Audit Log & Step Maintenance Handshake — Immutable event timeline and cross-shift minute decomposition (Shift 1 vs Shift 2)*
+
+</div>
+
+---
+
+### 5. Responsive Mobile & Tablet Experience
+*Fluid adaptive interface supporting control-room desktop monitors, supervisor tablets, and rugged shop-floor mobile devices:*
+
+<div align="center">
+
+![Mobile Dark and Light UI](docs/images/mobile_mockup.png)
+
+*Dual-Theme Mobile Navigation — Futuristic floating dock and high-density cards*
+
+</div>
 
 ---
 
@@ -43,23 +114,24 @@ graph TD
     F -->|Zero Latency Reads| A
 ```
 
-- **☁️ Supabase Cloud Backend**: Handles secure user authentication, centralized `user_profiles`, machine statuses, breakdown tickets, and audit trails with PostgreSQL Row-Level Security (RLS).
-- **⚡ Hive Local Database**: Provides instantaneous offline-first caching for shop-floor tablets and workstations, ensuring zero latency when viewing machine telemetry and creating local logs.
-- **🔄 Fault-Tolerant Hybrid Strategy**: Network calls gracefully fall back to cached credentials and local data boxes during factory connectivity interruptions.
+### Why Dual Storage?
+1. **Zero-Latency Shop-Floor UX**: Querying local Hive boxes takes `< 2ms`, allowing operators to inspect machinery metrics and scroll through dozens of machines without UI stutters.
+2. **Guaranteed Uptime Under Wi-Fi Blackouts**: If the factory access point drops, operators can still report faults locally and review work orders. Once reconnected, changes synchronize seamlessly.
+3. **Cloud Auditability & RLS**: All central operations, role updates, and historical timestamps are guarded by Supabase PostgreSQL Row-Level Security (RLS).
 
 ---
 
 ## 👥 Factory Org Structure & 12 Pre-Configured Accounts | الأدوار وحسابات المصنع
 
-The system is fully provisioned with **12 dedicated accounts** mirroring the actual cable plant hierarchy:
+The system is fully seeded with **12 dedicated accounts** mirroring the actual cable plant organizational structure:
 
-| Role / Line | Dedicated Account | Specialty / Assigned Unit | Permissions & Access Scope |
+| Role / Line | Dedicated Email | Department / Specialty | Scope of Authority |
 | :--- | :--- | :--- | :--- |
-| 👔 **Plant General Manager** | `manager.prod@cable.com` | Plant-Wide Operations | Executive dashboards, OEE metrics, MTTR/MTBF analytics, read-only plant-wide oversight |
+| 👔 **Plant General Manager** | `manager.prod@cable.com` | Plant Administration | Executive dashboards, plant-wide OEE metrics, MTTR/MTBF analytics, read-only oversight |
 | 📋 **Maintenance Supervisor** | `eng.maint@cable.com` | Maintenance Engineering | Technician dispatch, ticket reassignment, technical validation, verified ticket closure |
-| 🏭 **Production Supervisor** | `prod.sup@cable.com` | Production Coordination | Cross-line monitoring, shift output analysis, breakdown oversight |
-| ⚡ **Electrical Technician** | `tech.elec@cable.com` | **Electrical** Specialty | Start electrical work orders, record spare parts, document electrical root causes |
-| 🔧 **Mechanical Technician** | `tech.mech@cable.com` | **Mechanical** Specialty | Start mechanical work orders, record replaced parts, execute repair timers |
+| 🏭 **Production Supervisor** | `prod.sup@cable.com` | Production Department | Cross-line coordination, shift output analysis, breakdown oversight |
+| ⚡ **Electrical Technician** | `tech.elec@cable.com` | **Electrical** Maintenance | Start electrical work orders, record spare parts, document electrical root causes |
+| 🔧 **Mechanical Technician** | `tech.mech@cable.com` | **Mechanical** Maintenance | Start mechanical work orders, record replaced parts, execute repair timers |
 | 🧵 **Drawing Line Operator** | `op.drawing@cable.com` | Line 1: Wire Drawing | Report Line 1 breakdowns, view machine telemetry, confirm test runs |
 | 🌀 **Stranding Line Operator**| `operator@cable.com` | Line 2: Rigid Stranding | Report Line 2 breakdowns, view machine telemetry, confirm test runs |
 | ⚡ **CCV Line Operator** | `op.ccv@cable.com` | Line 3: CCV Insulation | Report Line 3 breakdowns, view machine telemetry, confirm test runs |
@@ -68,11 +140,11 @@ The system is fully provisioned with **12 dedicated accounts** mirroring the act
 | 🛡️ **Screening Line Operator**| `op.screening@cable.com`| Line 6: Copper Wire Screening | Report Line 6 breakdowns, view machine telemetry, confirm test runs |
 | ⛓️ **Armouring Line Operator**| `op.tape@cable.com` | Line 7: Steel Tape Armouring | Report Line 7 breakdowns, view machine telemetry, confirm test runs |
 
-> **Default Initial Password for Seed Accounts:** `Cable@2026!`
+> **Default Seed Password for All Accounts:** `Cable@2026!`
 
 ---
 
-## 🛡️ 5-Step Handshake Lifecycle & Strict RBAC | دورة حياة أمر الصيانة ومصفوفة الأمان
+## 🛡️ 5-Step Handshake Lifecycle & Strict RBAC | دورة حياة أمر الصيانة ومصفوفة الصلاحيات
 
 The lifecycle strictly prevents illegal state transitions and unauthorized role actions:
 
@@ -84,27 +156,36 @@ graph LR
     D -->|Quality Verified| E[5. Closed & Handed Over<br/>Supervisor Verification]
 ```
 
-- **Operator**: Can only report breakdowns for their assigned line and confirm machine test runs after repair. Cannot complete tickets or dispatch technicians.
-- **Maintenance Technician**: Restricted to assigned work orders matching their trade (Electrical/Mechanical). Replaces spare parts, records root causes. Cannot approve or close tickets.
-- **Maintenance Supervisor**: Dispatches technicians, validates technical execution, and executes final verified closure.
-- **Plant Manager**: Executive high-level monitoring over plant OEE, downtime Pareto charts, and plant availability.
+### Role Permissions Matrix:
+
+| Action / Capability | 👷 Operator | 🔧 Maintenance Tech | 📋 Shift Supervisor | 👔 Plant Manager |
+| :--- | :--- :--- :--- :--- |
+| **Report Machine Breakdown** | ✅ (Assigned Line) | ❌ | ✅ (Any Line) | ❌ |
+| **View Department Machines** | ✅ (Scoped) | ❌ | ✅ (All/Scoped) | ✅ (All Plant) |
+| **Start Assigned Repair Work** | ❌ | ✅ (Assigned Only) | ❌ | ❌ |
+| **Record Replaced Spare Parts**| ❌ | ✅ | ❌ | ❌ |
+| **Assign / Dispatch Technicians** | ❌ | ❌ | ✅ | ❌ |
+| **Confirm Machine Test Run** | ✅ | ❌ | ✅ | ❌ |
+| **Final Verified Ticket Closure** | ❌ | ❌ | ✅ | ❌ |
+| **Executive OEE & Pareto Analytics** | ❌ | ❌ | ✅ | ✅ (Full Access) |
 
 ---
 
-## 💻 Industrial UI/UX & Modular Code Architecture | الواجهة وتفكيك الكود المعياري
+## ⏱️ 3-Shift Plant Chronology & Minute-Precise OEE Allocation | محرك الورديات الصناعي
 
-### 🎨 Design & Accessibility
-- **Energya Industrial Branding**: High-contrast, clean visual design featuring Energya Power Cables branding.
-- **Dynamic Dual Theme**:
-  - **Cyber Dark**: Deep industrial navy (`#0A0E1A`), slate containers (`#161F30`), and cyan accents for factory floor control panels.
-  - **Clean Light**: Glare-free white/slate layout with high-visibility safety orange indicators.
-- **100% Arabic & English Isolation**: Real-time language toggling with dynamic RTL/LTR layout flipping, zero text overlap, and full Cairo/Inter typography support.
-- **Quick Role Selector**: Convenient one-tap credentials population for rapid QA, testing, and factory role demonstration.
+In 24/7 cable manufacturing plants, shifts span across calendar boundaries. This engine guarantees mathematical precision:
+- **Shift 1 (Morning)**: `07:30` → `15:29` (Same production calendar date).
+- **Shift 2 (Evening)**: `15:30` → `22:59` (Same production calendar date).
+- **Shift 3 (Night)**: `23:00` → `07:29` (Spans midnight; timestamps between `00:00` and `07:29` are allocated to yesterday's production date).
+- **Cross-Shift Breakdown Minute Splitter**: When a failure spans across shift handovers, downtime minutes are partitioned between the shifts (e.g. 143 min allocated to Shift 1, 110 min allocated to Shift 2) preventing false OEE penalties.
 
-### 📐 Strict Modular Clean Architecture (Code Length $\le 250$ Lines)
-All presentation layers are strictly partitioned into single-responsibility sub-widgets:
+---
 
-| Modular Component | Path | Responsibility | Lines |
+## 📐 Strict Modular Code Architecture (Max 250 Lines per File) | المعمارية المعيارية النظيفة
+
+Every presentation screen and component is cleanly decomposed to avoid monoliths. No file in the module exceeds 250 lines:
+
+| Modular Component | Path | Responsibility | Line Count |
 | :--- | :--- | :--- | :---: |
 | [login_screen.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/screens/login_screen.dart) | `lib/features/auth/presentation/screens/` | Screen orchestration, lifecycle & animations | **214** |
 | [login_form_card.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_form_card.dart) | `lib/features/auth/presentation/widgets/login/` | Form container, input validation & sign-in trigger | **247** |
@@ -118,8 +199,8 @@ All presentation layers are strictly partitioned into single-responsibility sub-
 
 ## 🧪 Testing & Quality Assurance | الاختبارات وضمان الجودة
 
-The repository includes a comprehensive, automated test suite with **29 passing tests**:
-1. **RBAC Handshake & Guards**: Enforces role boundaries, preventing technicians and operators from unauthorized actions.
+The repository maintains an automated test suite with **29 passing tests (100% pass rate)**:
+1. **RBAC Handshake & Guards**: Verifies role segregation, preventing technicians and operators from executing out-of-scope transitions.
 2. **Theme Toggle Interpolation Stability**: Prevents `TextStyle.lerp` inherited style crashes during live theme switching.
 3. **Dynamic Arabic/English Directionality**: Validates runtime text switching and layout adaptation.
 4. **Shift Chronology & Cross-Shift Splitter**: Guarantees post-midnight shift allocation and minute-accurate OEE calculations.
