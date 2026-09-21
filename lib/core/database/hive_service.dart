@@ -8,6 +8,7 @@ import '../../features/auth/domain/models/user_model.dart';
 import '../../features/downtime/domain/models/downtime_log_model.dart';
 import '../../features/work_orders/domain/models/work_order_model.dart';
 import '../../features/assets/domain/models/process_log_model.dart';
+import '../sync/outbox/outbox_command.dart';
 
 class HiveService {
   static Future<void> init() async {
@@ -22,6 +23,7 @@ class HiveService {
     Hive.registerAdapter(WorkOrderStatusAdapter());
     Hive.registerAdapter(PriorityAdapter());
     Hive.registerAdapter(PlantShiftAdapter());
+    Hive.registerAdapter(OutboxCommandStatusAdapter());
 
     // Register Model Adapters
     Hive.registerAdapter(UserModelAdapter());
@@ -32,6 +34,7 @@ class HiveService {
     Hive.registerAdapter(WorkOrderModelAdapter());
     Hive.registerAdapter(WorkOrderActivityLogAdapter());
     Hive.registerAdapter(EventChronologyAdapter());
+    Hive.registerAdapter(OutboxCommandAdapter());
 
     // Open Boxes
     final machinesBox = await Hive.openBox<MachineModel>(HiveBoxes.machinesBox);
@@ -40,6 +43,7 @@ class HiveService {
     final workOrdersBox = await Hive.openBox<WorkOrderModel>(HiveBoxes.workOrdersBox);
     await Hive.openBox<ProcessLogModel>(HiveBoxes.processLogsBox);
     await Hive.openBox(HiveBoxes.settingsBox);
+    await Hive.openBox<OutboxCommand>(HiveBoxes.outboxCommandsBox);
 
     // Populate initial factory machines seed data if empty
     if (machinesBox.isEmpty) {

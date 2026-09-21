@@ -12,3 +12,4 @@ export 'spare_part_adapter.dart';
 export 'work_order_model_adapter.dart';
 export 'work_order_activity_log_adapter.dart';
 export 'chronology_adapters.dart';
+export 'outbox_command_adapter.dart';
