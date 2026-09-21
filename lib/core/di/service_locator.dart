@@ -107,6 +107,8 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton<SupabaseRealtimeSyncService>(
     () => SupabaseRealtimeSyncService(
       outboxLocal: getIt<OutboxLocalDataSource>(),
+      networkChecker: getIt<NetworkConnectivityChecker>(),
+      deltaSyncCoordinator: getIt<DeltaSyncCoordinator>(),
     ),
   );
 

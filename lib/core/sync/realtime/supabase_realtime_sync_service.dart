@@ -11,19 +11,41 @@ import '../../../features/assets/data/datasources/machine_remote_mapper.dart';
 import '../../../features/downtime/domain/models/downtime_log_model.dart';
 import '../../../features/downtime/data/datasources/downtime_remote_mapper.dart';
 
+import '../network/network_connectivity_checker.dart';
+import '../delta/delta_sync_coordinator.dart';
+
 /// Manages Supabase Realtime subscriptions and reconciles live events into Hive.
 class SupabaseRealtimeSyncService {
   final SupabaseClient _client;
   final OutboxLocalDataSource _outboxLocal;
+  final NetworkConnectivityChecker? _networkChecker;
+  final DeltaSyncCoordinator? _deltaSyncCoordinator;
 
   RealtimeChannel? _channel;
   final _changeEventController = StreamController<String>.broadcast();
+  StreamSubscription<bool>? _netSub;
 
   SupabaseRealtimeSyncService({
     SupabaseClient? client,
     required OutboxLocalDataSource outboxLocal,
+    NetworkConnectivityChecker? networkChecker,
+    DeltaSyncCoordinator? deltaSyncCoordinator,
   })  : _client = client ?? Supabase.instance.client,
-        _outboxLocal = outboxLocal;
+        _outboxLocal = outboxLocal,
+        _networkChecker = networkChecker,
+        _deltaSyncCoordinator = deltaSyncCoordinator {
+    _initConnectivityCatchUp();
+  }
+
+  void _initConnectivityCatchUp() {
+    _netSub = _networkChecker?.onConnectivityChanged.listen((isOnline) {
+      if (isOnline) {
+        debugPrint('🌐 Network restored: re-subscribing realtime and triggering delta catch-up');
+        subscribe();
+        _deltaSyncCoordinator?.syncDeltas();
+      }
+    });
+  }
 
   Stream<String> get onRealtimeChange => _changeEventController.stream;
 
@@ -136,6 +158,7 @@ class SupabaseRealtimeSyncService {
   }
 
   void dispose() {
+    _netSub?.cancel();
     unsubscribe();
     _changeEventController.close();
   }
