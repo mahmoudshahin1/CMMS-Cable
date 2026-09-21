@@ -16,6 +16,9 @@ abstract class MachineRemoteDataSource {
 
   /// Pushes a process log to the remote database.
   Future<void> syncProcessLog(ProcessLogModel log);
+
+  /// Fetches machines modified after [cursor] for delta sync.
+  Future<List<MachineModel>> fetchModifiedAfter(DateTime cursor);
 }
 
 /// Offline-first fallback / stub for [MachineRemoteDataSource].
@@ -40,4 +43,8 @@ class SupabaseMachineRemoteDataSourceStub implements MachineRemoteDataSource {
   Future<void> syncProcessLog(ProcessLogModel log) async {
     // Queued for background sync when online
   }
+
+  @override
+  Future<List<MachineModel>> fetchModifiedAfter(DateTime cursor) async =>
+      const [];
 }

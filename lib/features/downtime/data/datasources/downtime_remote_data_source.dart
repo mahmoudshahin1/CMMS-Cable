@@ -10,6 +10,12 @@ abstract class DowntimeRemoteDataSource {
 
   /// Pushes a created or updated downtime log to the remote database.
   Future<void> syncDowntimeLog(DowntimeLogModel log);
+
+  /// Executes a durable outbox command against remote downtime RPCs.
+  Future<Map<String, dynamic>> executeCommand(dynamic command);
+
+  /// Fetches downtime logs modified after [cursor] for delta sync.
+  Future<List<DowntimeLogModel>> fetchModifiedAfter(DateTime cursor);
 }
 
 /// Offline-first fallback / stub for [DowntimeRemoteDataSource].
@@ -26,4 +32,11 @@ class SupabaseDowntimeRemoteDataSourceStub implements DowntimeRemoteDataSource {
   Future<void> syncDowntimeLog(DowntimeLogModel log) async {
     // Queued for background sync when online
   }
+
+  @override
+  Future<Map<String, dynamic>> executeCommand(dynamic command) async => {};
+
+  @override
+  Future<List<DowntimeLogModel>> fetchModifiedAfter(DateTime cursor) async =>
+      const [];
 }

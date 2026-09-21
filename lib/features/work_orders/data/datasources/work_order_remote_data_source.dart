@@ -13,6 +13,12 @@ abstract class WorkOrderRemoteDataSource {
 
   /// Deletes a work order from the remote backend.
   Future<void> deleteRemoteWorkOrder(String id);
+
+  /// Executes a durable outbox command against the remote backend RPCs.
+  Future<Map<String, dynamic>> executeCommand(dynamic command);
+
+  /// Fetches work orders modified after [cursor] for delta synchronization.
+  Future<List<WorkOrderModel>> fetchModifiedAfter(DateTime cursor);
 }
 
 /// Offline-first fallback / stub for [WorkOrderRemoteDataSource].
@@ -35,4 +41,11 @@ class SupabaseWorkOrderRemoteDataSourceStub
   Future<void> deleteRemoteWorkOrder(String id) async {
     // Queued for background sync
   }
+
+  @override
+  Future<Map<String, dynamic>> executeCommand(dynamic command) async => {};
+
+  @override
+  Future<List<WorkOrderModel>> fetchModifiedAfter(DateTime cursor) async =>
+      const [];
 }
