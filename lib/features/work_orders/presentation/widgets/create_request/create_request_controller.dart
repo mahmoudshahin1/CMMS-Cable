@@ -12,6 +12,7 @@ import '../../../domain/enums/priority.dart';
 import '../../../domain/enums/work_order_status.dart';
 import '../../../domain/enums/work_order_type.dart';
 import '../../../domain/models/work_order_model.dart';
+import '../../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../cubit/work_order_cubit.dart';
 import '../../screens/work_orders_list_screen.dart';
 
@@ -71,7 +72,8 @@ class CreateRequestController {
         {'code': selectedMachine.code},
       );
 
-      await workOrderCubit.createWorkOrder(newWorkOrder);
+      final currentUser = context.read<AuthCubit>().currentUser;
+      await workOrderCubit.createWorkOrder(newWorkOrder, caller: currentUser);
 
       if (selectedType == WorkOrderType.breakdown) {
         await machineCubit.updateMachineStatus(

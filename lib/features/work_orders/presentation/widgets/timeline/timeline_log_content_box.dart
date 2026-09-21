@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/auth/user_directory_helper.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../domain/models/work_order_activity_log.dart';
 import 'timeline_details_table.dart';
@@ -77,45 +78,58 @@ class TimelineLogContentBox extends StatelessWidget {
           const SizedBox(height: 6),
 
           // Performed By Info
-          Row(
-            children: [
-              Icon(
-                Icons.person_rounded,
-                size: 13,
-                color: context.textSecondaryColor,
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  log.performedByName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: context.textPrimaryColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+          Builder(
+            builder: (context) {
+              final isOperatorDesk = log.performedByName == 'Operator Desk';
+              final resolvedName = isOperatorDesk
+                  ? (UserDirectoryHelper.currentUser?.name ?? log.performedByName)
+                  : (UserDirectoryHelper.resolveName(log.performedByName) ?? log.performedByName);
+
+              final resolvedEmail = (isOperatorDesk && log.performedByEmail.contains('system@'))
+                  ? (UserDirectoryHelper.currentUser?.email ?? log.performedByEmail)
+                  : log.performedByEmail;
+
+              return Row(
+                children: [
+                  Icon(
+                    Icons.person_rounded,
+                    size: 13,
+                    color: context.textSecondaryColor,
                   ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  '(${log.performedByEmail})',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: context.textMutedColor,
-                    fontSize: 10.5,
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      resolvedName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: context.textPrimaryColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ],
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '($resolvedEmail)',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: context.textMutedColor,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 6),
 
           // Action Summary
           Text(
-            log.actionSummary,
+            UserDirectoryHelper.formatActionSummary(log.actionSummary),
             style: TextStyle(
               color: context.textPrimaryColor,
               fontSize: 12.5,

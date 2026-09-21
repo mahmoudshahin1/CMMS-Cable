@@ -10,7 +10,13 @@ abstract class WorkOrderRepository {
   Future<List<WorkOrderModel>> getWorkOrdersForTechnician(String technicianId);
   Future<WorkOrderModel> createWorkOrder(WorkOrderModel workOrder, {UserModel? caller});
   Future<void> updateWorkOrderStatus(String workOrderId, WorkOrderStatus status, {UserModel? caller});
-  Future<void> assignTechnician(String workOrderId, String technicianId, String supervisorId, {UserModel? caller});
+  Future<void> assignTechnician(
+    String workOrderId,
+    String technicianId,
+    String supervisorId, {
+    UserModel? caller,
+    String? technicianName,
+  });
   Future<void> startRepair(String workOrderId, {required UserModel caller});
   Future<void> addSparePart(String workOrderId, SparePartModel sparePart, {UserModel? caller});
   Future<void> completeWorkOrder(

@@ -34,7 +34,7 @@ class _FakeWorkOrderRepository implements WorkOrderRepository {
   @override
   Future<void> updateWorkOrderStatus(String id, WorkOrderStatus s, {dynamic caller}) async {}
   @override
-  Future<void> assignTechnician(String id, String tId, String sId, {dynamic caller}) async {}
+  Future<void> assignTechnician(String id, String tId, String sId, {dynamic caller, String? technicianName}) async {}
   @override
   Future<void> startRepair(String id, {required dynamic caller}) async {}
   @override

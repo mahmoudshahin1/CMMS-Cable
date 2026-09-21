@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/auth/user_directory_helper.dart';
 import '../../../../../core/theme/app_colors.dart';
 import 'timeline_step_helper.dart';
 
@@ -29,6 +30,16 @@ class TimelineDetailsTable extends StatelessWidget {
           DateTime.tryParse(valStr) != null) {
         return false;
       }
+      if ((k == 'technicianid' || k == 'technician_id') &&
+          (rawDetails.containsKey('technician') ||
+              rawDetails.containsKey('technicianName'))) {
+        return false;
+      }
+      if ((k == 'supervisorid' || k == 'supervisor_id') &&
+          (rawDetails.containsKey('supervisor') ||
+              rawDetails.containsKey('supervisorName'))) {
+        return false;
+      }
       return true;
     }).toList();
 
@@ -49,6 +60,17 @@ class TimelineDetailsTable extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: operationalEntries.map((entry) {
+            String displayValue = '${entry.value}';
+            final kLower = entry.key.toLowerCase();
+            if (kLower.contains('technician') ||
+                kLower.contains('supervisor') ||
+                kLower.contains('user')) {
+              final resolved = UserDirectoryHelper.resolveName(displayValue);
+              if (resolved != null) {
+                displayValue = resolved;
+              }
+            }
+
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Row(
@@ -64,7 +86,7 @@ class TimelineDetailsTable extends StatelessWidget {
                   ),
                   Expanded(
                     child: Text(
-                      '${entry.value}',
+                      displayValue,
                       style: TextStyle(
                         color: context.textPrimaryColor,
                         fontSize: 11,

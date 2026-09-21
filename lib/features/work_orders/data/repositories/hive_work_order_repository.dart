@@ -7,7 +7,9 @@ import '../../domain/logic/work_order_activity_logger.dart';
 import '../../domain/logic/work_order_security_guard.dart';
 import '../../domain/logic/work_order_handshake_mutator.dart';
 import '../../../auth/domain/models/user_model.dart';
+import '../../../auth/domain/enums/user_role.dart';
 import '../../../../core/chronology/event_chronology.dart';
+import '../../../../core/auth/user_directory_helper.dart';
 import '../datasources/work_order_local_data_source.dart';
 import '../datasources/hive_work_order_local_data_source.dart';
 import '../datasources/work_order_remote_data_source.dart';
@@ -69,20 +71,21 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     WorkOrderModel workOrder, {
     UserModel? caller,
   }) async {
-    WorkOrderSecurityGuard.validateCreate(caller);
+    final effectiveCaller = caller ?? UserDirectoryHelper.currentUser;
+    WorkOrderSecurityGuard.validateCreate(effectiveCaller);
 
     final chrono = workOrder.chronology ?? EventChronology.now();
     final initialLog = WorkOrderActivityLogger.createLog(
       stepName: 'REPORTED',
-      caller: caller,
+      caller: effectiveCaller,
       actionSummary: 'Work order reported for machine ${workOrder.machineId}',
       details: {
         'machineId': workOrder.machineId,
         'priority': workOrder.priority.name,
         'type': workOrder.type.name,
       },
-      fallbackName: 'Operator Desk',
-      fallbackRole: 'OPERATOR',
+      fallbackName: effectiveCaller?.name ?? 'Operator Desk',
+      fallbackRole: effectiveCaller?.role.code ?? 'OPERATOR',
       chronology: chrono,
     );
 
@@ -136,6 +139,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     String technicianId,
     String supervisorId, {
     UserModel? caller,
+    String? technicianName,
   }) async {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
@@ -145,6 +149,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       technicianId,
       supervisorId,
       caller,
+      technicianName: technicianName,
     );
     await _persistAndSync(
       updated,

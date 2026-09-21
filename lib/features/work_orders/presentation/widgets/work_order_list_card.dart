@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/auth/user_directory_helper.dart';
 import '../../../assets/domain/enums/department_type.dart';
 import '../../../assets/domain/models/machine_model.dart';
 import '../../domain/enums/priority.dart';
@@ -183,10 +184,10 @@ class WorkOrderListCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 3),
                          Text(
-                          // Shows short ID — will be resolved when tech name is stored in WorkOrder
-                          workOrder.assignedToTechnicianId!.length > 8
-                              ? workOrder.assignedToTechnicianId!.substring(0, 8)
-                              : workOrder.assignedToTechnicianId!,
+                          UserDirectoryHelper.resolveName(workOrder.assignedToTechnicianId!) ??
+                              (workOrder.assignedToTechnicianId!.length > 8
+                                  ? workOrder.assignedToTechnicianId!.substring(0, 8)
+                                  : workOrder.assignedToTechnicianId!),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(

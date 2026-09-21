@@ -7,6 +7,7 @@ import '../../../auth/domain/models/user_model.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/auth/user_directory_helper.dart';
 
 class AssignTechnicianDialog extends StatefulWidget {
   final WorkOrderModel workOrder;
@@ -49,6 +50,7 @@ class _AssignTechnicianDialogState extends State<AssignTechnicianDialog> {
         'TECHNICIAN',
         speciality: _selectedSpeciality,
       );
+      UserDirectoryHelper.registerUsers(techs);
       if (mounted) {
         setState(() {
           _technicians = techs;
@@ -297,11 +299,16 @@ class _AssignTechnicianDialogState extends State<AssignTechnicianDialog> {
               ),
               trailing: ElevatedButton(
                 onPressed: () {
+                  UserDirectoryHelper.registerUser(tech);
+                  if (supervisor != null) {
+                    UserDirectoryHelper.registerUser(supervisor);
+                  }
                   context.read<WorkOrderCubit>().assignTechnician(
                         widget.workOrder.id,
                         tech.id,
                         supervisor?.id ?? 'supervisor',
                         caller: supervisor,
+                        technicianName: tech.name,
                       );
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(

@@ -18,6 +18,7 @@ import '../../../domain/enums/department_type.dart';
 import '../../../domain/enums/machine_status.dart';
 import '../../../domain/models/machine_model.dart';
 import '../../cubit/machine_cubit.dart';
+import '../../../../auth/presentation/cubit/auth_cubit.dart';
 
 /// Controller handling async submission, work order creation, and navigation for downtime logging.
 class DowntimeSheetController {
@@ -61,6 +62,7 @@ class DowntimeSheetController {
     final downtimeCubit = context.read<DowntimeCubit>();
     final workOrderCubit = context.read<WorkOrderCubit>();
     final machineCubit = context.read<MachineCubit>();
+    final currentUser = context.read<AuthCubit>().currentUser;
 
     // 1. Log Downtime
     await downtimeCubit.reportDowntime(newLog);
@@ -81,7 +83,7 @@ class DowntimeSheetController {
         spareParts: const [],
       );
 
-      await workOrderCubit.createWorkOrder(newWorkOrder);
+      await workOrderCubit.createWorkOrder(newWorkOrder, caller: currentUser);
     }
 
     // 3. Update Machine Status

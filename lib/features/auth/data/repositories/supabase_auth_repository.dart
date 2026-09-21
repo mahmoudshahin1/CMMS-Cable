@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/errors/auth_exceptions.dart';
+import '../../../../core/auth/user_directory_helper.dart';
 import '../../domain/models/user_model.dart';
 import '../../domain/repositories/auth_repository.dart';
 
@@ -105,6 +106,7 @@ class SupabaseAuthRepository implements AuthRepository {
       );
 
       _cachedUser = profile;
+      UserDirectoryHelper.registerUser(profile);
       return profile;
     } on ProfileNotFoundException {
       rethrow;
@@ -170,9 +172,11 @@ class SupabaseAuthRepository implements AuthRepository {
       final response = await query;
       debugPrint('📡 SupabaseAuthRepository: got ${response.length} users for role=$role');
 
-      return response
+      final users = response
           .map((row) => UserModel.fromSupabaseProfile(row, email: ''))
           .toList();
+      UserDirectoryHelper.registerUsers(users);
+      return users;
     } on SocketException {
       throw const NetworkException();
     } catch (e) {

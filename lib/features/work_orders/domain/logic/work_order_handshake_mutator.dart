@@ -1,3 +1,4 @@
+import '../../../../core/auth/user_directory_helper.dart';
 import '../../../../core/errors/security_exceptions.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../models/work_order_model.dart';
@@ -14,8 +15,9 @@ class WorkOrderHandshakeMutator {
     WorkOrderModel wo,
     String technicianId,
     String supervisorId,
-    UserModel? caller,
-  ) {
+    UserModel? caller, {
+    String? technicianName,
+  }) {
     WorkOrderSecurityGuard.validateAssign(caller);
 
     if (wo.status != WorkOrderStatus.open &&
@@ -28,15 +30,25 @@ class WorkOrderHandshakeMutator {
       );
     }
 
+    final resolvedTech = (technicianName != null && technicianName.trim().isNotEmpty)
+        ? technicianName
+        : (UserDirectoryHelper.resolveName(technicianId) ?? technicianId);
+
+    final resolvedSup = (caller != null && caller.name.trim().isNotEmpty)
+        ? caller.name
+        : (UserDirectoryHelper.resolveName(supervisorId) ?? supervisorId);
+
     final log = WorkOrderActivityLogger.createLog(
       stepName: 'ASSIGNED',
       caller: caller,
-      actionSummary: 'Assigned to technician $technicianId',
+      actionSummary: 'Assigned to technician $resolvedTech',
       details: {
+        'technician': resolvedTech,
+        'supervisor': resolvedSup,
         'technicianId': technicianId,
         'supervisorId': supervisorId,
       },
-      fallbackName: supervisorId,
+      fallbackName: resolvedSup,
       fallbackRole: 'MAINTENANCE_SUPERVISOR',
     );
 

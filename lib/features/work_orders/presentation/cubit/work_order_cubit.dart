@@ -56,13 +56,14 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
 
   Future<void> assignTechnician(
       String workOrderId, String technicianId, String supervisorId,
-      {UserModel? caller}) async {
+      {UserModel? caller, String? technicianName}) async {
     try {
       await repository.assignTechnician(
         workOrderId,
         technicianId,
         supervisorId,
         caller: caller,
+        technicianName: technicianName,
       );
       await loadWorkOrders(silent: true);
     } on SecurityException catch (e) {

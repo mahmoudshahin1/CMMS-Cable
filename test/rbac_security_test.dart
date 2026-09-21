@@ -98,7 +98,7 @@ class InMemorySecureWorkOrderRepository implements WorkOrderRepository {
   @override
   Future<void> assignTechnician(
       String workOrderId, String technicianId, String supervisorId,
-      {UserModel? caller}) async {
+      {UserModel? caller, String? technicianName}) async {
     if (caller != null && caller.role != UserRole.maintenanceSupervisor) {
       throw UnauthorizedRoleException(
         requiredRole: 'Maintenance Supervisor',
