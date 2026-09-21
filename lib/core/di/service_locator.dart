@@ -6,6 +6,7 @@ import '../sync/outbox/outbox_local_data_source.dart';
 import '../sync/outbox/outbox_sync_engine.dart';
 import '../sync/delta/delta_sync_coordinator.dart';
 import '../sync/realtime/supabase_realtime_sync_service.dart';
+import '../storage/attachment_service.dart';
 
 // Assets Feature
 import '../../features/assets/data/datasources/hive_machine_local_data_source.dart';
@@ -50,6 +51,10 @@ Future<void> setupServiceLocator() async {
 
   getIt.registerLazySingleton<OutboxLocalDataSource>(
     () => HiveOutboxLocalDataSource(),
+  );
+
+  getIt.registerLazySingleton<AttachmentService>(
+    () => AttachmentService(),
   );
 
   // ---------------------------------------------------------------------------

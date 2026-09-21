@@ -109,13 +109,14 @@ class OutboxSyncEngine {
         await _outboxLocal.markCompleted(cmd.commandId);
       } catch (e) {
         final errStr = e.toString();
+        final isRateLimit = _isRateLimited(e);
         final isPoisonPill = _isPermanentRejection(e);
 
         if (isPoisonPill) {
           debugPrint('☠️ Poison pill detected on command ${cmd.commandId}: $errStr');
           await _outboxLocal.markFailed(cmd.commandId, errStr, isDeadLetter: true);
         } else {
-          final backoffSec = _calculateBackoff(cmd.attempts);
+          final backoffSec = _calculateBackoff(cmd.attempts, isRateLimited: isRateLimit);
           debugPrint('⏳ Transient failure on ${cmd.commandId}: $errStr. Backoff: ${backoffSec}s');
           await _outboxLocal.markFailed(cmd.commandId, errStr, isDeadLetter: false);
           break; // Stop further commands for this specific aggregate to preserve FIFO
@@ -136,10 +137,31 @@ class OutboxSyncEngine {
     }
   }
 
-  bool _isPermanentRejection(Object error) {
+  bool isPermanentRejection(Object error) => _isPermanentRejection(error);
+  bool isRateLimited(Object error) => _isRateLimited(error);
+  int calculateBackoff(int attempts, {bool isRateLimited = false}) =>
+      _calculateBackoff(attempts, isRateLimited: isRateLimited);
+
+  bool _isRateLimited(Object error) {
     if (error is PostgrestException) {
       final code = error.code ?? '';
-      // 42501 (RLS violation), P0001 (Raise exception / validation), P0002 (Not found), 23505 (unique)
+      final msg = error.message.toUpperCase();
+      if (code == 'P0429' || code == '429' || msg.contains('RATE_LIMIT')) {
+        return true;
+      }
+    }
+    final str = error.toString().toUpperCase();
+    return str.contains('P0429') || str.contains('RATE_LIMIT') || str.contains('429');
+  }
+
+  bool _isPermanentRejection(Object error) {
+    if (_isRateLimited(error)) {
+      return false; // Throttling is transient, never a poison pill
+    }
+
+    if (error is PostgrestException) {
+      final code = error.code ?? '';
+      // 42501 (RLS violation), P0001 (Raise exception / validation), P0002 (Not found)
       if (code == '42501' || code == 'P0001' || code == 'P0002') return true;
       final msg = error.message.toUpperCase();
       if (msg.contains('UNAUTHORIZED') ||
@@ -168,7 +190,11 @@ class OutboxSyncEngine {
     return false;
   }
 
-  int _calculateBackoff(int attempts) {
+  int _calculateBackoff(int attempts, {bool isRateLimited = false}) {
+    if (isRateLimited) {
+      final jitter = _random.nextInt(10);
+      return min(60, 30 + (attempts * 5) + jitter);
+    }
     final exp = min(6, attempts);
     final base = pow(2, exp).toInt();
     final jitter = _random.nextInt(3);
