@@ -17,10 +17,11 @@ class AttachmentService {
   static const Set<String> allowedExtensions = {'.jpg', '.jpeg', '.png', '.webp'};
   static const _uuid = Uuid();
 
-  final SupabaseClient _client;
+  final SupabaseClient? _client;
 
-  AttachmentService({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+  AttachmentService({SupabaseClient? client}) : _client = client;
+
+  SupabaseClient get _effectiveClient => _client ?? Supabase.instance.client;
 
   /// Validates file size and format against strict industrial CMMS constraints.
   void validateAttachment({
@@ -65,7 +66,7 @@ class AttachmentService {
 
     debugPrint('📤 AttachmentService: uploading ${bytes.length} bytes to $bucketName/$storagePath');
 
-    await _client.storage.from(bucketName).uploadBinary(
+    await _effectiveClient.storage.from(bucketName).uploadBinary(
           storagePath,
           bytes,
           fileOptions: FileOptions(
@@ -83,14 +84,14 @@ class AttachmentService {
     String storagePath, {
     int expiresInSeconds = 3600, // 1 hour default
   }) async {
-    return _client.storage
+    return _effectiveClient.storage
         .from(bucketName)
         .createSignedUrl(storagePath, expiresInSeconds);
   }
 
   /// Removes attachment from storage bucket.
   Future<void> deleteAttachment(String storagePath) async {
-    await _client.storage.from(bucketName).remove([storagePath]);
+    await _effectiveClient.storage.from(bucketName).remove([storagePath]);
   }
 
   String _extractExtension(String fileName) {
