@@ -1,5 +1,7 @@
--- ============================================================
--- Cable Ops CMMS — Fix Supabase auth.users & auth.identities
+-- ==============================================================================
+-- DEPRECATED: contains an unconditional multi-user auth.users UPDATE and hardcoded credentials. Do not execute.
+-- ==============================================================================
+-- Cable Ops CMMS — Fix Supabase auth.users & auth.identities (ARCHIVED)
 -- شغل هذا الكود في Supabase Dashboard -> SQL Editor -> New Query
 -- ============================================================
 
