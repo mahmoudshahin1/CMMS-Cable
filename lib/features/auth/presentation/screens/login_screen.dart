@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -79,9 +80,10 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _onSelectQuickAccount(String email, String labelKey) {
+    const demoPassword = String.fromEnvironment('DEMO_PASSWORD', defaultValue: '123456');
     setState(() {
       _emailController.text = email;
-      _passwordController.text = '123456';
+      _passwordController.text = demoPassword;
     });
     final label = context.tr(labelKey);
     ScaffoldMessenger.of(context)
@@ -172,11 +174,13 @@ class _LoginScreenState extends State<LoginScreen>
                             passwordController: _passwordController,
                             onSignIn: _onSignIn,
                           ),
-                          const SizedBox(height: 28),
-                          LoginQuickAccessPanel(
-                            isDark: isDark,
-                            onSelectAccount: _onSelectQuickAccount,
-                          ),
+                          if (kDebugMode || const bool.fromEnvironment('DEMO_LOGIN', defaultValue: true)) ...[
+                            const SizedBox(height: 28),
+                            LoginQuickAccessPanel(
+                              isDark: isDark,
+                              onSelectAccount: _onSelectQuickAccount,
+                            ),
+                          ],
                           const SizedBox(height: 20),
                           Text(
                             context.tr('login_footer'),

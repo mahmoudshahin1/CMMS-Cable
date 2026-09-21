@@ -8,12 +8,15 @@ class SupabaseConfig {
   /// Your Supabase project URL.
   /// Example: 'https://xyzcompany.supabase.co'
   // TODO: INSERT YOUR SUPABASE PROJECT URL
-  static const String projectUrl =
-      'https://ptlzpwfrrxfqfprkvbuf.supabase.co';
+  static const String projectUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://ptlzpwfrrxfqfprkvbuf.supabase.co',
+  );
 
   /// Your Supabase publishable (anonymous) key.
   /// This is safe to expose in client-side code.
-  // TODO: INSERT YOUR SUPABASE PUBLISHABLE KEY
-  static const String publishableKey =
-      'sb_publishable_EejIRNDd-fW5B60sgLKtWA_n5VQWwKt';
+  static const String publishableKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: 'sb_publishable_EejIRNDd-fW5B60sgLKtWA_n5VQWwKt',
+  );
 }
