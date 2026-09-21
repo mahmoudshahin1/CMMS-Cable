@@ -4,6 +4,7 @@ import '../../localization/app_strings.dart';
 import '../../../features/auth/domain/enums/user_role.dart';
 import '../../../features/auth/presentation/widgets/role_guard.dart';
 import '../../../features/work_orders/presentation/screens/create_repair_request_screen.dart';
+import '../../sync/presentation/sync_status_badge.dart';
 
 /// Desktop top bar with breadcrumb navigation and quick-action buttons.
 /// Displayed above the main content area on wide-screen layouts (≥850px).
@@ -57,6 +58,8 @@ class DesktopTopbar extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          const SyncStatusBadge(),
+          const SizedBox(width: 16),
           RoleGuard(
             allowedRoles: const [
               UserRole.operator,
