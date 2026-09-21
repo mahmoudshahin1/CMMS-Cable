@@ -2,9 +2,11 @@ import '../../domain/repositories/downtime_repository.dart';
 import '../../domain/models/downtime_log_model.dart';
 import '../../domain/enums/downtime_category.dart';
 import '../../../../core/chronology/event_chronology.dart';
+import '../../../../core/sync/outbox/outbox_sync_engine.dart';
 import '../datasources/downtime_local_data_source.dart';
 import '../datasources/hive_downtime_local_data_source.dart';
 import '../datasources/downtime_remote_data_source.dart';
+import '../datasources/downtime_outbox_factory.dart';
 
 /// Repository orchestrator for Downtime Logs.
 ///
@@ -13,12 +15,15 @@ import '../datasources/downtime_remote_data_source.dart';
 class HiveDowntimeRepository implements DowntimeRepository {
   final DowntimeLocalDataSource _localDataSource;
   final DowntimeRemoteDataSource? _remoteDataSource;
+  final OutboxSyncEngine? _syncEngine;
 
   HiveDowntimeRepository({
     DowntimeLocalDataSource? localDataSource,
     DowntimeRemoteDataSource? remoteDataSource,
+    OutboxSyncEngine? syncEngine,
   })  : _localDataSource = localDataSource ?? HiveDowntimeLocalDataSource(),
-        _remoteDataSource = remoteDataSource;
+        _remoteDataSource = remoteDataSource,
+        _syncEngine = syncEngine;
 
   @override
   Future<List<DowntimeLogModel>> getAllDowntimeLogs() async {
@@ -46,6 +51,7 @@ class HiveDowntimeRepository implements DowntimeRepository {
     );
     await _localDataSource.cacheDowntimeLog(withChrono);
     _remoteDataSource?.syncDowntimeLog(withChrono);
+    _syncEngine?.enqueueAndTrigger(DowntimeOutboxFactory.create(withChrono));
     return withChrono;
   }
 
@@ -61,6 +67,7 @@ class HiveDowntimeRepository implements DowntimeRepository {
       );
       await _localDataSource.updateDowntimeLog(updated);
       _remoteDataSource?.syncDowntimeLog(updated);
+      _syncEngine?.enqueueAndTrigger(DowntimeOutboxFactory.close(updated));
     }
   }
 

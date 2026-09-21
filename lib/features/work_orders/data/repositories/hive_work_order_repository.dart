@@ -12,25 +12,34 @@ import '../datasources/work_order_local_data_source.dart';
 import '../datasources/hive_work_order_local_data_source.dart';
 import '../datasources/work_order_remote_data_source.dart';
 
+import '../../../../core/sync/outbox/outbox_command.dart';
+import '../../../../core/sync/outbox/outbox_sync_engine.dart';
+import '../datasources/work_order_outbox_factory.dart';
+
 /// Repository orchestrator for Work Orders.
-///
-/// Coordinates between [WorkOrderLocalDataSource] (Hive offline cache),
-/// optional [WorkOrderRemoteDataSource] (Supabase backend),
-/// and domain logic ([WorkOrderStateMachine], [WorkOrderActivityLogger], [WorkOrderSecurityGuard], [WorkOrderHandshakeMutator]).
 class HiveWorkOrderRepository implements WorkOrderRepository {
   final WorkOrderLocalDataSource _localDataSource;
   final WorkOrderRemoteDataSource? _remoteDataSource;
+  final OutboxSyncEngine? _syncEngine;
 
   HiveWorkOrderRepository({
     WorkOrderLocalDataSource? localDataSource,
     WorkOrderRemoteDataSource? remoteDataSource,
+    OutboxSyncEngine? syncEngine,
   })  : _localDataSource =
             localDataSource ?? HiveWorkOrderLocalDataSource(),
-        _remoteDataSource = remoteDataSource;
+        _remoteDataSource = remoteDataSource,
+        _syncEngine = syncEngine;
 
-  Future<void> _persistAndSync(WorkOrderModel updated) async {
+  Future<void> _persistAndSync(
+    WorkOrderModel updated, [
+    OutboxCommand? command,
+  ]) async {
     await _localDataSource.cacheWorkOrder(updated);
     _remoteDataSource?.syncWorkOrder(updated);
+    if (command != null) {
+      _syncEngine?.enqueueAndTrigger(command);
+    }
   }
 
   @override
@@ -82,7 +91,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       activityLogs: [...workOrder.activityLogs, initialLog],
     );
 
-    await _persistAndSync(updated);
+    await _persistAndSync(updated, WorkOrderOutboxFactory.create(updated));
     return updated;
   }
 
@@ -137,7 +146,10 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       supervisorId,
       caller,
     );
-    await _persistAndSync(updated);
+    await _persistAndSync(
+      updated,
+      WorkOrderOutboxFactory.assign(updated, technicianId),
+    );
   }
 
   @override
@@ -149,7 +161,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     if (wo == null) return;
 
     final updated = WorkOrderHandshakeMutator.applyStartRepair(wo, caller);
-    await _persistAndSync(updated);
+    await _persistAndSync(updated, WorkOrderOutboxFactory.start(updated));
   }
 
   @override
@@ -166,7 +178,10 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       sparePart,
       caller,
     );
-    await _persistAndSync(updated);
+    await _persistAndSync(
+      updated,
+      WorkOrderOutboxFactory.addPart(updated, sparePart),
+    );
   }
 
   @override
@@ -185,7 +200,14 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       actionsTaken: actionsTaken,
       caller: caller,
     );
-    await _persistAndSync(updated);
+    await _persistAndSync(
+      updated,
+      WorkOrderOutboxFactory.complete(
+        updated,
+        rootCause: rootCause,
+        actionsTaken: actionsTaken,
+      ),
+    );
   }
 
   @override
@@ -197,7 +219,10 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     if (wo == null) return;
 
     final updated = WorkOrderHandshakeMutator.applyConfirmTestRun(wo, caller);
-    await _persistAndSync(updated);
+    await _persistAndSync(
+      updated,
+      WorkOrderOutboxFactory.confirmTestRun(updated),
+    );
   }
 
   @override
@@ -209,6 +234,6 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     if (wo == null) return;
 
     final updated = WorkOrderHandshakeMutator.applyApproveAndClose(wo, caller);
-    await _persistAndSync(updated);
+    await _persistAndSync(updated, WorkOrderOutboxFactory.close(updated));
   }
 }
