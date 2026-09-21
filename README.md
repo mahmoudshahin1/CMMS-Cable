@@ -140,7 +140,7 @@ The system is fully seeded with **12 dedicated accounts** mirroring the actual c
 | 🛡️ **Screening Line Operator**| `op.screening@cable.com`| Line 6: Copper Wire Screening | Report Line 6 breakdowns, view machine telemetry, confirm test runs |
 | ⛓️ **Armouring Line Operator**| `op.tape@cable.com` | Line 7: Steel Tape Armouring | Report Line 7 breakdowns, view machine telemetry, confirm test runs |
 
-> **Default Seed Password for All Accounts:** `Cable@2026!`
+> 🔒 **Account Credentials:** Passwords must be configured securely and stored in a password manager or project vault. Never commit plaintext passwords to source control.
 
 ---
 
@@ -244,8 +244,8 @@ flutter pub get
 ```
 
 ### 3. Database & Supabase Provisioning
-Execute the pre-configured SQL script in your Supabase SQL Editor to provision schemas, tables, and the 12 factory seed accounts:
-- Open [`supabase_fix_and_provision_all.sql`](supabase_fix_and_provision_all.sql) in Supabase Studio SQL Editor and click **Run**.
+Execute the ordered migrations located in `supabase/migrations/` sequentially via your Supabase CLI or SQL Editor:
+- Migrations are versioned and follow strict Row-Level Security (RLS) policies. Legacy provisioning scripts are deprecated and isolated under `supabase/legacy/`.
 
 ### 4. Run Automated Tests
 ```bash
