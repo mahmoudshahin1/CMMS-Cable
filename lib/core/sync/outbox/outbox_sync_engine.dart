@@ -23,19 +23,27 @@ class OutboxSyncEngine {
   final _countController = StreamController<int>.broadcast();
 
   bool _isSyncing = false;
+  bool _needsResync = false;
   final Random _random = Random();
   StreamSubscription<bool>? _netSub;
+  Timer? _periodicTimer;
 
   OutboxSyncEngine({
     required OutboxLocalDataSource outboxLocal,
     required WorkOrderRemoteDataSource workOrderRemote,
     required DowntimeRemoteDataSource downtimeRemote,
     NetworkConnectivityChecker? networkChecker,
+    Duration periodicInterval = const Duration(seconds: 15),
+    bool autoStartSync = true,
   })  : _outboxLocal = outboxLocal,
         _workOrderRemote = workOrderRemote,
         _downtimeRemote = downtimeRemote,
         _networkChecker = networkChecker {
     _initConnectivityListener();
+    _initPeriodicSync(periodicInterval);
+    if (autoStartSync) {
+      unawaited(syncNow());
+    }
   }
 
   Stream<SyncEngineState> get stateStream => _stateController.stream;
@@ -50,6 +58,16 @@ class OutboxSyncEngine {
     });
   }
 
+  void _initPeriodicSync(Duration interval) {
+    if (interval > Duration.zero) {
+      _periodicTimer = Timer.periodic(interval, (_) {
+        if (!_isSyncing) {
+          syncNow();
+        }
+      });
+    }
+  }
+
   Future<void> enqueueAndTrigger(OutboxCommand command) async {
     await _outboxLocal.enqueue(command);
     await _updateCount();
@@ -58,6 +76,7 @@ class OutboxSyncEngine {
 
   Future<int> syncNow() async {
     if (_isSyncing) {
+      _needsResync = true;
       return _outboxLocal.getPendingCount();
     }
 
@@ -73,15 +92,20 @@ class OutboxSyncEngine {
     _stateController.add(SyncEngineState.syncing);
 
     try {
-      final pendingList = await _outboxLocal.getPendingCommands();
-      final grouped = <String, List<OutboxCommand>>{};
-      for (final cmd in pendingList) {
-        grouped.putIfAbsent(cmd.aggregateId, () => []).add(cmd);
-      }
+      do {
+        _needsResync = false;
+        final pendingList = await _outboxLocal.getPendingCommands();
+        if (pendingList.isEmpty) break;
 
-      for (final entry in grouped.entries) {
-        await _processAggregateCommands(entry.value);
-      }
+        final grouped = <String, List<OutboxCommand>>{};
+        for (final cmd in pendingList) {
+          grouped.putIfAbsent(cmd.aggregateId, () => []).add(cmd);
+        }
+
+        for (final entry in grouped.entries) {
+          await _processAggregateCommands(entry.value);
+        }
+      } while (_needsResync);
 
       _stateController.add(SyncEngineState.idle);
     } catch (e) {
@@ -107,6 +131,7 @@ class OutboxSyncEngine {
       try {
         await _dispatchCommand(cmd);
         await _outboxLocal.markCompleted(cmd.commandId);
+        await _updateCount(); // Progressive live decrement per command
       } catch (e) {
         final errStr = e.toString();
         final isRateLimit = _isRateLimited(e);
@@ -213,6 +238,7 @@ class OutboxSyncEngine {
   }
 
   void dispose() {
+    _periodicTimer?.cancel();
     _netSub?.cancel();
     _stateController.close();
     _countController.close();

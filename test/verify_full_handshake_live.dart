@@ -1,8 +1,10 @@
 // ignore_for_file: avoid_print, depend_on_referenced_packages
 import 'dart:io';
 import 'package:supabase/supabase.dart';
+import 'package:uuid/uuid.dart';
 
 void main() async {
+  final uuid = const Uuid();
   print('================================================================');
   print('⚡ CABLE OPS CMMS — VERIFYING 5-STEP HANDSHAKE LIFECYCLE ON SUPABASE');
   print('================================================================\n');
@@ -31,14 +33,14 @@ void main() async {
     print('   - مشرف الصيانة: م. هشام راضي ($supId)');
     print('   - فني الكهرباء: طارق المنصور ($techId)\n');
 
-    final testWoId = '33333333-4444-5555-6666-777777777777';
+    final testWoId = uuid.v4();
     final machineId = 'DR02'; // خط سحب نحاس 02
 
     // -------------------------------------------------------------
     // STAGE 1: Report Breakdown (المشغل يفتح بلاغ عطل)
     // -------------------------------------------------------------
     print('📝 [1/7] المرحلة 1: المشغل يفتح بلاغ عطل طارئ على ماكينة $machineId...');
-    final cmd1 = '10000000-0000-0000-0000-000000000001';
+    final cmd1 = uuid.v4();
     final res1 = await opClient.rpc('rpc_create_work_order', params: {
       'p_command_id': cmd1,
       'p_wo_id': testWoId,
@@ -60,7 +62,7 @@ void main() async {
     // STAGE 2: Assign Technician (مشرف الصيانة يعين الفني)
     // -------------------------------------------------------------
     print('📋 [2/7] المرحلة 2: مشرف الصيانة يعيّن فني الكهرباء طارق المنصور...');
-    final cmd2 = '10000000-0000-0000-0000-000000000002';
+    final cmd2 = uuid.v4();
     final res2 = await supClient.rpc('rpc_assign_work_order', params: {
       'p_command_id': cmd2,
       'p_wo_id': testWoId,
@@ -75,7 +77,7 @@ void main() async {
     // STAGE 3: Start Repair (فني الكهرباء يبدأ أعمال الصيانة)
     // -------------------------------------------------------------
     print('🔧 [3/7] المرحلة 3: فني الكهرباء يسجل بدء أعمال الإصلاح...');
-    final cmd3 = '10000000-0000-0000-0000-000000000003';
+    final cmd3 = uuid.v4();
     final res3 = await techClient.rpc('rpc_start_work_order', params: {
       'p_command_id': cmd3,
       'p_wo_id': testWoId,
@@ -92,8 +94,8 @@ void main() async {
     // STAGE 4: Add Spare Part (الفني يسجل استهلاك قطعة غيار من المخزن)
     // -------------------------------------------------------------
     print('📦 [4/7] المرحلة 4: الفني يسجل استبدال حساس حرارة PT100 من المخزن...');
-    final cmd4 = '10000000-0000-0000-0000-000000000004';
-    final partId = '44444444-1111-2222-3333-444444444444';
+    final cmd4 = uuid.v4();
+    final partId = uuid.v4();
     final res4 = await techClient.rpc('rpc_add_work_order_part', params: {
       'p_command_id': cmd4,
       'p_part_id': partId,
@@ -111,7 +113,7 @@ void main() async {
     // STAGE 5: Complete Repair (الفني يوثق السبب والإجراء وينهي الإصلاح)
     // -------------------------------------------------------------
     print('🛠️ [5/7] المرحلة 5: الفني يوثق السبب الجذري والإجراء المتخذ وينهي الإصلاح...');
-    final cmd5 = '10000000-0000-0000-0000-000000000005';
+    final cmd5 = uuid.v4();
     final res5 = await techClient.rpc('rpc_complete_work_order', params: {
       'p_command_id': cmd5,
       'p_wo_id': testWoId,
@@ -127,7 +129,7 @@ void main() async {
     // STAGE 6: Confirm Test Run (المشغل يؤكد نجاح تجربة التشغيل الميداني)
     // -------------------------------------------------------------
     print('🎯 [6/7] المرحلة 6: المشغل يؤكد نجاح اختبار التشغيل الميداني للماكينة...');
-    final cmd6 = '10000000-0000-0000-0000-000000000006';
+    final cmd6 = uuid.v4();
     final res6 = await opClient.rpc('rpc_confirm_test_run', params: {
       'p_command_id': cmd6,
       'p_wo_id': testWoId,
@@ -142,7 +144,7 @@ void main() async {
     // STAGE 7: Verified Close (مشرف الصيانة يغلق أمر العمل رسمياً)
     // -------------------------------------------------------------
     print('🏁 [7/7] المرحلة 7: مشرف الصيانة يصادق ويغلق أمر العمل نهائياً...');
-    final cmd7 = '10000000-0000-0000-0000-000000000007';
+    final cmd7 = uuid.v4();
     final res7 = await supClient.rpc('rpc_close_work_order', params: {
       'p_command_id': cmd7,
       'p_wo_id': testWoId,

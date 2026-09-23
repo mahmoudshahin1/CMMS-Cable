@@ -233,4 +233,39 @@ void main() {
     expect(fakeOutbox.getCommand('durable-uuid-v4-001')!.status, equals(OutboxCommandStatus.completed));
     expect(mockWorkOrderRemote.executedCommands.last.commandId, equals('durable-uuid-v4-001'));
   });
+
+  test('Self-draining loop: commands enqueued while sync is running are automatically drained', () async {
+    final now = DateTime.now();
+    final cmd1 = OutboxCommand(
+      commandId: 'cmd-drain-1',
+      commandType: 'create_work_order',
+      aggregateId: 'WO-DRAIN-1',
+      payload: {},
+      occurredAt: now,
+    );
+    final cmd2 = OutboxCommand(
+      commandId: 'cmd-drain-2',
+      commandType: 'create_work_order',
+      aggregateId: 'WO-DRAIN-2',
+      payload: {},
+      occurredAt: now.add(const Duration(seconds: 1)),
+    );
+
+    await fakeOutbox.enqueue(cmd1);
+
+    // When cmd1 is dispatched, enqueue cmd2 and call enqueueAndTrigger to simulate re-entrancy
+    mockWorkOrderRemote.executedCommands.clear();
+    // Start syncing cmd1
+    final syncFuture = engine.syncNow();
+
+    // Enqueue cmd2 and trigger while sync is in progress
+    await engine.enqueueAndTrigger(cmd2);
+
+    await syncFuture;
+
+    // Both cmd1 and cmd2 should be completed because the self-draining loop picked up cmd2!
+    expect(mockWorkOrderRemote.executedCommands.length, equals(2));
+    expect(fakeOutbox.getCommand('cmd-drain-1')!.status, equals(OutboxCommandStatus.completed));
+    expect(fakeOutbox.getCommand('cmd-drain-2')!.status, equals(OutboxCommandStatus.completed));
+  });
 }
