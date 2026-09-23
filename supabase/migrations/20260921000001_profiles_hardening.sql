@@ -16,6 +16,11 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure role column is TEXT (in case table was previously created with user_role_enum)
+ALTER TABLE public.user_profiles ALTER COLUMN role DROP DEFAULT;
+ALTER TABLE public.user_profiles ALTER COLUMN role TYPE TEXT USING role::text;
+ALTER TABLE public.user_profiles ALTER COLUMN role SET DEFAULT 'OPERATOR';
+
 -- Ensure RLS is active
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
@@ -28,6 +33,9 @@ GRANT SELECT ON public.user_profiles TO authenticated;
 GRANT UPDATE (full_name) ON public.user_profiles TO authenticated;
 
 -- 4. Helper functions for role & department scoping (SECURITY DEFINER with empty search_path)
+DROP FUNCTION IF EXISTS public.current_user_role() CASCADE;
+DROP FUNCTION IF EXISTS public.current_user_department() CASCADE;
+
 CREATE OR REPLACE FUNCTION public.current_user_role()
 RETURNS TEXT
 LANGUAGE sql

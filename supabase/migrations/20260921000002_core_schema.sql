@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS public.work_order_commands (
 CREATE TABLE IF NOT EXISTS public.work_order_events (
   id UUID PRIMARY KEY,
   work_order_id UUID NOT NULL REFERENCES public.work_orders(id) ON DELETE CASCADE,
-  command_id UUID REFERENCES public.work_order_commands(command_id) ON DELETE SET NULL,
+  command_id UUID REFERENCES public.work_order_commands(command_id) ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED,
   event_type TEXT NOT NULL,
   actor_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id),
   occurred_at TIMESTAMPTZ NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS public.work_order_events (
 CREATE TABLE IF NOT EXISTS public.work_order_parts (
   id UUID PRIMARY KEY,
   work_order_id UUID NOT NULL REFERENCES public.work_orders(id) ON DELETE CASCADE,
-  command_id UUID REFERENCES public.work_order_commands(command_id) ON DELETE SET NULL,
+  command_id UUID REFERENCES public.work_order_commands(command_id) ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED,
   part_code TEXT,
   part_name TEXT NOT NULL,
   quantity NUMERIC NOT NULL CHECK (quantity > 0),

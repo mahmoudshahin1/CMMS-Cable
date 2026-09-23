@@ -161,8 +161,14 @@ class OutboxSyncEngine {
 
     if (error is PostgrestException) {
       final code = error.code ?? '';
-      // 42501 (RLS violation), P0001 (Raise exception / validation), P0002 (Not found)
-      if (code == '42501' || code == 'P0001' || code == 'P0002') return true;
+      // 42501 (RLS violation), P0001 (Raise exception / validation), P0002 (Not found), 22P02 (Type syntax error), 23502 (Not null constraint)
+      if (code == '42501' ||
+          code == 'P0001' ||
+          code == 'P0002' ||
+          code == '22P02' ||
+          code == '23502') {
+        return true;
+      }
       final msg = error.message.toUpperCase();
       if (msg.contains('UNAUTHORIZED') ||
           msg.contains('FORBIDDEN') ||

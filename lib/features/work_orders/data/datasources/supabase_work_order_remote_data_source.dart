@@ -139,62 +139,62 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
       case 'create_work_order':
         return {
           'p_command_id': cmd.commandId,
-          'p_work_order_id': cmd.aggregateId,
+          'p_wo_id': cmd.aggregateId,
           'p_title': p['title'],
           'p_description': p['description'] ?? '',
           'p_machine_id': p['machine_id'],
           'p_type': p['type'] ?? 'breakdown',
           'p_priority': p['priority'] ?? 'medium',
-          'p_client_occurred_at': occurredIso,
+          'p_occurred_at': occurredIso,
         };
       case 'assign_work_order':
         return {
           'p_command_id': cmd.commandId,
-          'p_work_order_id': cmd.aggregateId,
+          'p_wo_id': cmd.aggregateId,
           'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
           'p_technician_id': p['technician_id'],
-          'p_client_occurred_at': occurredIso,
+          'p_occurred_at': occurredIso,
         };
       case 'start_work_order':
         return {
           'p_command_id': cmd.commandId,
-          'p_work_order_id': cmd.aggregateId,
+          'p_wo_id': cmd.aggregateId,
           'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
-          'p_client_occurred_at': occurredIso,
+          'p_occurred_at': occurredIso,
         };
       case 'add_work_order_part':
         return {
           'p_command_id': cmd.commandId,
           'p_part_id': p['part_id'],
-          'p_work_order_id': cmd.aggregateId,
+          'p_wo_id': cmd.aggregateId,
           'p_part_code': p['part_code'] ?? '',
           'p_part_name': p['part_name'],
           'p_quantity': p['quantity'],
           'p_unit_cost': p['unit_cost'] ?? 0.0,
-          'p_client_occurred_at': occurredIso,
+          'p_occurred_at': occurredIso,
         };
       case 'complete_work_order':
         return {
           'p_command_id': cmd.commandId,
-          'p_work_order_id': cmd.aggregateId,
+          'p_wo_id': cmd.aggregateId,
           'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
           'p_root_cause': p['root_cause'] ?? '',
           'p_actions_taken': p['actions_taken'] ?? '',
-          'p_client_occurred_at': occurredIso,
+          'p_occurred_at': occurredIso,
         };
       case 'confirm_test_run':
         return {
           'p_command_id': cmd.commandId,
-          'p_work_order_id': cmd.aggregateId,
+          'p_wo_id': cmd.aggregateId,
           'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
-          'p_client_occurred_at': occurredIso,
+          'p_occurred_at': occurredIso,
         };
       case 'close_work_order':
         return {
           'p_command_id': cmd.commandId,
-          'p_work_order_id': cmd.aggregateId,
+          'p_wo_id': cmd.aggregateId,
           'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
-          'p_client_occurred_at': occurredIso,
+          'p_occurred_at': occurredIso,
         };
       default:
         return {'p_command_id': cmd.commandId, ...p};

@@ -31,7 +31,7 @@ USING (
   bucket_id = 'work-order-attachments'
   AND (
     -- Admin, Plant Manager, or Maintenance Supervisor can view all attachments
-    private.current_app_role() IN ('admin', 'plantManager', 'maintenanceSupervisor')
+    private.current_app_role() IN ('ADMIN', 'admin', 'PLANT_MANAGER', 'plant_manager', 'SUPERVISOR', 'supervisor', 'MAINTENANCE_SUPERVISOR', 'maintenance_supervisor')
     OR
     -- Check work order department / technician scoping from path <work_order_id>/<file>
     EXISTS (
@@ -40,8 +40,8 @@ USING (
       WHERE wo.id::text = split_part(name, '/', 1)
         AND (
           m.department = private.current_app_department()
-          OR wo.assigned_to_technician_id = auth.uid()::text
-          OR wo.reported_by = auth.uid()::text
+          OR wo.assigned_to_technician_id = auth.uid()
+          OR wo.reported_by = auth.uid()
         )
     )
   )
@@ -56,7 +56,7 @@ TO authenticated
 WITH CHECK (
   bucket_id = 'work-order-attachments'
   AND (
-    private.current_app_role() IN ('admin', 'plantManager', 'maintenanceSupervisor')
+    private.current_app_role() IN ('ADMIN', 'admin', 'PLANT_MANAGER', 'plant_manager', 'SUPERVISOR', 'supervisor', 'MAINTENANCE_SUPERVISOR', 'maintenance_supervisor')
     OR
     EXISTS (
       SELECT 1 FROM public.work_orders wo
@@ -64,8 +64,8 @@ WITH CHECK (
       WHERE wo.id::text = split_part(name, '/', 1)
         AND (
           m.department = private.current_app_department()
-          OR wo.assigned_to_technician_id = auth.uid()::text
-          OR wo.reported_by = auth.uid()::text
+          OR wo.assigned_to_technician_id = auth.uid()
+          OR wo.reported_by = auth.uid()
         )
     )
   )
@@ -79,7 +79,7 @@ FOR DELETE
 TO authenticated
 USING (
   bucket_id = 'work-order-attachments'
-  AND private.current_app_role() IN ('admin', 'plantManager', 'maintenanceSupervisor')
+  AND private.current_app_role() IN ('ADMIN', 'admin', 'PLANT_MANAGER', 'plant_manager', 'SUPERVISOR', 'supervisor', 'MAINTENANCE_SUPERVISOR', 'maintenance_supervisor')
 );
 
 -- 3. Application-Level Rate Limiter Table and Helper
@@ -90,6 +90,8 @@ CREATE TABLE IF NOT EXISTS private.rate_limit_tracker (
   request_count INT NOT NULL DEFAULT 1,
   PRIMARY KEY (actor_id, action_key)
 );
+
+ALTER TABLE private.rate_limit_tracker ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION private.check_rpc_rate_limit(
   p_actor_id UUID,

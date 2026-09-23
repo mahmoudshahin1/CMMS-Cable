@@ -48,6 +48,7 @@ dependencies:
   google_nav_bar: ^5.0.7
   nav_bar: 0.1.1
   supabase_flutter: ^2.8.4
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

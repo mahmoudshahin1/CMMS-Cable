@@ -16,10 +16,7 @@ class DowntimeLoaded extends DowntimeState {
   final List<DowntimeLogModel> allLogs;
   final List<DowntimeLogModel> activeLogs;
 
-  const DowntimeLoaded({
-    required this.allLogs,
-    required this.activeLogs,
-  });
+  const DowntimeLoaded({required this.allLogs, required this.activeLogs});
 
   @override
   List<Object?> get props => [allLogs, activeLogs];

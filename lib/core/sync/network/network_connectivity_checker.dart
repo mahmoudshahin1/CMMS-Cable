@@ -1,6 +1,8 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
+
+import 'network_lookup_stub.dart'
+    if (dart.library.io) 'network_lookup_io.dart';
 
 /// Contract for checking network connectivity and online status.
 abstract class NetworkConnectivityChecker {
@@ -31,17 +33,9 @@ class DefaultNetworkConnectivityChecker implements NetworkConnectivityChecker {
 
   Future<bool> checkOnline() async {
     try {
-      final result = await InternetAddress.lookup('example.com')
-          .timeout(const Duration(seconds: 4));
-      final connected = result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+      final connected = await checkPlatformNetwork();
       _updateStatus(connected);
       return connected;
-    } on SocketException catch (_) {
-      _updateStatus(false);
-      return false;
-    } on TimeoutException catch (_) {
-      _updateStatus(false);
-      return false;
     } catch (e) {
       debugPrint('⚠️ NetworkConnectivityChecker unexpected error: $e');
       _updateStatus(false);
