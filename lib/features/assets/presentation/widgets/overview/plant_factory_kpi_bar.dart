@@ -22,14 +22,16 @@ class PlantFactoryKpiBar extends StatelessWidget {
         final userDept = currentUser?.department;
         final isPlantManager =
             currentUser?.role == UserRole.plantManager;
-        final hasDeptScope = userDept != null && !isPlantManager;
+        final isOperator =
+            currentUser?.role == UserRole.operator;
+        final hasDeptScope = isOperator || (userDept != null && !isPlantManager);
 
         int total = 0;
         int running = 0;
         int downtimes = 0;
 
         if (state is MachineLoaded) {
-          final scopedMachines = hasDeptScope
+          final scopedMachines = (hasDeptScope && userDept != null)
               ? state.allMachines
                   .where((m) => m.department == userDept)
                   .toList()

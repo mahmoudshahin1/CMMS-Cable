@@ -24,13 +24,14 @@ class WorkOrderScopeBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final isTech = currentUser?.role == UserRole.maintenanceTech;
     final isPlantManager = currentUser?.role == UserRole.plantManager;
+    final isOperator = currentUser?.role == UserRole.operator;
     final userDept = currentUser?.department;
-    final hasDeptScope = userDept != null && !isPlantManager;
+    final hasDeptScope = isOperator || (userDept != null && !isPlantManager && !isTech);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (hasDeptScope)
+        if (hasDeptScope && userDept != null)
           _buildScopeCard(
             context: context,
             icon: Icons.shield_outlined,
@@ -38,7 +39,7 @@ class WorkOrderScopeBanner extends StatelessWidget {
                 ? AppColors.cyberCyan
                 : AppColors.energyaPrimaryBlue,
             title: context.trArgs('dept_scope_label', {
-              'dept': userDept.displayName,
+              'dept': userDept.localizedName(context.isArabic),
             }),
             subtitle: context.tr('dept_scope_sub'),
             badgeText: context.trArgs(

@@ -9,6 +9,7 @@ import '../../features/downtime/domain/models/downtime_log_model.dart';
 import '../../features/work_orders/domain/models/work_order_model.dart';
 import '../../features/assets/domain/models/process_log_model.dart';
 import '../sync/outbox/outbox_command.dart';
+import '../auth/user_directory_helper.dart';
 
 class HiveService {
   static Future<void> init() async {
@@ -38,7 +39,7 @@ class HiveService {
 
     // Open Boxes
     final machinesBox = await Hive.openBox<MachineModel>(HiveBoxes.machinesBox);
-    await Hive.openBox<UserModel>(HiveBoxes.usersBox);
+    final usersBox = await Hive.openBox<UserModel>(HiveBoxes.usersBox);
     await Hive.openBox<DowntimeLogModel>(HiveBoxes.downtimeLogsBox);
     final workOrdersBox = await Hive.openBox<WorkOrderModel>(HiveBoxes.workOrdersBox);
     await Hive.openBox<ProcessLogModel>(HiveBoxes.processLogsBox);
@@ -52,6 +53,15 @@ class HiveService {
         await machinesBox.put(machine.id, machine);
       }
     }
+
+    // Ensure all standard users & technicians exist in usersBox
+    final initialUsers = FactorySeedData.getInitialUsers();
+    for (final user in initialUsers) {
+      if (!usersBox.containsKey(user.id)) {
+        await usersBox.put(user.id, user);
+      }
+    }
+    UserDirectoryHelper.registerUsers(usersBox.values);
 
     // Populate initial factory work orders seed data
     if (workOrdersBox.isEmpty) {

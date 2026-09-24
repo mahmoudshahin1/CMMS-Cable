@@ -133,23 +133,25 @@ class _CreateRepairRequestScreenState extends State<CreateRepairRequestScreen> {
           final currentUser = context.watch<AuthCubit>().currentUser;
           final userDept = currentUser?.department;
           final isPlantManager = currentUser?.role == UserRole.plantManager;
-          final hasDeptScope = userDept != null && !isPlantManager;
+          final isOperator = currentUser?.role == UserRole.operator;
+          final hasDeptScope = isOperator || (userDept != null && !isPlantManager);
 
           List<MachineModel> allMachines = [];
           if (machineState is MachineLoaded) {
             allMachines = machineState.allMachines;
           }
 
-          final List<MachineModel> selectableMachines = hasDeptScope
+          final List<MachineModel> selectableMachines = (hasDeptScope && userDept != null)
               ? allMachines.where((m) => m.department == userDept).toList()
-              : allMachines;
+              : (isOperator ? <MachineModel>[] : allMachines);
 
           if ((_selectedMachineId == null ||
                   !selectableMachines.any((m) => m.id == _selectedMachineId)) &&
               selectableMachines.isNotEmpty) {
-            _selectedMachineId = (widget.initialMachine?.id != null &&
-                    selectableMachines
-                        .any((m) => m.id == widget.initialMachine!.id))
+            final validInitialMachine = widget.initialMachine != null &&
+                selectableMachines.any((m) => m.id == widget.initialMachine!.id);
+
+            _selectedMachineId = validInitialMachine
                 ? widget.initialMachine!.id
                 : selectableMachines.first.id;
           }

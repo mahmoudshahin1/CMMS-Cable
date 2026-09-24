@@ -33,6 +33,12 @@ class MockAuthRepo implements AuthRepository {
     String role, {
     String? speciality,
   }) async => [];
+
+  @override
+  List<UserModel> getLocalUsersByRole(
+    String role, {
+    String? speciality,
+  }) => [];
 }
 
 void main() {

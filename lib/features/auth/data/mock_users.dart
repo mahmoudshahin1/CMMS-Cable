@@ -129,7 +129,9 @@ class MockUsers {
     return allMockUsers.where((u) {
       if (u.role != UserRole.maintenanceTech) return false;
       if (speciality != null && speciality.isNotEmpty) {
-        return u.speciality?.toLowerCase() == speciality.toLowerCase();
+        final uSpec = (u.speciality ?? '').toLowerCase();
+        final target = speciality.toLowerCase();
+        return uSpec.contains(target) || uSpec.contains('all') || target == 'all';
       }
       return true;
     }).toList();

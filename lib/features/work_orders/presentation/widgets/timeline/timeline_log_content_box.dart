@@ -19,7 +19,10 @@ class TimelineLogContentBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = context.isDarkMode;
     final stepColor = TimelineStepHelper.getStepColor(log.stepName);
-    final roleColor = TimelineStepHelper.getRoleBadgeColor(log.performedByRole);
+    final effectiveRole = (log.performedByRole == 'SYSTEM' || log.performedByRole.isEmpty)
+        ? _inferRoleFromStep(log.stepName)
+        : log.performedByRole;
+    final roleColor = TimelineStepHelper.getRoleBadgeColor(effectiveRole);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -65,7 +68,7 @@ class TimelineLogContentBox extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  log.performedByRole,
+                  effectiveRole,
                   style: TextStyle(
                     color: roleColor,
                     fontSize: 9.5,
@@ -81,13 +84,38 @@ class TimelineLogContentBox extends StatelessWidget {
           Builder(
             builder: (context) {
               final isOperatorDesk = log.performedByName == 'Operator Desk';
-              final resolvedName = isOperatorDesk
+              final isSystemUser = log.performedByName == 'System User' ||
+                  log.performedByName == 'System Automated';
+
+              String resolvedName = isOperatorDesk
                   ? (UserDirectoryHelper.currentUser?.name ?? log.performedByName)
                   : (UserDirectoryHelper.resolveName(log.performedByName) ?? log.performedByName);
 
+              if (isSystemUser) {
+                final techInDetails = log.details?['technician'] as String?;
+                final supInDetails = log.details?['supervisor'] as String?;
+                final techIdInDetails = log.details?['technicianId'] as String?;
+                final supIdInDetails = log.details?['supervisorId'] as String?;
+                final actorInDetails = log.details?['actorId'] as String?;
+
+                final fromDetails = techInDetails ??
+                    supInDetails ??
+                    UserDirectoryHelper.resolveName(techIdInDetails) ??
+                    UserDirectoryHelper.resolveName(supIdInDetails) ??
+                    UserDirectoryHelper.resolveName(actorInDetails);
+
+                if (fromDetails != null && fromDetails.trim().isNotEmpty) {
+                  resolvedName = fromDetails;
+                } else if (UserDirectoryHelper.currentUser != null) {
+                  resolvedName = UserDirectoryHelper.currentUser!.name;
+                }
+              }
+
               final resolvedEmail = (isOperatorDesk && log.performedByEmail.contains('system@'))
                   ? (UserDirectoryHelper.currentUser?.email ?? log.performedByEmail)
-                  : log.performedByEmail;
+                  : (isSystemUser && UserDirectoryHelper.currentUser != null
+                      ? (UserDirectoryHelper.currentUser?.email ?? log.performedByEmail)
+                      : log.performedByEmail);
 
               return Row(
                 children: [
@@ -147,5 +175,19 @@ class TimelineLogContentBox extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _inferRoleFromStep(String stepName) {
+    final upper = stepName.toUpperCase();
+    if (upper.contains('REPAIR') || upper.contains('PART')) {
+      return 'MAINTENANCE_TECH';
+    }
+    if (upper.contains('TEST') || upper.contains('REPORTED')) {
+      return 'OPERATOR';
+    }
+    if (upper.contains('ASSIGN') || upper.contains('CLOSE') || upper.contains('STATUS')) {
+      return 'MAINTENANCE_SUPERVISOR';
+    }
+    return 'SYSTEM';
   }
 }

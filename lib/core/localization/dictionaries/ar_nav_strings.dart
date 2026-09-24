@@ -34,6 +34,7 @@ const Map<String, String> arNavStrings = {
   'production': 'الإنتاج',
   'report_issue': 'إبلاغ عن عطل',
   'view_downtime': 'سجل التوقف',
+  'operator_machine_permission_denied': 'غير مصرح: مشغل الخط مصرح له فقط بالتعامل مع ماكينات قسمه',
 
   // QR Scanner
   'qr_scanner_title': 'قارئ الباركود و QR للماكينات',

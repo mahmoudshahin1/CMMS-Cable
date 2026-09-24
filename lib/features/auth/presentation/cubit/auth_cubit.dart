@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
@@ -8,6 +9,7 @@ import '../../domain/enums/user_role.dart';
 import '../../domain/enums/app_permission.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../../core/errors/auth_exceptions.dart';
+import '../../../../core/sync/manager/sync_manager.dart';
 
 /// Manages authentication state using a [AuthRepository] backend.
 ///
@@ -15,8 +17,13 @@ import '../../../../core/errors/auth_exceptions.dart';
 /// auto-restores the user if one is found.
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _authRepository;
+  final SyncManager? _syncManager;
 
-  AuthCubit(this._authRepository) : super(AuthInitial()) {
+  AuthCubit(
+    this._authRepository, {
+    SyncManager? syncManager,
+  })  : _syncManager = syncManager,
+        super(AuthInitial()) {
     _initAuth();
   }
 
@@ -33,6 +40,7 @@ class AuthCubit extends Cubit<AuthState> {
         final userId = session.user.id;
         final profile = await _authRepository.getUserProfile(userId);
         emit(Authenticated(profile));
+        unawaited(_syncManager?.onUserAuthenticated(profile));
       } else {
         emit(Unauthenticated());
       }
@@ -56,6 +64,7 @@ class AuthCubit extends Cubit<AuthState> {
       );
       debugPrint('✅ AuthCubit.signIn success: ${user.name} (${user.role})');
       emit(Authenticated(user));
+      unawaited(_syncManager?.onUserAuthenticated(user, forceInitialSync: true));
     } on InvalidCredentialsException catch (e) {
       debugPrint('❌ AuthCubit.signIn InvalidCredentialsException: ${e.message}');
       emit(AuthError(e.message));
@@ -73,6 +82,7 @@ class AuthCubit extends Cubit<AuthState> {
 
   /// Sign out and clear the session.
   Future<void> signOut() async {
+    _syncManager?.onUserLoggedOut();
     try {
       await _authRepository.signOut();
     } catch (_) {

@@ -34,4 +34,10 @@ abstract class AuthRepository {
     String role, {
     String? speciality,
   });
+
+  /// Synchronously returns locally cached users with the given [role] from Hive.
+  List<UserModel> getLocalUsersByRole(
+    String role, {
+    String? speciality,
+  });
 }

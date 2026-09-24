@@ -17,17 +17,17 @@ class PlantDepartmentFilterBar extends StatelessWidget {
       builder: (context, state) {
         final currentUser = context.watch<AuthCubit>().currentUser;
         final userDept = currentUser?.department;
-        final isPlantManager =
-            currentUser?.role == UserRole.plantManager;
-        final hasDeptScope = userDept != null && !isPlantManager;
+        final isPlantManager = currentUser?.role == UserRole.plantManager;
+        final isOperator = currentUser?.role == UserRole.operator;
+        final hasDeptScope = isOperator || (userDept != null && !isPlantManager);
 
-        final selectedDept = hasDeptScope
+        final selectedDept = (hasDeptScope && userDept != null)
             ? userDept
             : ((state is MachineLoaded) ? state.selectedDepartment : null);
 
         return DepartmentChipBar(
           selectedDepartment: selectedDept,
-          availableDepartments: hasDeptScope ? [userDept] : null,
+          availableDepartments: (hasDeptScope && userDept != null) ? [userDept] : null,
           showAllOption: !hasDeptScope,
           onDepartmentSelected: (dept) {
             if (!hasDeptScope) {

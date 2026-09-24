@@ -34,6 +34,7 @@ const Map<String, String> enNavStrings = {
   'production': 'PROD',
   'report_issue': 'REPORT ISSUE',
   'view_downtime': 'VIEW DOWNTIME',
+  'operator_machine_permission_denied': 'Access Denied: Line operators can only manage machines in their assigned line',
 
   // QR Scanner
   'qr_scanner_title': 'Machine Barcode & QR Scanner',

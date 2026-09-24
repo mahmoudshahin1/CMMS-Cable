@@ -8,6 +8,7 @@ import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/auth/user_directory_helper.dart';
+import '../../../auth/data/mock_users.dart';
 
 class AssignTechnicianDialog extends StatefulWidget {
   final WorkOrderModel workOrder;
@@ -40,29 +41,50 @@ class _AssignTechnicianDialogState extends State<AssignTechnicianDialog> {
   }
 
   Future<void> _loadTechnicians() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    final repo = getIt<AuthRepository>();
+
+    // 1. Cache-First: Display locally cached technicians immediately with 0ms delay
+    final localTechs = repo.getLocalUsersByRole(
+      'TECHNICIAN',
+      speciality: _selectedSpeciality,
+    );
+
+    if (localTechs.isNotEmpty) {
+      _technicians = localTechs;
+      _isLoading = false;
+      UserDirectoryHelper.registerUsers(localTechs);
+      if (mounted) setState(() {});
+    } else {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
+
+    // 2. Background Refresh: Pull latest technician profiles from Supabase if online
     try {
-      final repo = getIt<AuthRepository>();
-      final techs = await repo.getUsersByRole(
+      final remoteTechs = await repo.getUsersByRole(
         'TECHNICIAN',
         speciality: _selectedSpeciality,
-      );
-      UserDirectoryHelper.registerUsers(techs);
-      if (mounted) {
+      ).timeout(const Duration(seconds: 3));
+
+      if (remoteTechs.isNotEmpty && mounted) {
+        UserDirectoryHelper.registerUsers(remoteTechs);
         setState(() {
-          _technicians = techs;
+          _technicians = remoteTechs;
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = 'تعذّر تحميل قائمة الفنيين: $e';
-          _isLoading = false;
-        });
+      if (_technicians.isEmpty) {
+        final fallbackTechs = MockUsers.getTechnicians(speciality: _selectedSpeciality);
+        UserDirectoryHelper.registerUsers(fallbackTechs);
+        if (mounted) {
+          setState(() {
+            _technicians = fallbackTechs;
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -222,6 +244,17 @@ class _AssignTechnicianDialogState extends State<AssignTechnicianDialog> {
                 'لا يوجد فنيون متاحون',
                 style: TextStyle(color: context.textMutedColor),
               ),
+              if (_selectedSpeciality != null) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() => _selectedSpeciality = null);
+                    _loadTechnicians();
+                  },
+                  icon: const Icon(Icons.clear_all_rounded, size: 16),
+                  label: const Text('عرض جميع الفنيين'),
+                ),
+              ],
             ],
           ),
         ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'work_order_state.dart';
 import '../../domain/repositories/work_order_repository.dart';
@@ -6,11 +7,55 @@ import '../../domain/models/spare_part_model.dart';
 import '../../domain/enums/work_order_status.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../../../../core/errors/security_exceptions.dart';
+import '../../../../core/sync/models/sync_status.dart';
+import '../../../../core/sync/realtime/supabase_realtime_sync_service.dart';
+import '../../../../core/sync/delta/delta_sync_coordinator.dart';
+import '../../../../core/sync/outbox/outbox_sync_engine.dart';
 
 class WorkOrderCubit extends Cubit<WorkOrderState> {
   final WorkOrderRepository repository;
+  final SupabaseRealtimeSyncService? realtimeSync;
+  final DeltaSyncCoordinator? deltaSync;
+  final OutboxSyncEngine? syncEngine;
 
-  WorkOrderCubit(this.repository) : super(WorkOrderInitial());
+  StreamSubscription<String>? _realtimeSub;
+  StreamSubscription<SyncStatus>? _deltaSub;
+  StreamSubscription<OutboxTerminalFailure>? _terminalFailureSub;
+
+  WorkOrderCubit(
+    this.repository, {
+    this.realtimeSync,
+    this.deltaSync,
+    this.syncEngine,
+  }) : super(WorkOrderInitial()) {
+    _initSyncSubscriptions();
+  }
+
+  void _initSyncSubscriptions() {
+    _realtimeSub = realtimeSync?.onRealtimeChange.listen((event) {
+      if (event.startsWith('work_orders:')) {
+        loadWorkOrders(silent: true);
+      }
+    });
+
+    _deltaSub = deltaSync?.statusStream.listen((status) {
+      if (status.state == SyncState.success) {
+        loadWorkOrders(silent: true);
+      }
+    });
+
+    _terminalFailureSub = syncEngine?.terminalFailureStream.listen((failure) {
+      if (failure.command.commandType.endsWith('_work_order') ||
+          failure.command.commandType.endsWith('_part') ||
+          failure.command.commandType.contains('test_run')) {
+        emit(WorkOrderError(
+          failure.userMessage,
+          previousWorkOrders: _currentOrders,
+        ));
+        loadWorkOrders(silent: true);
+      }
+    });
+  }
 
   Future<void> loadWorkOrders({bool silent = false}) async {
     final previousOrders = state is WorkOrderLoaded
@@ -162,5 +207,13 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
       emit(WorkOrderError('Failed to approve and close: ${e.toString()}',
           previousWorkOrders: _currentOrders));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _realtimeSub?.cancel();
+    _deltaSub?.cancel();
+    _terminalFailureSub?.cancel();
+    return super.close();
   }
 }

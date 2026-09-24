@@ -6,6 +6,7 @@ import '../sync/outbox/outbox_local_data_source.dart';
 import '../sync/outbox/outbox_sync_engine.dart';
 import '../sync/delta/delta_sync_coordinator.dart';
 import '../sync/realtime/supabase_realtime_sync_service.dart';
+import '../sync/manager/sync_manager.dart';
 import '../storage/attachment_service.dart';
 
 // Assets Feature
@@ -117,6 +118,15 @@ Future<void> setupServiceLocator() async {
     ),
   );
 
+  getIt.registerLazySingleton<SyncManager>(
+    () => SyncManager(
+      outboxEngine: getIt<OutboxSyncEngine>(),
+      deltaCoordinator: getIt<DeltaSyncCoordinator>(),
+      realtimeService: getIt<SupabaseRealtimeSyncService>(),
+      networkChecker: getIt<NetworkConnectivityChecker>(),
+    ),
+  );
+
   // ---------------------------------------------------------------------------
   // Repositories (Injecting DataSources + OutboxSyncEngine)
   // ---------------------------------------------------------------------------
@@ -147,7 +157,11 @@ Future<void> setupServiceLocator() async {
   // Cubits / Presentation Layer
   // ---------------------------------------------------------------------------
   getIt.registerFactory<MachineCubit>(
-    () => MachineCubit(getIt<MachineRepository>()),
+    () => MachineCubit(
+      getIt<MachineRepository>(),
+      realtimeSync: getIt<SupabaseRealtimeSyncService>(),
+      deltaSync: getIt<DeltaSyncCoordinator>(),
+    ),
   );
 
   getIt.registerFactory<DowntimeCubit>(
@@ -158,6 +172,11 @@ Future<void> setupServiceLocator() async {
   );
 
   getIt.registerFactory<WorkOrderCubit>(
-    () => WorkOrderCubit(getIt<WorkOrderRepository>()),
+    () => WorkOrderCubit(
+      getIt<WorkOrderRepository>(),
+      realtimeSync: getIt<SupabaseRealtimeSyncService>(),
+      deltaSync: getIt<DeltaSyncCoordinator>(),
+      syncEngine: getIt<OutboxSyncEngine>(),
+    ),
   );
 }

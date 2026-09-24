@@ -27,6 +27,21 @@ class HiveMachineRepository implements MachineRepository {
   }
 
   @override
+  Future<List<MachineModel>> refreshFromRemote() async {
+    if (_remoteDataSource != null) {
+      try {
+        final remoteMachines = await _remoteDataSource.fetchMachines();
+        if (remoteMachines.isNotEmpty) {
+          await _localDataSource.cacheMachines(remoteMachines);
+        }
+      } catch (_) {
+        // Fallback to local cache if network/remote fails
+      }
+    }
+    return _localDataSource.getAllMachines();
+  }
+
+  @override
   Future<MachineModel?> getMachineById(String id) async {
     return _localDataSource.getMachineById(id);
   }

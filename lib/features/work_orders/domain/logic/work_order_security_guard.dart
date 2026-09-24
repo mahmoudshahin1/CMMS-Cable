@@ -1,4 +1,6 @@
 import '../../../../core/errors/security_exceptions.dart';
+import '../../../assets/domain/models/machine_model.dart';
+import '../../../assets/domain/enums/department_type.dart';
 import '../../../auth/domain/enums/user_role.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../models/work_order_model.dart';
@@ -6,7 +8,7 @@ import '../models/work_order_model.dart';
 /// Domain security rules enforcing Role-Based Access Control (RBAC)
 /// across the 5-step maintenance handshake.
 class WorkOrderSecurityGuard {
-  static void validateCreate(UserModel? caller) {
+  static void validateCreate(UserModel? caller, [MachineModel? machine]) {
     if (caller != null &&
         caller.role != UserRole.operator &&
         caller.role != UserRole.maintenanceSupervisor &&
@@ -14,6 +16,19 @@ class WorkOrderSecurityGuard {
       throw UnauthorizedRoleException(
         requiredRole: 'Operator or Supervisor',
         actualRole: caller.role.name,
+      );
+    }
+
+    if (caller != null &&
+        caller.role == UserRole.operator &&
+        caller.department != null &&
+        machine != null &&
+        machine.department != caller.department) {
+      throw UnauthorizedRoleException(
+        requiredRole: 'Operator of ${machine.department.displayName}',
+        actualRole: 'Operator of ${caller.department!.displayName}',
+        message:
+            'SECURITY ERROR: Line operators can only log work orders for machines in their own department.',
       );
     }
   }
@@ -90,13 +105,24 @@ class WorkOrderSecurityGuard {
     }
   }
 
-  static void validateConfirmTestRun(UserModel caller) {
+  static void validateConfirmTestRun(UserModel caller, [MachineModel? machine]) {
     if (caller.role != UserRole.operator) {
       throw UnauthorizedRoleException(
         requiredRole: 'Operator',
         actualRole: caller.role.name,
         message:
             'SECURITY ERROR: Only Line Operators can confirm field test runs.',
+      );
+    }
+
+    if (caller.department != null &&
+        machine != null &&
+        machine.department != caller.department) {
+      throw UnauthorizedRoleException(
+        requiredRole: 'Operator of ${machine.department.displayName}',
+        actualRole: 'Operator of ${caller.department!.displayName}',
+        message:
+            'SECURITY ERROR: Line operators can only confirm field test runs for machines in their own department.',
       );
     }
   }

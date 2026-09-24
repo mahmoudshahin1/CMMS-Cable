@@ -23,8 +23,10 @@ class PlantDepartmentScopeBanner extends StatelessWidget {
             currentUser?.role == UserRole.plantManager;
         final isTech =
             currentUser?.role == UserRole.maintenanceTech;
+        final isOperator =
+            currentUser?.role == UserRole.operator;
         final hasDeptScope =
-            userDept != null && !isPlantManager && !isTech;
+            (userDept != null && !isPlantManager && !isTech) || isOperator;
 
         if (isTech) {
           final isElec = currentUser?.speciality == 'Electrical';
@@ -105,7 +107,7 @@ class PlantDepartmentScopeBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   context.trArgs('dept_machines_scope', {
-                    'dept': userDept.localizedName(context.isArabic),
+                    'dept': userDept?.localizedName(context.isArabic) ?? '',
                   }),
                   style: TextStyle(
                     color: context.isDarkMode

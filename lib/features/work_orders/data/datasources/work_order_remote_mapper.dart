@@ -5,6 +5,8 @@ import '../../domain/enums/work_order_status.dart';
 import '../../domain/enums/work_order_type.dart';
 import '../../domain/enums/priority.dart';
 import '../../../../core/chronology/event_chronology.dart';
+import '../../../../core/auth/user_directory_helper.dart';
+import '../../../../features/auth/domain/enums/user_role.dart';
 
 /// Pure mapping logic between Supabase JSON representations and domain models.
 class WorkOrderRemoteMapper {
@@ -25,6 +27,9 @@ class WorkOrderRemoteMapper {
     if (rawChrono is Map<String, dynamic>) {
       chrono = EventChronology.fromJson(rawChrono);
     }
+
+    final rawVersion = row['version'];
+    final version = (rawVersion as num?)?.toInt() ?? 1;
 
     return WorkOrderModel(
       id: row['id'] as String,
@@ -48,6 +53,7 @@ class WorkOrderRemoteMapper {
       spareParts: spareParts,
       activityLogs: activityLogs,
       chronology: chrono,
+      version: version,
     );
   }
 
@@ -75,14 +81,63 @@ class WorkOrderRemoteMapper {
         ? DateTime.parse(rawOccurred)
         : DateTime.now();
 
+    final actorId = (row['actor_id'] as String?) ?? (payload?['actor_id'] as String?);
+    final cachedUser = actorId != null ? UserDirectoryHelper.getUser(actorId) : null;
+
+    // Resolve Name
+    String resolvedName = (payload?['actor_name'] as String?) ??
+        cachedUser?.name ??
+        (actorId != null ? UserDirectoryHelper.resolveName(actorId) : null) ??
+        '';
+
+    if (resolvedName.isEmpty || resolvedName == 'System User') {
+      if (payload?['supervisor'] is String && (payload!['supervisor'] as String).trim().isNotEmpty) {
+        resolvedName = payload['supervisor'] as String;
+      } else if (payload?['technician'] is String && (payload!['technician'] as String).trim().isNotEmpty) {
+        resolvedName = payload['technician'] as String;
+      } else if (actorId != null && actorId == UserDirectoryHelper.currentUser?.id) {
+        resolvedName = UserDirectoryHelper.currentUser!.name;
+      } else {
+        resolvedName = 'System User';
+      }
+    }
+
+    // Resolve Email
+    String resolvedEmail = (payload?['actor_email'] as String?) ??
+        cachedUser?.email ??
+        (actorId == UserDirectoryHelper.currentUser?.id ? UserDirectoryHelper.currentUser?.email : null) ??
+        'system@cableops.local';
+
+    // Resolve Role
+    String resolvedRole = (payload?['actor_role'] as String?) ??
+        cachedUser?.role.code ??
+        (actorId == UserDirectoryHelper.currentUser?.id ? UserDirectoryHelper.currentUser?.role.code : null) ??
+        '';
+
+    if (resolvedRole.isEmpty || resolvedRole == 'SYSTEM') {
+      final eventType = (row['event_type'] as String? ?? '').toUpperCase();
+      if (eventType.contains('REPAIR') || eventType.contains('PART')) {
+        resolvedRole = 'MAINTENANCE_TECH';
+      } else if (eventType.contains('TEST') || eventType.contains('REPORTED')) {
+        resolvedRole = 'OPERATOR';
+      } else if (eventType.contains('ASSIGN') || eventType.contains('CLOSE')) {
+        resolvedRole = 'MAINTENANCE_SUPERVISOR';
+      } else {
+        resolvedRole = 'SYSTEM';
+      }
+    }
+
+    final rawSummary = (payload?['summary'] as String?) ?? row['event_type'] as String? ?? '';
+    final formattedSummary = UserDirectoryHelper.formatActionSummary(rawSummary);
+
     return WorkOrderActivityLog(
       id: row['id'] as String? ?? '',
       stepName: row['event_type'] as String? ?? 'EVENT',
-      performedByName: (payload?['actor_name'] as String?) ?? 'System User',
-      performedByEmail: (payload?['actor_email'] as String?) ?? 'system@cableops.local',
-      performedByRole: (payload?['actor_role'] as String?) ?? 'SYSTEM',
+      performedByName: resolvedName,
+      performedByEmail: resolvedEmail,
+      performedByRole: resolvedRole,
       recordedAt: occurred,
-      actionSummary: (payload?['summary'] as String?) ?? row['event_type'] as String? ?? '',
+      actionSummary: formattedSummary,
       details: payload != null ? Map<String, dynamic>.from(payload) : null,
       chronology: chrono,
     );

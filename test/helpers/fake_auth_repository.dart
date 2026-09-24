@@ -46,4 +46,12 @@ class FakeAuthRepository implements AuthRepository {
   }) async {
     return MockUsers.getTechnicians(speciality: speciality);
   }
+
+  @override
+  List<UserModel> getLocalUsersByRole(
+    String role, {
+    String? speciality,
+  }) {
+    return MockUsers.getTechnicians(speciality: speciality);
+  }
 }

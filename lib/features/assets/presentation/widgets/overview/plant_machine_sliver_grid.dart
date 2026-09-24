@@ -29,7 +29,8 @@ class PlantMachineSliverGrid extends StatelessWidget {
         final currentUser = context.watch<AuthCubit>().currentUser;
         final userDept = currentUser?.department;
         final isPlantManager = currentUser?.role == UserRole.plantManager;
-        final hasDeptScope = userDept != null && !isPlantManager;
+        final isOperator = currentUser?.role == UserRole.operator;
+        final hasDeptScope = isOperator || (userDept != null && !isPlantManager);
 
         if (state is MachineLoading) {
           return const SliverFillRemaining(
@@ -44,11 +45,11 @@ class PlantMachineSliverGrid extends StatelessWidget {
           );
         }
         if (state is MachineLoaded) {
-          final machines = hasDeptScope
+          final machines = (hasDeptScope && userDept != null)
               ? state.allMachines
                   .where((m) => m.department == userDept)
                   .toList()
-              : state.filteredMachines;
+              : (isOperator ? <MachineModel>[] : state.filteredMachines);
 
           if (machines.isEmpty) {
             return SliverFillRemaining(
@@ -59,7 +60,7 @@ class PlantMachineSliverGrid extends StatelessWidget {
                   child: Text(
                     hasDeptScope
                         ? context.trArgs('no_dept_machines', {
-                            'dept': userDept.localizedName(context.isArabic),
+                            'dept': userDept?.localizedName(context.isArabic) ?? '',
                           })
                         : context.tr('no_machines_found'),
                     style: const TextStyle(color: AppColors.textMuted),

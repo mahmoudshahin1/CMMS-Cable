@@ -117,8 +117,9 @@ class _WorkOrdersListScreenState extends State<WorkOrdersListScreen> {
           final currentUser = context.watch<AuthCubit>().currentUser;
           final isTech = currentUser?.role == UserRole.maintenanceTech;
           final isPlantManager = currentUser?.role == UserRole.plantManager;
+          final isOperator = currentUser?.role == UserRole.operator;
           final userDept = currentUser?.department;
-          final hasDeptScope = userDept != null && !isPlantManager;
+          final hasDeptScope = isOperator || (userDept != null && !isPlantManager);
 
           // Machine map for department lookups
           final machineState = context.watch<MachineCubit>().state;
@@ -139,12 +140,12 @@ class _WorkOrdersListScreenState extends State<WorkOrdersListScreen> {
               ? allOrders
                   .where((wo) => wo.assignedToTechnicianId == currentUser?.id)
                   .toList()
-              : (hasDeptScope
+              : (hasDeptScope && userDept != null
                   ? allOrders
                       .where((wo) =>
                           machineMap[wo.machineId]?.department == userDept)
                       .toList()
-                  : allOrders);
+                  : (isOperator ? <WorkOrderModel>[] : allOrders));
 
           final pendingAssignments = isTech
               ? scopedOrders

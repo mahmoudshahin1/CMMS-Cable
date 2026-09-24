@@ -51,6 +51,8 @@ class _FakeMachineRepository implements MachineRepository {
   @override
   Future<List<MachineModel>> getAllMachines() async => [];
   @override
+  Future<List<MachineModel>> refreshFromRemote() async => [];
+  @override
   Future<MachineModel?> getMachineById(String id) async => null;
   @override
   Future<List<MachineModel>> getMachinesByDepartment(DepartmentType department) async => [];

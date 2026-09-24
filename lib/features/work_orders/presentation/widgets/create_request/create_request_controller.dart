@@ -12,6 +12,7 @@ import '../../../domain/enums/priority.dart';
 import '../../../domain/enums/work_order_status.dart';
 import '../../../domain/enums/work_order_type.dart';
 import '../../../domain/models/work_order_model.dart';
+import '../../../../auth/domain/enums/user_role.dart';
 import '../../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../cubit/work_order_cubit.dart';
 import '../../screens/work_orders_list_screen.dart';
@@ -43,6 +44,32 @@ class CreateRequestController {
       (m) => m.id == machineId,
       orElse: () => allMachines.first,
     );
+
+    final currentUser = context.read<AuthCubit>().currentUser;
+    if (currentUser?.role == UserRole.operator) {
+      final userDept = currentUser?.department;
+      if (userDept != null && selectedMachine.department != userDept) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.downMaintenanceRed,
+            duration: const Duration(seconds: 4),
+            content: Row(
+              children: [
+                const Icon(Icons.shield_outlined, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    context.tr('operator_machine_permission_denied'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        return false;
+      }
+    }
 
     if (formKey.currentState?.validate() ?? false) {
       final chrono = EventChronology.now();

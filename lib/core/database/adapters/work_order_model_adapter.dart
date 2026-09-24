@@ -43,13 +43,14 @@ class WorkOrderModelAdapter extends TypeAdapter<WorkOrderModel> {
           : const <WorkOrderActivityLog>[],
       chronology: fields[17] as EventChronology? ??
           EventChronology.fromDateTime(createdAt),
+      version: (fields[18] as int?) ?? 1,
     );
   }
 
   @override
   void write(BinaryWriter writer, WorkOrderModel obj) {
     writer
-      ..writeByte(18)
+      ..writeByte(19)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -85,6 +86,8 @@ class WorkOrderModelAdapter extends TypeAdapter<WorkOrderModel> {
       ..writeByte(16)
       ..write(obj.activityLogs)
       ..writeByte(17)
-      ..write(obj.chronology);
+      ..write(obj.chronology)
+      ..writeByte(18)
+      ..write(obj.version);
   }
 }

@@ -1,12 +1,16 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/database/hive_boxes.dart';
 import '../../../../core/errors/auth_exceptions.dart';
 import '../../../../core/auth/user_directory_helper.dart';
 import '../../domain/models/user_model.dart';
+import '../../domain/enums/user_role.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../mock_users.dart';
 
 /// Supabase-backed implementation of [AuthRepository].
 ///
@@ -85,43 +89,71 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<UserModel> getUserProfile(String userId) async {
+    // 1. Attempt to fetch remote profile from Supabase with 4s timeout
     try {
       final response = await _client
           .from('user_profiles')
           .select()
           .eq('id', userId)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(const Duration(seconds: 4));
 
-      if (response == null) {
-        throw ProfileNotFoundException(userId: userId);
+      if (response != null) {
+        final authUser = _client.auth.currentUser;
+        final email = authUser?.email ?? '';
+        final profile = UserModel.fromSupabaseProfile(
+          response,
+          email: email,
+        );
+        _cachedUser = profile;
+        UserDirectoryHelper.registerUser(profile);
+        _persistUserLocally(profile);
+        return profile;
       }
-
-      // Get the email from the current auth session
-      final authUser = _client.auth.currentUser;
-      final email = authUser?.email ?? '';
-
-      final profile = UserModel.fromSupabaseProfile(
-        response,
-        email: email,
-      );
-
-      _cachedUser = profile;
-      UserDirectoryHelper.registerUser(profile);
-      return profile;
-    } on ProfileNotFoundException {
-      rethrow;
-    } on SocketException {
-      throw const NetworkException();
     } catch (e) {
-      if (e.toString().contains('SocketException') ||
-          e.toString().contains('Failed host lookup')) {
-        throw const NetworkException();
-      }
-      throw ProfileNotFoundException(
-        userId: userId,
-        message: 'خطأ في جلب الملف الشخصي: $e',
-      );
+      debugPrint('⚠️ SupabaseAuthRepository: remote profile fetch failed: $e');
     }
+
+    // 2. Fallback: Restore from local Hive cache if available
+    final localProfile = _getLocalUserProfile(userId);
+    if (localProfile != null) {
+      debugPrint('📦 SupabaseAuthRepository: restored profile from Hive for $userId');
+      _cachedUser = localProfile;
+      UserDirectoryHelper.registerUser(localProfile);
+      return localProfile;
+    }
+
+    // 3. Fallback: Synthesize from authenticated Supabase user metadata
+    final authUser = _client.auth.currentUser;
+    if (authUser != null && authUser.id == userId) {
+      final synthesized = _synthesizeUserFromAuth(authUser);
+      debugPrint('🛡️ SupabaseAuthRepository: synthesized profile from userMetadata for ${synthesized.name}');
+      _cachedUser = synthesized;
+      UserDirectoryHelper.registerUser(synthesized);
+      _persistUserLocally(synthesized);
+      return synthesized;
+    }
+
+    // 4. Fallback: Resolve friendly name if known
+    final resolvedName = UserDirectoryHelper.resolveName(userId);
+    if (resolvedName != null) {
+      final fallback = UserModel.fromSupabaseProfile(
+        {
+          'id': userId,
+          'full_name': resolvedName,
+          'role': 'OPERATOR',
+        },
+        email: authUser?.email ?? '',
+      );
+      _cachedUser = fallback;
+      _persistUserLocally(fallback);
+      return fallback;
+    }
+
+    throw ProfileNotFoundException(
+      userId: userId,
+      message: 'لم يتم العثور على الملف الشخصي للمستخدم $userId',
+    );
   }
 
   @override
@@ -169,20 +201,107 @@ class SupabaseAuthRepository implements AuthRepository {
         query = query.or('specialty.ilike.%$speciality%,specialty.ilike.%ALL%');
       }
 
-      final response = await query;
+      final response = await query.timeout(const Duration(seconds: 4));
       debugPrint('📡 SupabaseAuthRepository: got ${response.length} users for role=$role');
 
-      final users = response
-          .map((row) => UserModel.fromSupabaseProfile(row, email: ''))
+      final users = (response as List)
+          .map((row) => UserModel.fromSupabaseProfile(row as Map<String, dynamic>, email: ''))
           .toList();
-      UserDirectoryHelper.registerUsers(users);
-      return users;
-    } on SocketException {
-      throw const NetworkException();
+
+      if (users.isNotEmpty) {
+        UserDirectoryHelper.registerUsers(users);
+        for (final u in users) {
+          _persistUserLocally(u);
+        }
+        return users;
+      }
+
+      // If remote returned 0 users (e.g. RLS blocked anon, table empty, or mismatch), fallback to local/seed
+      debugPrint('⚠️ Supabase returned 0 users for role=$role. Using local/seed fallback.');
+      return getLocalUsersByRole(role, speciality: speciality);
     } catch (e) {
       debugPrint('❌ SupabaseAuthRepository getUsersByRole error: $e');
-      // Return empty list gracefully — caller handles the empty case
-      return [];
+      return getLocalUsersByRole(role, speciality: speciality);
     }
+  }
+
+  UserModel? _getLocalUserProfile(String userId) {
+    try {
+      if (Hive.isBoxOpen(HiveBoxes.usersBox)) {
+        final box = Hive.box<UserModel>(HiveBoxes.usersBox);
+        return box.get(userId);
+      }
+    } catch (e) {
+      debugPrint('⚠️ SupabaseAuthRepository: Hive read error: $e');
+    }
+    return null;
+  }
+
+  void _persistUserLocally(UserModel user) {
+    try {
+      if (Hive.isBoxOpen(HiveBoxes.usersBox)) {
+        final box = Hive.box<UserModel>(HiveBoxes.usersBox);
+        box.put(user.id, user);
+      }
+    } catch (e) {
+      debugPrint('⚠️ SupabaseAuthRepository: Hive write error: $e');
+    }
+  }
+
+  UserModel _synthesizeUserFromAuth(User authUser) {
+    final meta = authUser.userMetadata ?? {};
+    final email = authUser.email ?? '';
+    final name = (meta['full_name'] as String?) ??
+        (meta['name'] as String?) ??
+        UserDirectoryHelper.resolveName(authUser.id) ??
+        (email.contains('@') ? email.split('@').first : 'مستخدم');
+
+    final profileMap = <String, dynamic>{
+      'id': authUser.id,
+      'full_name': name,
+      'role': (meta['role'] as String?) ?? 'OPERATOR',
+      'specialty': (meta['specialty'] as String?) ?? (meta['speciality'] as String?),
+      'department': meta['department'] as String?,
+      'employee_code': meta['employee_code'] as String?,
+    };
+
+    return UserModel.fromSupabaseProfile(profileMap, email: email);
+  }
+
+  @override
+  List<UserModel> getLocalUsersByRole(String role, {String? speciality}) {
+    final isTechRole = role.toUpperCase() == 'TECHNICIAN' ||
+        role.toUpperCase() == 'MAINTENANCE_TECH';
+    try {
+      if (Hive.isBoxOpen(HiveBoxes.usersBox)) {
+        final box = Hive.box<UserModel>(HiveBoxes.usersBox);
+        final local = box.values.where((user) {
+          final matchRole = isTechRole
+              ? (user.role == UserRole.maintenanceTech)
+              : (user.role.name.toUpperCase() == role.toUpperCase());
+          if (!matchRole) return false;
+          if (speciality != null && speciality.isNotEmpty && user.speciality != null) {
+            final userSpec = user.speciality!.toLowerCase();
+            final targetSpec = speciality.toLowerCase();
+            return userSpec.contains(targetSpec) || userSpec.contains('all') || targetSpec == 'all';
+          }
+          return true;
+        }).toList();
+
+        if (local.isNotEmpty) {
+          UserDirectoryHelper.registerUsers(local);
+          return local;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ SupabaseAuthRepository: _getLocalUsersByRole error: $e');
+    }
+
+    if (isTechRole) {
+      final seedTechs = MockUsers.getTechnicians(speciality: speciality);
+      UserDirectoryHelper.registerUsers(seedTechs);
+      return seedTechs;
+    }
+    return [];
   }
 }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/domain/enums/user_role.dart';
+import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/widgets/role_guard.dart';
 import '../../../work_orders/presentation/screens/create_repair_request_screen.dart';
 import '../../domain/models/machine_model.dart';
@@ -128,74 +130,130 @@ class ScannedMachineSheet extends StatelessWidget {
                 UserRole.operator,
                 UserRole.maintenanceSupervisor,
               ],
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            CreateRepairRequestScreen(initialMachine: machine),
+              child: Builder(
+                builder: (context) {
+                  final currentUser = context.watch<AuthCubit>().currentUser;
+                  final isOperator = currentUser?.role == UserRole.operator;
+                  final isOtherDept = isOperator &&
+                      currentUser?.department != null &&
+                      machine.department != currentUser!.department;
+
+                  if (isOtherDept) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.downMaintenanceRed
+                            .withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.downMaintenanceRed
+                              .withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.lock_rounded,
+                            color: AppColors.downMaintenanceRed,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              context.tr('operator_machine_permission_denied'),
+                              style: const TextStyle(
+                                color: AppColors.downMaintenanceRed,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: context.isDarkMode
-                        ? AppColors.downMaintenanceRed
-                        : AppColors.energyaAccentOrange,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                  icon: const Icon(Icons.add_task_rounded, size: 20),
-                  label: Text(
-                    context.tr('report_breakdown_immediate'),
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    useSafeArea: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => DowntimeReportSheet(machine: machine),
+                  }
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => CreateRepairRequestScreen(
+                                  initialMachine: machine,
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: context.isDarkMode
+                                ? AppColors.downMaintenanceRed
+                                : AppColors.energyaAccentOrange,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                          icon: const Icon(Icons.add_task_rounded, size: 20),
+                          label: Text(
+                            context.tr('report_breakdown_btn'),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              useSafeArea: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) =>
+                                  DowntimeReportSheet(machine: machine),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: context.textPrimaryColor,
+                            side: BorderSide(color: context.borderColor),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.warning_amber_rounded,
+                            color: AppColors.idleAmber,
+                            size: 20,
+                          ),
+                          label: Text(
+                            context.tr('log_downtime_operational'),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   );
                 },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: context.textPrimaryColor,
-                  side: BorderSide(color: context.borderColor),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(
-                  Icons.warning_amber_rounded,
-                  color: AppColors.idleAmber,
-                  size: 20,
-                ),
-                label: Text(
-                  context.tr('log_downtime_operational'),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
               ),
             ),
             const SizedBox(height: 8),

@@ -11,6 +11,13 @@ import '../widgets/overview/plant_factory_kpi_bar.dart';
 import '../widgets/overview/plant_machine_sliver_grid.dart';
 import '../widgets/overview/plant_overview_header_bar.dart';
 import '../../../work_orders/presentation/screens/create_repair_request_screen.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/sync/manager/sync_manager.dart';
+
+import '../../../../core/localization/app_strings.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../auth/domain/enums/user_role.dart';
+import '../../../auth/presentation/cubit/auth_cubit.dart';
 
 /// Main plant operations dashboard displaying machines, status KPIs, and quick breakdown reporting.
 class PlantOverviewScreen extends StatelessWidget {
@@ -27,6 +34,32 @@ class PlantOverviewScreen extends StatelessWidget {
   }
 
   void _handleDowntimeAction(BuildContext context, MachineModel machine) {
+    final currentUser = context.read<AuthCubit>().currentUser;
+    if (currentUser?.role == UserRole.operator) {
+      final userDept = currentUser?.department;
+      if (userDept != null && machine.department != userDept) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.downMaintenanceRed,
+            duration: const Duration(seconds: 4),
+            content: Row(
+              children: [
+                const Icon(Icons.shield_outlined, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    context.tr('operator_machine_permission_denied'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
     if (machine.status.isDowntime) {
       _showDowntimeSheet(context, machine);
     } else {
@@ -45,7 +78,12 @@ class PlantOverviewScreen extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async => context.read<MachineCubit>().loadMachines(),
+          onRefresh: () async {
+            await getIt<SyncManager>().syncAll(forceFullPull: true);
+            if (context.mounted) {
+              await context.read<MachineCubit>().loadMachines(forceRemote: true, silent: true);
+            }
+          },
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [

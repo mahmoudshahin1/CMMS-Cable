@@ -10,7 +10,10 @@ class OutboxCommandStatusAdapter extends TypeAdapter<OutboxCommandStatus> {
   @override
   OutboxCommandStatus read(BinaryReader reader) {
     final index = reader.readByte();
-    return OutboxCommandStatus.values[index];
+    if (index >= 0 && index < OutboxCommandStatus.values.length) {
+      return OutboxCommandStatus.values[index];
+    }
+    return OutboxCommandStatus.failed;
   }
 
   @override
@@ -56,13 +59,14 @@ class OutboxCommandAdapter extends TypeAdapter<OutboxCommand> {
       lastError: fields[7] as String?,
       expectedVersion: fields[8] as int?,
       processedAt: fields[9] as DateTime?,
+      nextRetryAt: fields[10] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, OutboxCommand obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.commandId)
       ..writeByte(1)
@@ -82,6 +86,8 @@ class OutboxCommandAdapter extends TypeAdapter<OutboxCommand> {
       ..writeByte(8)
       ..write(obj.expectedVersion)
       ..writeByte(9)
-      ..write(obj.processedAt);
+      ..write(obj.processedAt)
+      ..writeByte(10)
+      ..write(obj.nextRetryAt);
   }
 }

@@ -8,6 +8,8 @@ enum OutboxCommandStatus {
   completed,
   failed,
   deadLetter,
+  failedConflict,
+  failedRejected,
 }
 
 /// Durable command envelope persisted in Hive for offline-first transactional mutations.
@@ -22,6 +24,7 @@ class OutboxCommand extends Equatable {
   final String? lastError;
   final int? expectedVersion;
   final DateTime? processedAt;
+  final DateTime? nextRetryAt;
 
   const OutboxCommand({
     required this.commandId,
@@ -34,6 +37,7 @@ class OutboxCommand extends Equatable {
     this.lastError,
     this.expectedVersion,
     this.processedAt,
+    this.nextRetryAt,
   });
 
   OutboxCommand copyWith({
@@ -47,6 +51,7 @@ class OutboxCommand extends Equatable {
     String? lastError,
     int? expectedVersion,
     DateTime? processedAt,
+    DateTime? nextRetryAt,
   }) {
     return OutboxCommand(
       commandId: commandId ?? this.commandId,
@@ -59,6 +64,7 @@ class OutboxCommand extends Equatable {
       lastError: lastError ?? this.lastError,
       expectedVersion: expectedVersion ?? this.expectedVersion,
       processedAt: processedAt ?? this.processedAt,
+      nextRetryAt: nextRetryAt ?? this.nextRetryAt,
     );
   }
 
@@ -74,6 +80,7 @@ class OutboxCommand extends Equatable {
       'lastError': lastError,
       'expectedVersion': expectedVersion,
       'processedAt': processedAt?.toIso8601String(),
+      'nextRetryAt': nextRetryAt?.toIso8601String(),
     };
   }
 
@@ -108,6 +115,9 @@ class OutboxCommand extends Equatable {
       processedAt: json['processedAt'] != null
           ? DateTime.parse(json['processedAt'] as String)
           : null,
+      nextRetryAt: json['nextRetryAt'] != null
+          ? DateTime.parse(json['nextRetryAt'] as String)
+          : null,
     );
   }
 
@@ -123,5 +133,6 @@ class OutboxCommand extends Equatable {
         lastError,
         expectedVersion,
         processedAt,
+        nextRetryAt,
       ];
 }

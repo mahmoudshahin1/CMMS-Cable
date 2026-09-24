@@ -27,7 +27,7 @@ class WorkOrderOutboxFactory {
   static OutboxCommand assign(
     WorkOrderModel wo,
     String technicianId, {
-    int expectedVersion = 1,
+    int? expectedVersion,
   }) {
     return OutboxCommand(
       commandId: _uuid.v4(),
@@ -35,18 +35,18 @@ class WorkOrderOutboxFactory {
       aggregateId: wo.id,
       payload: {'technician_id': technicianId},
       occurredAt: DateTime.now(),
-      expectedVersion: expectedVersion,
+      expectedVersion: expectedVersion ?? wo.version,
     );
   }
 
-  static OutboxCommand start(WorkOrderModel wo, {int expectedVersion = 1}) {
+  static OutboxCommand start(WorkOrderModel wo, {int? expectedVersion}) {
     return OutboxCommand(
       commandId: _uuid.v4(),
       commandType: 'start_work_order',
       aggregateId: wo.id,
       payload: {},
       occurredAt: DateTime.now(),
-      expectedVersion: expectedVersion,
+      expectedVersion: expectedVersion ?? wo.version,
     );
   }
 
@@ -70,7 +70,7 @@ class WorkOrderOutboxFactory {
     WorkOrderModel wo, {
     required String rootCause,
     required String actionsTaken,
-    int expectedVersion = 1,
+    int? expectedVersion,
   }) {
     return OutboxCommand(
       commandId: _uuid.v4(),
@@ -81,13 +81,13 @@ class WorkOrderOutboxFactory {
         'actions_taken': actionsTaken,
       },
       occurredAt: DateTime.now(),
-      expectedVersion: expectedVersion,
+      expectedVersion: expectedVersion ?? wo.version,
     );
   }
 
   static OutboxCommand confirmTestRun(
     WorkOrderModel wo, {
-    int expectedVersion = 1,
+    int? expectedVersion,
   }) {
     return OutboxCommand(
       commandId: _uuid.v4(),
@@ -95,18 +95,18 @@ class WorkOrderOutboxFactory {
       aggregateId: wo.id,
       payload: {},
       occurredAt: DateTime.now(),
-      expectedVersion: expectedVersion,
+      expectedVersion: expectedVersion ?? wo.version,
     );
   }
 
-  static OutboxCommand close(WorkOrderModel wo, {int expectedVersion = 1}) {
+  static OutboxCommand close(WorkOrderModel wo, {int? expectedVersion}) {
     return OutboxCommand(
       commandId: _uuid.v4(),
       commandType: 'close_work_order',
       aggregateId: wo.id,
       payload: {},
       occurredAt: DateTime.now(),
-      expectedVersion: expectedVersion,
+      expectedVersion: expectedVersion ?? wo.version,
     );
   }
 }

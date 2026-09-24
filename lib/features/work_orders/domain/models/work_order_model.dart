@@ -64,6 +64,9 @@ class WorkOrderModel extends Equatable {
   @HiveField(17)
   final EventChronology? chronology;
 
+  @HiveField(18)
+  final int version;
+
   const WorkOrderModel({
     required this.id,
     required this.title,
@@ -83,6 +86,7 @@ class WorkOrderModel extends Equatable {
     this.spareParts = const [],
     this.activityLogs = const [],
     this.chronology,
+    this.version = 1,
   });
 
   EventChronology get effectiveChronology =>
@@ -131,6 +135,7 @@ class WorkOrderModel extends Equatable {
     List<SparePartModel>? spareParts,
     List<WorkOrderActivityLog>? activityLogs,
     EventChronology? chronology,
+    int? version,
   }) {
     return WorkOrderModel(
       id: id ?? this.id,
@@ -153,6 +158,7 @@ class WorkOrderModel extends Equatable {
       spareParts: spareParts ?? this.spareParts,
       activityLogs: activityLogs ?? this.activityLogs,
       chronology: chronology ?? this.chronology,
+      version: version ?? this.version,
     );
   }
 
@@ -176,6 +182,7 @@ class WorkOrderModel extends Equatable {
       'spareParts': spareParts.map((e) => e.toJson()).toList(),
       'activityLogs': activityLogs.map((e) => e.toJson()).toList(),
       'chronology': chronology?.toJson(),
+      'version': version,
     };
   }
 
@@ -222,28 +229,16 @@ class WorkOrderModel extends Equatable {
           ? EventChronology.fromJson(
               json['chronology'] as Map<String, dynamic>)
           : null,
+      version: (json['version'] as num?)?.toInt() ?? 1,
     );
   }
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        description,
-        machineId,
-        downtimeLogId,
-        type,
-        status,
-        priority,
-        assignedToTechnicianId,
-        assignedBySupervisorId,
-        createdAt,
-        startedAt,
-        completedAt,
-        rootCause,
-        actionsTaken,
-        spareParts,
-        activityLogs,
-        chronology,
+        id, title, description, machineId, downtimeLogId,
+        type, status, priority, assignedToTechnicianId,
+        assignedBySupervisorId, createdAt, startedAt, completedAt,
+        rootCause, actionsTaken, spareParts, activityLogs,
+        chronology, version,
       ];
 }

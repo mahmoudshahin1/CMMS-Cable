@@ -14,6 +14,12 @@ abstract class OutboxLocalDataSource {
     String commandId,
     String error, {
     bool isDeadLetter = false,
+    DateTime? nextRetryAt,
+  });
+  Future<void> markTerminalFailure(
+    String commandId,
+    String error, {
+    required OutboxCommandStatus status,
   });
   Future<void> deleteCommand(String commandId);
   Future<int> getPendingCount();
@@ -38,9 +44,16 @@ class HiveOutboxLocalDataSource implements OutboxLocalDataSource {
 
   @override
   Future<List<OutboxCommand>> getPendingCommands() async {
+    final now = DateTime.now();
     final list = _box.values.where((c) {
-      return c.status == OutboxCommandStatus.pending ||
-          c.status == OutboxCommandStatus.inFlight;
+      if (c.status != OutboxCommandStatus.pending &&
+          c.status != OutboxCommandStatus.inFlight) {
+        return false;
+      }
+      if (c.nextRetryAt != null && c.nextRetryAt!.isAfter(now)) {
+        return false;
+      }
+      return true;
     }).toList();
     list.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
     return list;
@@ -96,6 +109,7 @@ class HiveOutboxLocalDataSource implements OutboxLocalDataSource {
     String commandId,
     String error, {
     bool isDeadLetter = false,
+    DateTime? nextRetryAt,
   }) async {
     final cmd = _box.get(commandId);
     if (cmd != null) {
@@ -108,6 +122,28 @@ class HiveOutboxLocalDataSource implements OutboxLocalDataSource {
           status: nextStatus,
           attempts: cmd.attempts + 1,
           lastError: error,
+          nextRetryAt: nextRetryAt,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<void> markTerminalFailure(
+    String commandId,
+    String error, {
+    required OutboxCommandStatus status,
+  }) async {
+    final cmd = _box.get(commandId);
+    if (cmd != null) {
+      await _box.put(
+        commandId,
+        cmd.copyWith(
+          status: status,
+          attempts: cmd.attempts + 1,
+          lastError: error,
+          nextRetryAt: null,
+          processedAt: DateTime.now(),
         ),
       );
     }

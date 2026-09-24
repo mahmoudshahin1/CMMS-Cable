@@ -16,6 +16,9 @@ import '../datasources/work_order_remote_data_source.dart';
 
 import '../../../../core/sync/outbox/outbox_command.dart';
 import '../../../../core/sync/outbox/outbox_sync_engine.dart';
+import 'package:hive/hive.dart';
+import '../../../../core/database/hive_boxes.dart';
+import '../../../assets/domain/models/machine_model.dart';
 import '../datasources/work_order_outbox_factory.dart';
 
 /// Repository orchestrator for Work Orders.
@@ -72,7 +75,20 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     UserModel? caller,
   }) async {
     final effectiveCaller = caller ?? UserDirectoryHelper.currentUser;
-    WorkOrderSecurityGuard.validateCreate(effectiveCaller);
+    MachineModel? machine;
+    try {
+      if (Hive.isBoxOpen(HiveBoxes.machinesBox)) {
+        final box = Hive.box<MachineModel>(HiveBoxes.machinesBox);
+        machine = box.get(workOrder.machineId) ??
+            box.values.cast<MachineModel?>().firstWhere(
+                  (m) =>
+                      m?.id.toLowerCase() == workOrder.machineId.toLowerCase() ||
+                      m?.code.toLowerCase() == workOrder.machineId.toLowerCase(),
+                  orElse: () => null,
+                );
+      }
+    } catch (_) {}
+    WorkOrderSecurityGuard.validateCreate(effectiveCaller, machine);
 
     final chrono = workOrder.chronology ?? EventChronology.now();
     final initialLog = WorkOrderActivityLogger.createLog(

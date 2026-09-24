@@ -64,6 +64,7 @@ class FakeOutboxLocalDataSource implements OutboxLocalDataSource {
     String commandId,
     String error, {
     bool isDeadLetter = false,
+    DateTime? nextRetryAt,
   }) async {
     final cmd = _storage[commandId];
     if (cmd != null) {
@@ -74,6 +75,25 @@ class FakeOutboxLocalDataSource implements OutboxLocalDataSource {
         status: nextStatus,
         attempts: cmd.attempts + 1,
         lastError: error,
+        nextRetryAt: nextRetryAt,
+      );
+    }
+  }
+
+  @override
+  Future<void> markTerminalFailure(
+    String commandId,
+    String error, {
+    required OutboxCommandStatus status,
+  }) async {
+    final cmd = _storage[commandId];
+    if (cmd != null) {
+      _storage[commandId] = cmd.copyWith(
+        status: status,
+        attempts: cmd.attempts + 1,
+        lastError: error,
+        nextRetryAt: null,
+        processedAt: DateTime.now(),
       );
     }
   }

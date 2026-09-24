@@ -18,7 +18,7 @@ class UserModel extends Equatable {
   final UserRole role;
 
   @HiveField(4)
-  final DepartmentType? department;
+  final DepartmentType? _department;
 
   @HiveField(5)
   final String? speciality; // e.g. 'Electrical' or 'Mechanical'
@@ -31,10 +31,24 @@ class UserModel extends Equatable {
     required this.name,
     required this.email,
     required this.role,
-    this.department,
+    DepartmentType? department,
     this.speciality,
     this.employeeCode,
-  });
+  }) : _department = department;
+
+  /// Effective department — automatically resolved for line operators if omitted or null.
+  DepartmentType? get department {
+    if (_department != null) return _department;
+    if (role == UserRole.operator) {
+      return DepartmentTypeExtension.resolveOperatorDepartment(
+        email: email,
+        id: id,
+        name: name,
+        employeeCode: employeeCode,
+      );
+    }
+    return null;
+  }
 
   /// Alias for [name]
   String get fullName => name;
@@ -72,20 +86,26 @@ class UserModel extends Equatable {
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final role = UserRole.values.firstWhere(
+      (e) => e.name == json['role'],
+      orElse: () => UserRole.operator,
+    );
+    final rawDept = json['department'] as String?;
+    DepartmentType? department = DepartmentTypeExtension.fromString(rawDept);
+    if (department == null && role == UserRole.operator) {
+      department = DepartmentTypeExtension.resolveOperatorDepartment(
+        email: json['email'] as String?,
+        id: json['id'] as String?,
+        name: json['name'] as String?,
+        employeeCode: json['employee_code'] as String?,
+      );
+    }
     return UserModel(
       id: json['id'] as String,
       name: json['name'] as String,
       email: json['email'] as String,
-      role: UserRole.values.firstWhere(
-        (e) => e.name == json['role'],
-        orElse: () => UserRole.operator,
-      ),
-      department: json['department'] != null
-          ? DepartmentType.values.firstWhere(
-              (e) => e.name == json['department'],
-              orElse: () => DepartmentType.drawing,
-            )
-          : null,
+      role: role,
+      department: department,
       speciality: json['speciality'] as String?,
       employeeCode: json['employee_code'] as String?,
     );
@@ -100,27 +120,39 @@ class UserModel extends Equatable {
     required String email,
   }) {
     final roleStr = (profile['role'] as String?)?.toLowerCase() ?? '';
-    final specialtyStr = (profile['specialty'] as String?) ?? '';
+    final specialtyStr = (profile['specialty'] as String?) ??
+        (profile['speciality'] as String?) ??
+        '';
     final deptStr = profile['department'] as String?;
+    final role = _parseSupabaseRole(roleStr);
 
-    DepartmentType? department;
-    if (deptStr != null && deptStr.isNotEmpty) {
-      try {
-        department = DepartmentType.values.firstWhere(
-          (e) =>
-              e.name.toLowerCase() == deptStr.toLowerCase() ||
-              e.code.toLowerCase() == deptStr.toLowerCase(),
-        );
-      } catch (_) {
-        department = null;
-      }
+    DepartmentType? department = DepartmentTypeExtension.fromString(deptStr);
+    if (department == null && role == UserRole.operator) {
+      department = DepartmentTypeExtension.resolveOperatorDepartment(
+        email: email,
+        id: profile['id'] as String?,
+        name: (profile['full_name'] as String?) ?? (profile['name'] as String?),
+        employeeCode: profile['employee_code'] as String?,
+      );
     }
 
+    final id = profile['id'] as String? ?? '';
+    final rawName = (profile['full_name'] as String?) ??
+        (profile['name'] as String?) ??
+        '';
+    final effectiveName = rawName.isNotEmpty
+        ? rawName
+        : (email.isNotEmpty && email.contains('@') ? email.split('@').first : 'User');
+
+    final effectiveEmail = email.isNotEmpty
+        ? email
+        : (profile['email'] as String? ?? '');
+
     return UserModel(
-      id: profile['id'] as String,
-      name: (profile['full_name'] as String?) ?? '',
-      email: email,
-      role: _parseSupabaseRole(roleStr),
+      id: id,
+      name: effectiveName,
+      email: effectiveEmail,
+      role: role,
       department: department,
       speciality: specialtyStr.isNotEmpty ? specialtyStr : null,
       employeeCode: profile['employee_code'] as String?,

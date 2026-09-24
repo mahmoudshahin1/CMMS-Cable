@@ -10,6 +10,7 @@ import 'core/theme/theme_state.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
 import 'core/navigation/main_navigation_shell.dart';
+import 'core/sync/manager/sync_manager.dart';
 
 import 'features/assets/presentation/cubit/machine_cubit.dart';
 import 'features/downtime/presentation/cubit/downtime_cubit.dart';
@@ -37,7 +38,10 @@ class CableCmmsApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<AuthCubit>(
-          create: (_) => AuthCubit(getIt<AuthRepository>()),
+          create: (_) => AuthCubit(
+            getIt<AuthRepository>(),
+            syncManager: getIt<SyncManager>(),
+          ),
         ),
         BlocProvider<LocaleCubit>(create: (_) => LocaleCubit()),
         BlocProvider<ThemeCubit>(create: (_) => ThemeCubit()),
