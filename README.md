@@ -1,5 +1,41 @@
 <div align="center">
 
+# Cable Ops CMMS — Monorepo
+
+This repository contains the Energya Cables maintenance platform. The Flutter app and web dashboard are isolated in separate top-level folders and share the Supabase database project.
+
+| Directory | Purpose |
+| --- | --- |
+| [`mobile/`](mobile/) | Flutter / Dart mobile and desktop application |
+| [`web/`](web/) | Vue 3, Vite, TypeScript web dashboard |
+| [`supabase/`](supabase/) | Database migrations, RLS policies, triggers, and seed data |
+| [`docs/`](docs/) | Product and architecture documentation |
+
+## Getting started
+
+### Mobile
+```bash
+cd mobile
+flutter pub get
+flutter run
+```
+
+### Web
+```bash
+cd web
+cp .env.example .env.local # PowerShell: Copy-Item .env.example .env.local
+# Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local
+npm install
+npm run dev
+```
+
+For Vercel or Cloudflare Pages, set the project root directory to `web` and configure the two `VITE_SUPABASE_*` variables in the host settings.
+
+### Supabase
+Apply the ordered SQL files under [`supabase/migrations/`](supabase/migrations/) before running [`supabase/seed.sql`](supabase/seed.sql). The idempotent seed contains seven departments, reference roles, sample spare parts, and an EX01 machine BOM. `EX01` is the stable database identifier for the line commonly written as EX-01. Create/invite actual users through Supabase Auth; do not commit passwords or service-role keys.
+
+---
+
 # 🏭 Energya Cables — Industrial CMMS
 ### Advanced Machinery Monitoring, Maintenance & Operational Lifecycle Management System
 **نظام إدارة الصيانة الشامل والعمليات الصناعية المتطورة لمصانع الكابلات**
@@ -187,13 +223,13 @@ Every presentation screen and component is cleanly decomposed to avoid monoliths
 
 | Modular Component | Path | Responsibility | Line Count |
 | :--- | :--- | :--- | :---: |
-| [login_screen.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/screens/login_screen.dart) | `lib/features/auth/presentation/screens/` | Screen orchestration, lifecycle & animations | **214** |
-| [login_form_card.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_form_card.dart) | `lib/features/auth/presentation/widgets/login/` | Form container, input validation & sign-in trigger | **247** |
-| [login_quick_access.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_quick_access.dart) | `lib/features/auth/presentation/widgets/login/` | Quick-access account selection chips by role | **197** |
-| [login_top_bar.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_top_bar.dart) | `lib/features/auth/presentation/widgets/login/` | Floating action bar for language & theme toggles | **146** |
-| [login_form_fields.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_form_fields.dart) | `lib/features/auth/presentation/widgets/login/` | Standardized input fields styling & text field labels | **93** |
-| [login_background.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_background.dart) | `lib/features/auth/presentation/widgets/login/` | Industrial gradient canvas & ambient glow effects | **76** |
-| [login_header_logo.dart](file:///h:/orning_and_evening_remembrances/lib/features/auth/presentation/widgets/login/login_header_logo.dart) | `lib/features/auth/presentation/widgets/login/` | Elevated Energya brand logo with fallback banner | **52** |
+| [login_screen.dart](mobile/lib/features/auth/presentation/screens/login_screen.dart) | `mobile/lib/features/auth/presentation/screens/` | Screen orchestration, lifecycle & animations | **214** |
+| [login_form_card.dart](mobile/lib/features/auth/presentation/widgets/login/login_form_card.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Form container, input validation & sign-in trigger | **247** |
+| [login_quick_access.dart](mobile/lib/features/auth/presentation/widgets/login/login_quick_access.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Quick-access account selection chips by role | **197** |
+| [login_top_bar.dart](mobile/lib/features/auth/presentation/widgets/login/login_top_bar.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Floating action bar for language & theme toggles | **146** |
+| [login_form_fields.dart](mobile/lib/features/auth/presentation/widgets/login/login_form_fields.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Standardized input fields styling & text field labels | **93** |
+| [login_background.dart](mobile/lib/features/auth/presentation/widgets/login/login_background.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Industrial gradient canvas & ambient glow effects | **76** |
+| [login_header_logo.dart](mobile/lib/features/auth/presentation/widgets/login/login_header_logo.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Elevated Energya brand logo with fallback banner | **52** |
 
 ---
 
@@ -240,6 +276,7 @@ cd CMMS-Cable
 
 ### 2. Install Dependencies
 ```bash
+cd mobile
 flutter pub get
 ```
 

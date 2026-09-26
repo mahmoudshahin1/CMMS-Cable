@@ -1,7 +1,36 @@
 -- ==============================================================================
 -- seed.sql
 -- Production baseline fixtures: Industrial Cable Factory Machines (Lines 1 to 7)
--- ==============================================================================
+-- ===============================================================================
+
+-- Reference data is intentionally idempotent. Auth users are created/invited in Supabase Auth;
+-- never put passwords or fabricated auth.users UUIDs in a committed seed file.
+INSERT INTO public.factory_departments (code, name_en, name_ar) VALUES
+  ('drawing', 'Drawing', 'السحب'),
+  ('ccv', 'CCV Insulation', 'العزل والتكسية'),
+  ('stranding', 'Stranding', 'الجدل'),
+  ('tapeArmour', 'Tape Armouring', 'التسليح'),
+  ('extrusion', 'Extrusion', 'الغلاف الخارجي'),
+  ('assembly', 'Assembly & Rewinding', 'إعادة لف'),
+  ('screening', 'Screening', 'التجهيز')
+ON CONFLICT (code) DO UPDATE SET name_en = EXCLUDED.name_en, name_ar = EXCLUDED.name_ar;
+
+INSERT INTO public.factory_roles (code, name_en, name_ar, web_access) VALUES
+  ('ADMIN', 'Administrator', 'مدير النظام', TRUE),
+  ('SUPERVISOR', 'Maintenance Supervisor', 'مشرف صيانة', TRUE),
+  ('PRODUCTION_SUPERVISOR', 'Production Supervisor', 'مشرف إنتاج', TRUE),
+  ('TECHNICIAN', 'Technician', 'فني', FALSE),
+  ('OPERATOR', 'Operator', 'مشغل', FALSE)
+ON CONFLICT (code) DO UPDATE SET name_en = EXCLUDED.name_en, name_ar = EXCLUDED.name_ar, web_access = EXCLUDED.web_access;
+
+INSERT INTO public.spare_parts (part_code, name, description, unit, quantity_on_hand, reorder_level) VALUES
+  ('BRG-6205-2RS', 'Deep groove ball bearing 6205-2RS', 'Sealed radial bearing for rotating equipment', 'piece', 12, 4),
+  ('BELT-SPB-1600', 'SPB drive belt 1600 mm', 'Industrial V-belt for line drive', 'piece', 8, 3),
+  ('SENS-IND-M18', 'Inductive proximity sensor M18', '24V DC machine position sensor', 'piece', 10, 3),
+  ('FUSE-10A-GG', 'Industrial fuse 10A gG', 'Control cabinet replacement fuse', 'piece', 20, 6)
+ON CONFLICT (part_code) DO UPDATE SET
+  name = EXCLUDED.name, description = EXCLUDED.description, unit = EXCLUDED.unit,
+  reorder_level = EXCLUDED.reorder_level;
 
 INSERT INTO public.machines (id, code, name, department, status, sub_category, current_speed_mpm, total_meters_produced)
 VALUES
@@ -78,3 +107,10 @@ ON CONFLICT (id) DO UPDATE SET
   department = EXCLUDED.department,
   sub_category = EXCLUDED.sub_category,
   updated_at = NOW();
+
+-- EX01 is the stable machine id/code already used by mobile and demo records;
+-- it represents the extrusion line commonly shown as EX-01 in business documents.
+INSERT INTO public.machine_bom (machine_id, spare_part_id, quantity_per_machine)
+SELECT 'EX01', id, 1 FROM public.spare_parts WHERE part_code IN ('BRG-6205-2RS', 'BELT-SPB-1600', 'SENS-IND-M18')
+ON CONFLICT (machine_id, spare_part_id) DO UPDATE
+SET quantity_per_machine = EXCLUDED.quantity_per_machine;
