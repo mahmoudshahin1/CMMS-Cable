@@ -1,27 +1,44 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Activity, ArrowLeft, ShieldCheck } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { supabaseConfigError } from '../api/supabase'
-const email = ref(''); const password = ref('')
-const auth = useAuthStore(); const router = useRouter(); const route = useRoute()
+
+const email = ref('')
+const password = ref('')
+const auth = useAuthStore()
+const router = useRouter()
+const route = useRoute()
 async function submit() {
   try {
     await auth.signIn(email.value, password.value)
     await router.replace(typeof route.query.redirect === 'string' ? route.query.redirect : '/plant-floor')
-  } catch { /* The store exposes the error for the form. */ }
+  } catch { /* The auth store exposes a localized error for the form. */ }
 }
 </script>
+
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-slate-100 p-5">
-    <form class="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm" @submit.prevent="submit">
-      <p class="text-sm font-bold text-brand">ENERGYA CABLES</p><h1 class="mt-2 text-2xl font-bold">تسجيل الدخول</h1>
-      <p class="mt-2 text-sm text-slate-500">لوحة متابعة عمليات المصنع والصيانة</p>
-      <label class="mt-6 block text-sm font-medium">البريد الإلكتروني<input v-model="email" required type="email" autocomplete="username" class="mt-2 w-full rounded-lg border p-3" /></label>
-      <label class="mt-4 block text-sm font-medium">كلمة المرور<input v-model="password" required type="password" autocomplete="current-password" class="mt-2 w-full rounded-lg border p-3" /></label>
-      <p v-if="supabaseConfigError" class="mt-4 text-sm text-amber-700">{{ supabaseConfigError }}</p>
-      <p v-else-if="auth.error" class="mt-4 text-sm text-red-600">{{ auth.error }}</p>
-      <button :disabled="auth.loading || Boolean(supabaseConfigError)" class="mt-6 w-full rounded-lg bg-brand p-3 font-semibold text-white disabled:opacity-50">{{ auth.loading ? 'جارٍ الدخول…' : 'دخول' }}</button>
-    </form>
+  <main class="relative grid min-h-screen place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_top_left,_#dff7ff_0%,_transparent_44%),linear-gradient(145deg,#eef4f9,#f8fbfd)] p-4 md:p-8">
+    <div class="pointer-events-none absolute -right-28 top-20 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl"></div><div class="pointer-events-none absolute -bottom-36 left-10 h-96 w-96 rounded-full bg-blue-300/20 blur-3xl"></div>
+    <section class="relative grid w-full max-w-5xl overflow-hidden rounded-[30px] border border-white/80 bg-white/90 shadow-[0_32px_90px_-35px_rgba(10,37,64,.28)] backdrop-blur-xl md:min-h-[570px] md:grid-cols-2">
+      <div class="relative flex flex-col justify-between overflow-hidden bg-brand-navy p-7 text-white md:p-10">
+        <div class="absolute -left-20 top-28 h-72 w-72 rounded-full border border-cyan-100/10"></div><div class="absolute -left-8 top-40 h-52 w-52 rounded-full border border-cyan-100/10"></div><div class="absolute bottom-20 right-0 h-48 w-48 rounded-full bg-brand/15 blur-3xl"></div>
+        <div class="relative"><div class="inline-flex rounded-2xl bg-white px-5 py-4 shadow-lg"><img src="/energya-logo.png" alt="Energya Cables" class="h-14 w-[220px] object-contain" /></div><p class="mt-8 text-xs font-bold uppercase tracking-[.22em] text-cyan-300">Cable operations platform</p><h2 class="mt-3 max-w-sm text-3xl font-extrabold leading-[1.45] md:text-4xl">مصنع متصل.<br />قرارات أسرع.</h2><p class="mt-4 max-w-sm text-sm leading-7 text-white/65">من أرضية الإنتاج إلى الصيانة والتحليلات، صورة تشغيلية واحدة تساعد الفريق على المتابعة والاستجابة.</p></div>
+        <div class="relative mt-10 grid grid-cols-2 gap-3"><div class="rounded-2xl border border-white/10 bg-white/[.06] p-4"><Activity :size="18" class="text-cyan-300" /><p class="mt-3 text-sm font-bold">متابعة مباشرة</p><p class="mt-1 text-[11px] text-white/50">حالة الخطوط والماكينات</p></div><div class="rounded-2xl border border-white/10 bg-white/[.06] p-4"><ShieldCheck :size="18" class="text-cyan-300" /><p class="mt-3 text-sm font-bold">صلاحيات آمنة</p><p class="mt-1 text-[11px] text-white/50">حسب الدور والقسم</p></div></div>
+        <p class="relative mt-6 text-[10px] text-white/35">Energya Cables · Cable Ops CMMS</p>
+      </div>
+      <div class="flex items-center p-7 md:p-12">
+        <form class="mx-auto w-full max-w-sm" @submit.prevent="submit">
+          <div class="mb-7 md:hidden"><img src="/energya-logo.png" alt="Energya Cables" class="h-12 w-48 object-contain object-right" /></div>
+          <p class="text-xs font-extrabold tracking-[.18em] text-brand-dark">مرحبًا بعودتك</p><h1 class="mt-2 text-3xl font-extrabold text-brand-navy">تسجيل الدخول</h1><p class="mt-2 text-sm text-slate-500">أدخل بيانات حسابك للوصول إلى لوحة العمليات.</p>
+          <label class="mt-8 block text-sm font-bold text-slate-700">البريد الإلكتروني<div class="mt-2 flex items-center rounded-xl border border-slate-200 bg-slate-50 transition focus-within:border-brand focus-within:bg-white focus-within:ring-4 focus-within:ring-cyan-100"><input v-model="email" required type="email" autocomplete="username" placeholder="name@company.com" class="w-full rounded-xl bg-transparent px-4 py-3.5 text-sm outline-none placeholder:text-slate-400" dir="ltr" /></div></label>
+          <label class="mt-5 block text-sm font-bold text-slate-700">كلمة المرور<div class="mt-2 flex items-center rounded-xl border border-slate-200 bg-slate-50 transition focus-within:border-brand focus-within:bg-white focus-within:ring-4 focus-within:ring-cyan-100"><input v-model="password" required type="password" autocomplete="current-password" placeholder="••••••••" class="w-full rounded-xl bg-transparent px-4 py-3.5 text-sm outline-none placeholder:text-slate-400" dir="ltr" /></div></label>
+          <p v-if="supabaseConfigError" class="mt-4 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">{{ supabaseConfigError }}</p><p v-else-if="auth.error" class="mt-4 rounded-xl bg-red-50 p-3 text-xs leading-5 text-red-700">{{ auth.error }}</p>
+          <button :disabled="auth.loading || Boolean(supabaseConfigError)" class="group mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-cyan-900/15 transition duration-200 hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50">{{ auth.loading ? 'جارٍ التحقق من الحساب…' : 'الدخول إلى لوحة التحكم' }}<ArrowLeft :size="17" class="transition-transform group-hover:-translate-x-1" /></button>
+          <p class="mt-6 text-center text-[11px] text-slate-400">الدخول مخصص لمستخدمي لوحة الويب المعتمدين.</p>
+        </form>
+      </div>
+    </section>
   </main>
 </template>

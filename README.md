@@ -13,6 +13,8 @@ This repository contains the Energya Cables maintenance platform. The Flutter ap
 
 Read [`docs/SCHEMA.md`](docs/SCHEMA.md) for the database contract, role/RLS notes, workflow RPCs, and reporting views. Important: `work_orders` uses UUID `id` and has no `work_order_num` column.
 
+لشرح شامل بالعربية لبنية الويب والموبايل وقاعدة البيانات وطريقة تشغيلها ومزامنتها، راجع [دليل المشروع](docs/PROJECT_GUIDE_AR.md).
+
 ## Getting started
 
 ### Mobile

@@ -13,6 +13,7 @@
 - Vue 3 + Vite + TypeScript, Tailwind CSS, Pinia, Vue Router, Supabase JS, ECharts / Vue-ECharts, and Lucide Vue dependency are configured in `web/`.
 - Main areas: `web/src/api/supabase.ts`, `web/src/stores/`, `web/src/router/`, `web/src/components/`, and `web/src/views/` (login, live plant, work orders, analytics).
 - Arabic RTL and Energya navy/cyan styling are in place. Work Orders now has local filters for department/status/priority/type/technician, a UUID-based detail route, profile-name resolution, work-order events timeline, used-part list, root cause/actions, and chronology display. This is read-only; any future workflow actions must call the existing RPCs.
+- Web visual refresh adds the company logo to the sign-in and app shell, page transitions and reduced-motion-aware hover/loading animation, a denser Supabase-backed Analytics workspace, and shared responsive navigation. The Arabic architecture guide is `docs/PROJECT_GUIDE_AR.md`.
 - Phase 4 implementation is now in place: clickable machine cards with functional status colors and live stop duration; machine detail with telemetry, downtime history and BOM; a Realtime downtime ledger with role-gated start/close actions wired to `rpc_create_downtime_log` / `rpc_close_downtime_log`; and a searchable spare-parts inventory with stock warnings and BOM counts. The downtime screens call the existing database RPCs rather than writing directly to tables.
 - Copy `web/.env.example` to `web/.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before connecting the web app. No keys were added to Git.
 - npm marks the specifically requested `lucide-vue-next` package as deprecated and suggests `@lucide/vue`; decide whether to migrate after confirming the desired package.
@@ -31,10 +32,11 @@
 
 ## Verification performed
 
-- `web`: `npm run build` passed TypeScript checks and Vite production build. ECharts remains in a lazy-loaded analytics chunk of about 503 kB minified; Vite reports a size warning but build exits successfully.
+- `web`: `npm run build` passed TypeScript checks and Vite production build. The Analytics view is lazy-loaded; ECharts is split into separate chunks (about 371 kB charts and 173 kB components) and the previous large-chunk warning is gone.
 - Phase 5 verification completed: `mobile/flutter pub get` succeeded; `mobile/flutter analyze` reported no issues; `mobile/flutter test` passed all 91 tests; `web/npm run build` passed. `git diff --check` passed (Git may still print its normal LF-to-CRLF notices on Windows).
 - Work Orders smoke test against authenticated production reads showed three current work orders, the status filter reduced the list correctly, and a real detail page loaded machine/profile data and two timeline events. No write operation was used.
 - Phase 4 smoke test against authenticated production reads showed downtime rows with machine names, eight spare-part records, machine details for DR02, and the Plant Floor Realtime channel in `متصل`. Production writes through the downtime RPCs were not attempted; validate create/close flows on a separate development Supabase project before using them operationally. No BOM rows are currently associated with the displayed machines, so the detail page shows an empty BOM.
+- UI refresh smoke test on the authenticated local web app loaded real analytics for 54 machines and six active stops; the channel showed Realtime connected. The report source's latest production date was behind the local date, so the dashboard now surfaces a freshness notice alongside the latest source date.
 - `mobile`: `flutter pub get` passed.
 - `mobile`: `flutter run -d chrome --no-pub` started successfully; Supabase Auth, initial sync, and Realtime subscription completed in the running app. Quit the existing Flutter run with `q` if it is still active.
 - `mobile`: `flutter run -d windows --no-pub` could not run because Visual Studio C++ build tools are missing in the current environment. This does not block running Flutter Web on Chrome.
