@@ -1,6 +1,21 @@
 -- Reporting views shared by the web dashboard.
 -- security_invoker keeps the underlying table grants and RLS policies in force.
 
+-- Remember which views did not exist before this migration so rollback never
+-- drops views that were already used by an existing deployment.
+CREATE TABLE IF NOT EXISTS private._cmms_migration_10_views_created (
+  view_name TEXT PRIMARY KEY
+);
+INSERT INTO private._cmms_migration_10_views_created (view_name)
+SELECT view_name
+FROM unnest(ARRAY[
+  'v_machine_status_live', 'v_downtime_pareto', 'v_work_order_funnel',
+  'v_line_availability_daily', 'v_mttr_by_department', 'v_bad_actors_30d',
+  'v_shift_downtime_split'
+]) AS requested(view_name)
+WHERE to_regclass(format('public.%I', view_name)) IS NULL
+ON CONFLICT DO NOTHING;
+
 CREATE OR REPLACE VIEW public.v_machine_status_live
 WITH (security_invoker = true)
 AS
@@ -13,10 +28,13 @@ SELECT
   m.current_speed_mpm,
   m.total_meters_produced,
   active.id AS active_downtime_id,
-  active.reason AS active_downtime_reason
+  active.category AS active_downtime_category,
+  active.reason AS active_downtime_reason,
+  active.started_at AS active_downtime_started_at,
+  EXTRACT(EPOCH FROM (NOW() - active.started_at)) / 60 AS active_downtime_minutes
 FROM public.machines AS m
 LEFT JOIN LATERAL (
-  SELECT d.id, d.reason
+  SELECT d.id, d.category, d.reason, d.started_at
   FROM public.downtime_logs AS d
   WHERE d.machine_id = m.id
     AND d.ended_at IS NULL
@@ -29,6 +47,7 @@ WITH (security_invoker = true)
 AS
 WITH per_log AS (
   SELECT
+    m.department,
     COALESCE(NULLIF(d.category, ''), 'other') AS category,
     d.started_at,
     d.ended_at,
@@ -41,16 +60,24 @@ WITH per_log AS (
       WHERE jsonb_typeof(entry.value) = 'number'
     ), 0) AS recorded_shift_minutes
   FROM public.downtime_logs AS d
+  JOIN public.machines AS m ON m.id = d.machine_id
 )
 SELECT
+  department,
   category,
+  COUNT(*)::bigint AS event_count,
   ROUND(SUM(
     CASE WHEN recorded_shift_minutes > 0 THEN recorded_shift_minutes
       ELSE GREATEST(EXTRACT(EPOCH FROM (COALESCE(ended_at, NOW()) - started_at)) / 60, 0)
     END
-  )::numeric, 2) AS total_minutes
+  )::numeric, 2) AS total_minutes,
+  ROUND(AVG(
+    CASE WHEN recorded_shift_minutes > 0 THEN recorded_shift_minutes
+      ELSE GREATEST(EXTRACT(EPOCH FROM (COALESCE(ended_at, NOW()) - started_at)) / 60, 0)
+    END
+  )::numeric, 1) AS avg_minutes
 FROM per_log
-GROUP BY category;
+GROUP BY department, category;
 
 CREATE OR REPLACE VIEW public.v_work_order_funnel
 WITH (security_invoker = true)
