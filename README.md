@@ -38,6 +38,8 @@ For a clean development project, apply the ordered SQL files under [`supabase/mi
 
 **Production migration note:** the configured production Supabase project has a pre-existing migration history that does not exactly match this repository. Factory-catalog changes were applied and verified through SQL Editor but are not recorded as a CLI migration, and production already had reporting views from earlier migrations. Do not run `supabase db push` or manually edit `supabase_migrations.schema_migrations` against production until an explicit baseline reconciliation is completed. See [`HANDOFF.md`](HANDOFF.md) for the inspected state.
 
+The read-only production history inventory and safe reconciliation sequence are in [`supabase/PRODUCTION_BASELINE.md`](supabase/PRODUCTION_BASELINE.md).
+
 ---
 
 # 🏭 Energya Cables — Industrial CMMS
