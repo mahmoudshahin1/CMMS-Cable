@@ -21,7 +21,10 @@
 - Existing migration history and seeds were retained.
 - Added `supabase/migrations/20260926000009_factory_catalog.sql` for department and role catalogs, spare parts, machine BOM, RLS policies, and the spare-parts update trigger.
 - Updated `supabase/seed.sql` with seven departments, role catalog entries, sample spare parts, and an EX01 BOM. `EX01` remains the database id/code used by the mobile app and is referred to as EX-01 in some business documents.
-- No SQL was applied to the live Supabase project. Review/apply the migration in the intended Supabase environment, then run the seed after the existing machine rows are installed.
+- Production project `ptlzpwfrrxfqfprkvbuf` was inspected in Supabase Studio. Migration 9's schema changes were applied manually in SQL Editor and verified: the three catalog tables exist, and the seven departments/eight role-reference rows were seeded. Sample spare-parts, machine, and BOM fixtures were not inserted into production.
+- The manual application was not added to `supabase_migrations.schema_migrations`. The live history has 13 entries, including older equivalent dashboard view migrations (`20260923103647`, `20260923103720`) and a later role/RLS reconciliation (`20260927073853`). The repository migration filenames do not line up exactly with the live history. **Do not run `supabase db push` against production until the baseline and migration history are deliberately reconciled.** Do not insert migration-history rows by hand.
+- The seven reporting views already existed in production before local migration 10 and were queried successfully by the authenticated dashboard. The local `20260927000010_web_reporting_views.sql` was therefore not applied to production; treat it as the migration definition for a clean/reconciled environment, not as confirmation of the exact production view SQL.
+- The dashboard's authenticated reads were smoke-tested on Analytics, Plant Floor (54 machines, seven departments), and Work Orders. The production reporting views return data. A write-based Realtime test was intentionally skipped to avoid changing operational production records.
 - Auth users were deliberately not fabricated in SQL. Invite/create real users using Supabase Auth, then assign roles through the approved admin process. Never store user passwords or service-role keys in Git.
 
 ## Verification performed
@@ -36,6 +39,7 @@
 
 1. In the new Codex account, clone the repository and open its root (not just `web/`) to keep both apps and the Supabase files in scope.
 2. Configure `web/.env.local` locally and confirm login against the intended Supabase project.
-3. Review migration `20260926000009_factory_catalog.sql` and execute the migrations/seed in a development Supabase project. Verify RLS and the existing mobile schema before applying to production.
-4. Continue building the live plant detail interactions, work-order filters/Kanban/detail timeline, and executive analytics using actual database views.
-5. For deployment, set Vercel/Cloudflare project root to `web` and set the two `VITE_SUPABASE_*` environment variables in hosting settings.
+3. Before any production migration automation, compare the 13 live `schema_migrations` entries with repository migrations 1–10 and create an explicit baseline/reconciliation plan. Never repair the version table by hand or run `db push` blindly.
+4. Reconcile and verify production reporting-view definitions against migration 10; the existing views returned data, but matching output does not prove identical SQL.
+5. Apply and test pending migrations in a separate development Supabase project first. Seed only reference data there unless fixture insertion is explicitly intended.
+6. For deployment, set Vercel/Cloudflare project root to `web` and set the two `VITE_SUPABASE_*` environment variables in hosting settings.

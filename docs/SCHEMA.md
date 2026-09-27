@@ -1,6 +1,6 @@
 # Supabase Data Contract
 
-This document describes the contract implemented by the ordered files in `supabase/migrations/`. Apply those migrations to a development project and verify the policies with real role accounts before production use. `supabase/apply_complete_schema.sql` is a consolidated legacy/reference script; the ordered migrations are the canonical source for new installs.
+This document describes the intended contract implemented by the ordered files in `supabase/migrations/`. Apply those migrations to a clean development project and verify the policies with real role accounts before production use. `supabase/apply_complete_schema.sql` is a consolidated legacy/reference script. The configured production project has a different pre-existing migration history; its live state must be reconciled separately before using CLI migration automation. See `HANDOFF.md`.
 
 ## Identity and access
 
@@ -61,7 +61,7 @@ Read each function signature in `20260921000004_workflow_commands.sql` or `20260
 
 ## Reporting views (migration `20260927000010`)
 
-All views use PostgreSQL `security_invoker = true` and grant `SELECT` to `authenticated`, so underlying grants and RLS still apply. The target Supabase Postgres must support security-invoker views (PostgreSQL 15+).
+The repository defines these views in migration `20260927000010`. Production already had views with these names from earlier recorded migrations, and they were read successfully by the authenticated dashboard; the local migration was not applied there. All intended views use PostgreSQL `security_invoker = true` and grant `SELECT` to `authenticated`, so underlying grants and RLS still apply. The target Supabase Postgres must support security-invoker views (PostgreSQL 15+). Read success alone does not prove production SQL matches this migration exactly.
 
 | View | Fields / meaning |
 | --- | --- |
@@ -76,4 +76,3 @@ All views use PostgreSQL `security_invoker = true` and grant `SELECT` to `authen
 Availability assumes 1,440 scheduled minutes per machine per date and uses the current machine roster; historical department staffing is not stored. `downtime_logs.production_date` is the recorded bucket, so a log crossing calendar days is not redistributed across dates. Pareto prefers a positive numeric sum in `shift_minutes`; otherwise it uses elapsed duration. Shift charts use persisted shift values where present; for legacy/empty allocations they estimate the full event duration into the Cairo shift in which it started. These are reporting estimates, not payroll/OEE-grade historical reconstruction.
 
 Realtime publication currently includes `machines`, `work_orders`, `work_order_events`, `work_order_parts`, and `downtime_logs`; the new views are read through normal authenticated queries and refreshed when their source table events arrive.
-

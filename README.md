@@ -34,7 +34,9 @@ npm run dev
 For Vercel or Cloudflare Pages, set the project root directory to `web` and configure the two `VITE_SUPABASE_*` variables in the host settings.
 
 ### Supabase
-Apply the ordered SQL files under [`supabase/migrations/`](supabase/migrations/) before running [`supabase/seed.sql`](supabase/seed.sql). The idempotent seed contains seven departments, role reference data, sample spare parts, and an EX01 machine BOM. `EX01` is the stable database identifier for the line commonly written as EX-01. Create/invite actual users through Supabase Auth; do not commit passwords or service-role keys. The reporting views are created by `20260927000010_web_reporting_views.sql`; review their assumptions in [`docs/SCHEMA.md`](docs/SCHEMA.md) before using metrics for operational decisions.
+For a clean development project, apply the ordered SQL files under [`supabase/migrations/`](supabase/migrations/) and then run [`supabase/seed.sql`](supabase/seed.sql). The seed contains seven departments, role reference data, sample spare parts, machine fixtures, and an EX01 BOM; review it before using outside development. `EX01` is the stable database identifier for the line commonly written as EX-01. Create/invite actual users through Supabase Auth; do not commit passwords or service-role keys. The reporting views are defined by `20260927000010_web_reporting_views.sql`; review their assumptions in [`docs/SCHEMA.md`](docs/SCHEMA.md) before using metrics for operational decisions.
+
+**Production migration note:** the configured production Supabase project has a pre-existing migration history that does not exactly match this repository. Factory-catalog changes were applied and verified through SQL Editor but are not recorded as a CLI migration, and production already had reporting views from earlier migrations. Do not run `supabase db push` or manually edit `supabase_migrations.schema_migrations` against production until an explicit baseline reconciliation is completed. See [`HANDOFF.md`](HANDOFF.md) for the inspected state.
 
 ---
 
