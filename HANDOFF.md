@@ -12,7 +12,7 @@
 
 - Vue 3 + Vite + TypeScript, Tailwind CSS, Pinia, Vue Router, Supabase JS, ECharts / Vue-ECharts, and Lucide Vue dependency are configured in `web/`.
 - Main areas: `web/src/api/supabase.ts`, `web/src/stores/`, `web/src/router/`, `web/src/components/`, and `web/src/views/` (login, live plant, work orders, analytics).
-- Arabic RTL and Energya navy/cyan styling are in place. The pages are a working scaffold; full CMMS workflows, the advanced work-order Kanban/detail flows, and production dashboards are follow-up work.
+- Arabic RTL and Energya navy/cyan styling are in place. Work Orders now has local filters for department/status/priority/type/technician, a UUID-based detail route, profile-name resolution, work-order events timeline, used-part list, root cause/actions, and chronology display. This is read-only; any future workflow actions must call the existing RPCs.
 - Copy `web/.env.example` to `web/.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before connecting the web app. No keys were added to Git.
 - npm marks the specifically requested `lucide-vue-next` package as deprecated and suggests `@lucide/vue`; decide whether to migrate after confirming the desired package.
 
@@ -31,6 +31,7 @@
 ## Verification performed
 
 - `web`: `npm run build` passed TypeScript checks and Vite production build. ECharts remains in a lazy-loaded analytics chunk of about 503 kB minified; Vite reports a size warning but build exits successfully.
+- Work Orders smoke test against authenticated production reads showed three current work orders, the status filter reduced the list correctly, and a real detail page loaded machine/profile data and two timeline events. No write operation was used.
 - `mobile`: `flutter pub get` passed.
 - `mobile`: `flutter run -d chrome --no-pub` started successfully; Supabase Auth, initial sync, and Realtime subscription completed in the running app. Quit the existing Flutter run with `q` if it is still active.
 - `mobile`: `flutter run -d windows --no-pub` could not run because Visual Studio C++ build tools are missing in the current environment. This does not block running Flutter Web on Chrome.
@@ -41,7 +42,7 @@
 1. In the new Codex account, clone the repository and open its root (not just `web/`) to keep both apps and the Supabase files in scope.
 2. Configure `web/.env.local` locally and confirm login against the intended Supabase project.
 3. Provision an isolated development Supabase project/branch and validate the complete repo migration chain there.
-4. Obtain a schema-only production snapshot and compare it against the clean development schema. Then review a production baseline/reconciliation migration with the owner before enabling CLI deployment.
-5. Reconcile and verify production reporting-view definitions against migration 10; the existing views returned data, but matching output does not prove identical SQL.
-6. Seed production only through explicitly reviewed data migrations; keep demo machine/spare-parts fixtures in development.
+4. Continue with Phase 4: machine details, downtime history and RPC flows, spare parts/BOM views, and Realtime updates. Validate writes only in a development project.
+5. After Phase 4, run the full Phase 5 suite: Flutter dependency/analyzer/tests, web build, and Git diff checks.
+6. Production migration reconciliation remains separate: obtain a schema-only production snapshot, compare against a clean development schema, then review a baseline plan before enabling CLI deployment.
 7. For deployment, set Vercel/Cloudflare project root to `web` and set the two `VITE_SUPABASE_*` environment variables in hosting settings.

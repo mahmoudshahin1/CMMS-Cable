@@ -11,6 +11,7 @@ const router = createRouter({
     { path: '/', component: AppShell, children: [
       { path: 'plant-floor', component: () => import('../views/LivePlantView.vue') },
       { path: 'work-orders', component: () => import('../views/WorkOrdersView.vue') },
+      { path: 'work-orders/:id', component: () => import('../views/WorkOrderDetailView.vue') },
       { path: 'analytics', component: () => import('../views/AnalyticsView.vue') },
     ] },
     { path: '/:pathMatch(.*)*', redirect: '/plant-floor' },
