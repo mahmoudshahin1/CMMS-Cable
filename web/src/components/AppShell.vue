@@ -5,6 +5,8 @@ const auth = useAuthStore()
 const links = [
   { to: '/plant-floor', label: 'أرضية المصنع' },
   { to: '/work-orders', label: 'أوامر الشغل' },
+  { to: '/downtime', label: 'سجل التوقفات' },
+  { to: '/spare-parts', label: 'قطع الغيار' },
   { to: '/analytics', label: 'التقارير والتحليلات' },
 ]
 async function logout() { await auth.signOut(); location.assign('/login') }

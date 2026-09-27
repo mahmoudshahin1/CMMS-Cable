@@ -7,6 +7,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const fullName = ref('')
   const role = ref('')
+  const department = ref<string | null>(null)
   const loading = ref(false)
   const error = ref('')
   const isAuthenticated = computed(() => Boolean(user.value))
@@ -15,10 +16,12 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = nextUser
     fullName.value = ''
     role.value = ''
+    department.value = null
     if (!nextUser || !supabase) return
-    const { data } = await supabase.from('user_profiles').select('full_name, role').eq('id', nextUser.id).maybeSingle()
+    const { data } = await supabase.from('user_profiles').select('full_name, role, department').eq('id', nextUser.id).maybeSingle()
     fullName.value = data?.full_name ?? nextUser.email ?? ''
     role.value = data?.role ?? ''
+    department.value = data?.department ?? null
   }
 
   async function initialize() {
@@ -52,5 +55,5 @@ export const useAuthStore = defineStore('auth', () => {
     await loadProfile(null)
   }
 
-  return { user, fullName, role, loading, error, isAuthenticated, initialize, signIn, signOut }
+  return { user, fullName, role, department, loading, error, isAuthenticated, initialize, signIn, signOut }
 })

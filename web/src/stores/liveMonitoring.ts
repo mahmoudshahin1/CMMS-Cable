@@ -5,8 +5,12 @@ import { supabase } from '../api/supabase'
 
 export type Machine = {
   id: string; code: string; name: string; department: string; status: string
+  sub_category: string | null
   current_speed_mpm: number | null; total_meters_produced: number | null
-  active_downtime_id: string | null; active_downtime_reason: string | null
+  active_downtime_id: string | null; active_downtime_category: string | null
+  active_downtime_reason: string | null; active_downtime_started_at: string | null
+  active_downtime_minutes: number | null
+  last_maintenance_at?: string | null
 }
 
 export const useLiveMonitoringStore = defineStore('live-monitoring', () => {

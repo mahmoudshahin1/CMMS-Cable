@@ -10,6 +10,9 @@ const router = createRouter({
     { path: '/', redirect: '/plant-floor' },
     { path: '/', component: AppShell, children: [
       { path: 'plant-floor', component: () => import('../views/LivePlantView.vue') },
+      { path: 'machines/:id', component: () => import('../views/MachineDetailView.vue') },
+      { path: 'downtime', component: () => import('../views/DowntimeView.vue') },
+      { path: 'spare-parts', component: () => import('../views/SparePartsView.vue') },
       { path: 'work-orders', component: () => import('../views/WorkOrdersView.vue') },
       { path: 'work-orders/:id', component: () => import('../views/WorkOrderDetailView.vue') },
       { path: 'analytics', component: () => import('../views/AnalyticsView.vue') },
