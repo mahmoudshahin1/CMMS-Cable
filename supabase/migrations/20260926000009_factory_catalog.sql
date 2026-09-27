@@ -26,6 +26,38 @@ CREATE TABLE IF NOT EXISTS public.spare_parts (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Older deployments created spare_parts from apply_complete_schema.sql with a
+-- different stock-column set. Add the dashboard contract without replacing data.
+ALTER TABLE public.spare_parts
+  ADD COLUMN IF NOT EXISTS description TEXT,
+  ADD COLUMN IF NOT EXISTS unit TEXT NOT NULL DEFAULT 'piece',
+  ADD COLUMN IF NOT EXISTS quantity_on_hand NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS reorder_level NUMERIC(12, 2) NOT NULL DEFAULT 0;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'spare_parts'
+      AND column_name = 'quantity_in_stock'
+  ) THEN
+    EXECUTE 'UPDATE public.spare_parts
+      SET quantity_on_hand = quantity_in_stock
+      WHERE quantity_on_hand = 0 AND quantity_in_stock IS NOT NULL';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'spare_parts'
+      AND column_name = 'min_stock_level'
+  ) THEN
+    EXECUTE 'UPDATE public.spare_parts
+      SET reorder_level = min_stock_level
+      WHERE reorder_level = 0 AND min_stock_level IS NOT NULL';
+  END IF;
+END;
+$$;
+
 CREATE TABLE IF NOT EXISTS public.machine_bom (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   machine_id TEXT NOT NULL REFERENCES public.machines(id) ON DELETE CASCADE,
@@ -53,16 +85,18 @@ DROP POLICY IF EXISTS "Authenticated users can read spare parts" ON public.spare
 CREATE POLICY "Authenticated users can read spare parts" ON public.spare_parts
   FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "Admins manage spare parts" ON public.spare_parts;
+-- Remove the permissive policy from the legacy consolidated schema if present.
+DROP POLICY IF EXISTS spare_parts_all ON public.spare_parts;
 CREATE POLICY "Admins manage spare parts" ON public.spare_parts
-  FOR ALL TO authenticated USING (public.current_user_role() = 'ADMIN')
-  WITH CHECK (public.current_user_role() = 'ADMIN');
+  FOR ALL TO authenticated USING (private.current_app_role() IN ('ADMIN', 'admin'))
+  WITH CHECK (private.current_app_role() IN ('ADMIN', 'admin'));
 DROP POLICY IF EXISTS "Authenticated users can read machine BOM" ON public.machine_bom;
 CREATE POLICY "Authenticated users can read machine BOM" ON public.machine_bom
   FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "Admins manage machine BOM" ON public.machine_bom;
 CREATE POLICY "Admins manage machine BOM" ON public.machine_bom
-  FOR ALL TO authenticated USING (public.current_user_role() = 'ADMIN')
-  WITH CHECK (public.current_user_role() = 'ADMIN');
+  FOR ALL TO authenticated USING (private.current_app_role() IN ('ADMIN', 'admin'))
+  WITH CHECK (private.current_app_role() IN ('ADMIN', 'admin'));
 
 CREATE OR REPLACE FUNCTION public.set_spare_parts_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql SET search_path = '' AS $$

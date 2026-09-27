@@ -1,6 +1,20 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
+Directory _findRepositoryRoot() {
+  var directory = Directory.current.absolute;
+  while (true) {
+    final migrations = Directory(
+      '${directory.path}${Platform.pathSeparator}supabase'
+      '${Platform.pathSeparator}migrations',
+    );
+    if (migrations.existsSync()) return directory;
+    final parent = directory.parent;
+    if (parent.path == directory.path) return Directory.current.absolute;
+    directory = parent;
+  }
+}
+
 void main() {
   group('Production Readiness & Security Audit Test Suite', () {
     test('lib/ contains zero occurrences of service_role key or pattern', () {
@@ -29,10 +43,13 @@ void main() {
     });
 
     test('active migrations and client code contain zero production password leaks', () {
+      final repositoryRoot = _findRepositoryRoot();
       final scanDirs = [
         Directory('lib'),
-        Directory('supabase/migrations'),
-        Directory('supabase/migrations_down'),
+        Directory('${repositoryRoot.path}${Platform.pathSeparator}supabase'
+            '${Platform.pathSeparator}migrations'),
+        Directory('${repositoryRoot.path}${Platform.pathSeparator}supabase'
+            '${Platform.pathSeparator}migrations_down'),
       ];
       final violations = <String>[];
 
@@ -61,9 +78,11 @@ void main() {
       );
     });
 
-    test('1:1 symmetry between migrations and down-migrations (1 through 8)', () {
-      final forwardDir = Directory('supabase/migrations');
-      final downDir = Directory('supabase/migrations_down');
+    test('every migration has a matching down-migration', () {
+      final repositoryRoot = _findRepositoryRoot();
+      final supabasePath = '${repositoryRoot.path}${Platform.pathSeparator}supabase';
+      final forwardDir = Directory('$supabasePath${Platform.pathSeparator}migrations');
+      final downDir = Directory('$supabasePath${Platform.pathSeparator}migrations_down');
 
       expect(forwardDir.existsSync(), isTrue);
       expect(downDir.existsSync(), isTrue);

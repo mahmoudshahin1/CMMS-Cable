@@ -20,7 +20,10 @@ INSERT INTO public.factory_roles (code, name_en, name_ar, web_access) VALUES
   ('SUPERVISOR', 'Maintenance Supervisor', 'مشرف صيانة', TRUE),
   ('PRODUCTION_SUPERVISOR', 'Production Supervisor', 'مشرف إنتاج', TRUE),
   ('TECHNICIAN', 'Technician', 'فني', FALSE),
-  ('OPERATOR', 'Operator', 'مشغل', FALSE)
+  ('OPERATOR', 'Operator', 'مشغل', FALSE),
+  ('PLANT_MANAGER', 'Plant Manager', 'مدير المصنع', TRUE),
+  ('MAINTENANCE_SUPERVISOR', 'Maintenance Supervisor', 'مشرف صيانة', TRUE),
+  ('MAINTENANCE_TECH', 'Maintenance Technician', 'فني صيانة', FALSE)
 ON CONFLICT (code) DO UPDATE SET name_en = EXCLUDED.name_en, name_ar = EXCLUDED.name_ar, web_access = EXCLUDED.web_access;
 
 INSERT INTO public.spare_parts (part_code, name, description, unit, quantity_on_hand, reorder_level) VALUES

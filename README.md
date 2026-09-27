@@ -11,6 +11,8 @@ This repository contains the Energya Cables maintenance platform. The Flutter ap
 | [`supabase/`](supabase/) | Database migrations, RLS policies, triggers, and seed data |
 | [`docs/`](docs/) | Product and architecture documentation |
 
+Read [`docs/SCHEMA.md`](docs/SCHEMA.md) for the database contract, role/RLS notes, workflow RPCs, and reporting views. Important: `work_orders` uses UUID `id` and has no `work_order_num` column.
+
 ## Getting started
 
 ### Mobile
@@ -32,7 +34,7 @@ npm run dev
 For Vercel or Cloudflare Pages, set the project root directory to `web` and configure the two `VITE_SUPABASE_*` variables in the host settings.
 
 ### Supabase
-Apply the ordered SQL files under [`supabase/migrations/`](supabase/migrations/) before running [`supabase/seed.sql`](supabase/seed.sql). The idempotent seed contains seven departments, reference roles, sample spare parts, and an EX01 machine BOM. `EX01` is the stable database identifier for the line commonly written as EX-01. Create/invite actual users through Supabase Auth; do not commit passwords or service-role keys.
+Apply the ordered SQL files under [`supabase/migrations/`](supabase/migrations/) before running [`supabase/seed.sql`](supabase/seed.sql). The idempotent seed contains seven departments, role reference data, sample spare parts, and an EX01 machine BOM. `EX01` is the stable database identifier for the line commonly written as EX-01. Create/invite actual users through Supabase Auth; do not commit passwords or service-role keys. The reporting views are created by `20260927000010_web_reporting_views.sql`; review their assumptions in [`docs/SCHEMA.md`](docs/SCHEMA.md) before using metrics for operational decisions.
 
 ---
 
@@ -281,8 +283,7 @@ flutter pub get
 ```
 
 ### 3. Database & Supabase Provisioning
-Execute the ordered migrations located in `supabase/migrations/` sequentially via your Supabase CLI or SQL Editor:
-- Migrations are versioned and follow strict Row-Level Security (RLS) policies. Legacy provisioning scripts are deprecated and isolated under `supabase/legacy/`.
+Execute the ordered migrations located in `supabase/migrations/` sequentially via your Supabase CLI or SQL Editor, then run `supabase/seed.sql` if factory reference data is needed. Review [`docs/SCHEMA.md`](docs/SCHEMA.md) for actual field names, roles, RLS boundaries, RPC contracts, and reporting-view assumptions. Legacy provisioning scripts are deprecated and isolated under `supabase/legacy/`.
 
 ### 4. Run Automated Tests
 ```bash
@@ -291,7 +292,7 @@ flutter test
 
 ### 5. Launch Application
 ```bash
-# For Chrome Web:
+# For the Flutter app in Chrome (separate from the Vue dashboard in /web):
 flutter run -d chrome
 
 # For Windows Desktop:
