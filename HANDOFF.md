@@ -32,6 +32,7 @@
 ## Verification performed
 
 - `web`: `npm run build` passed TypeScript checks and Vite production build. ECharts remains in a lazy-loaded analytics chunk of about 503 kB minified; Vite reports a size warning but build exits successfully.
+- Phase 5 verification completed: `mobile/flutter pub get` succeeded; `mobile/flutter analyze` reported no issues; `mobile/flutter test` passed all 91 tests; `web/npm run build` passed. `git diff --check` passed (Git may still print its normal LF-to-CRLF notices on Windows).
 - Work Orders smoke test against authenticated production reads showed three current work orders, the status filter reduced the list correctly, and a real detail page loaded machine/profile data and two timeline events. No write operation was used.
 - Phase 4 smoke test against authenticated production reads showed downtime rows with machine names, eight spare-part records, machine details for DR02, and the Plant Floor Realtime channel in `متصل`. Production writes through the downtime RPCs were not attempted; validate create/close flows on a separate development Supabase project before using them operationally. No BOM rows are currently associated with the displayed machines, so the detail page shows an empty BOM.
 - `mobile`: `flutter pub get` passed.
@@ -45,6 +46,6 @@
 2. Configure `web/.env.local` locally and confirm login against the intended Supabase project.
 3. Provision an isolated development Supabase project/branch and validate the complete repo migration chain there.
 4. Provision a separate development Supabase project and validate downtime create/close RPCs, role policies, and Realtime row delivery there. Production has only been read-tested.
-5. Run the full Phase 5 suite: Flutter dependency/analyzer/tests, web build, and Git diff checks.
+5. Phase 5 dependency, analyzer, Flutter test, web build, and Git whitespace checks passed. The Flutter suite currently reports 91 passing tests.
 6. Production migration reconciliation remains separate: obtain a schema-only production snapshot, compare against a clean development schema, then review a baseline plan before enabling CLI deployment.
 7. For deployment, set Vercel/Cloudflare project root to `web` and set the two `VITE_SUPABASE_*` environment variables in hosting settings.

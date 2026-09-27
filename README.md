@@ -33,6 +33,12 @@ npm run dev
 
 For Vercel or Cloudflare Pages, set the project root directory to `web` and configure the two `VITE_SUPABASE_*` variables in the host settings.
 
+### Dashboard features
+
+The authenticated web dashboard provides live plant-floor monitoring, machine telemetry and downtime history, work-order lists and details, analytics, and a searchable spare-parts inventory with machine BOM references. The downtime page exposes create/close actions according to the signed-in role and submits them through the existing Supabase RPCs. Realtime subscriptions refresh machine, downtime, work-order, and stock views as database changes arrive. Validate downtime writes against a development Supabase project before production use.
+
+Run the web TypeScript checks and production build with `cd web && npm run build`. Validate the mobile package with `cd mobile && flutter pub get && flutter analyze && flutter test`.
+
 ### Supabase
 For a clean development project, apply the ordered SQL files under [`supabase/migrations/`](supabase/migrations/) and then run [`supabase/seed.sql`](supabase/seed.sql). The seed contains seven departments, role reference data, sample spare parts, machine fixtures, and an EX01 BOM; review it before using outside development. `EX01` is the stable database identifier for the line commonly written as EX-01. Create/invite actual users through Supabase Auth; do not commit passwords or service-role keys. The reporting views are defined by `20260927000010_web_reporting_views.sql`; review their assumptions in [`docs/SCHEMA.md`](docs/SCHEMA.md) before using metrics for operational decisions.
 
