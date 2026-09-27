@@ -47,3 +47,5 @@ The factory seed's sample spare-part, machine, and BOM fixture rows were not ins
 ## Access/tooling limitation
 
 The current checkout has no Supabase CLI installed and no `supabase/config.toml`. The Supabase Studio session was sufficient for read-only inspection, but not for a reproducible schema diff or CLI-led reconciliation. No database password, service-role key, or production connection string is stored in the repository.
+
+The Supabase organization is currently on the Free plan and has no preview branch. The branch creation dialog requires a Pro upgrade and reports compute billing of `$0.01344/hour` while the branch exists. No branch was created. Continue using a separately provisioned development project, or get explicit owner approval before upgrading/creating a billable branch.
