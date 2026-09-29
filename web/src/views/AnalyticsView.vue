@@ -67,6 +67,7 @@ const availabilityScore = computed(() => {
 })
 const runningCount = computed(() => machines.value.filter((machine) => machine.status === 'running').length)
 const activeStops = computed(() => machines.value.filter((machine) => machine.active_downtime_id))
+const unloggedDowntimeMachines = computed(() => machines.value.filter((machine) => !machine.active_downtime_id && ['downtimeProcess', 'downtimeMaintenance', 'underRepair', 'preventiveMaintenance'].includes(machine.status)))
 const openOrders = computed(() => funnel.value.filter((item) => !['completed', 'verified', 'verifiedClosed'].includes(item.status)).reduce((sum, item) => sum + Number(item.count), 0))
 const closedOrders = computed(() => funnel.value.find((item) => item.status === 'verifiedClosed')?.count ?? 0)
 const averageMttr = computed(() => {
@@ -130,10 +131,11 @@ const shiftOption = computed<Record<string, unknown>>(() => ({
     { name: t('shifts.night'), type: 'bar', stack: 'total', itemStyle: { borderRadius: [5, 5, 0, 0] }, data: shiftsByDate.value.map(([, value]) => Math.round(value.night)) },
   ],
 }))
+const machineStatusLabel = (status: string) => t(`statuses.${status}`)
 const machineStatusOption = computed<Record<string, unknown>>(() => {
   const statuses = new Map<string, number>()
   for (const machine of machines.value) statuses.set(machine.status, (statuses.get(machine.status) ?? 0) + 1)
-  const statusNames: Record<string, string> = { running: t('statuses.running'), idle: t('statuses.idle'), downtimeProcess: t('statuses.downtimeProcess'), downtimeMaintenance: t('statuses.downtimeMaintenance'), underRepair: t('statuses.underRepair'), preventiveMaintenance: t('statuses.preventiveMaintenance'), offline: t('statuses.offline') }
+  const statusNames: Record<string, string> = { running: machineStatusLabel('running'), idle: machineStatusLabel('idle'), downtimeProcess: machineStatusLabel('downtimeProcess'), downtimeMaintenance: machineStatusLabel('downtimeMaintenance'), underRepair: machineStatusLabel('underRepair'), preventiveMaintenance: machineStatusLabel('preventiveMaintenance'), offline: machineStatusLabel('offline') }
   const statusColors: Record<string, string> = { running: '#24B47E', idle: '#CBD5E1', downtimeProcess: '#F06464', downtimeMaintenance: '#DC4C64', underRepair: '#F97362', preventiveMaintenance: '#F3A63B', offline: '#475569' }
   return { tooltip: { trigger: 'item', formatter: (params: { name: string; value: number; percent: number }) => `${params.name}<br/><b>${number(params.value)}</b> ${t('machines')} · ${params.percent}%` }, legend: { bottom: 0, left: 'center', textStyle: { fontFamily: locale.locale === 'ar' ? 'Cairo' : 'Inter', fontSize: 10 } }, series: [{ type: 'pie', radius: ['54%', '76%'], center: ['50%', '43%'], itemStyle: { borderColor: '#fff', borderWidth: 4 }, label: { show: false }, data: [...statuses.entries()].map(([key, value]) => ({ name: statusNames[key] ?? key, value, itemStyle: { color: statusColors[key] ?? '#94A3B8' } })) }] }
 })
@@ -199,6 +201,10 @@ onUnmounted(() => { if (supabase && channel) void supabase.removeChannel(channel
     </header>
 
     <div v-if="error" class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status"><TriangleAlert :size="18" class="mt-0.5 shrink-0"/><div><p class="font-bold">{{ t('sourceError') }}</p><p class="mt-1 text-xs leading-5">{{ error }}</p></div></div>
+
+    <div v-if="unloggedDowntimeMachines.length" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status">
+      <div class="flex items-start gap-3"><TriangleAlert :size="18" class="mt-0.5 shrink-0 text-amber-700"/><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><p class="font-bold">{{ t('unloggedTitle') }}</p><span class="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-extrabold">{{ number(unloggedDowntimeMachines.length) }}</span></div><p class="mt-1 text-xs leading-5 text-amber-900/80">{{ t('unloggedDescription') }}</p><div class="mt-3 flex flex-wrap gap-2"><span v-for="machine in unloggedDowntimeMachines.slice(0, 8)" :key="machine.id" class="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-xs"><b dir="ltr">{{ machine.code }}</b><span class="text-amber-800">{{ machineStatusLabel(machine.status) }}</span></span><span v-if="unloggedDowntimeMachines.length > 8" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold">+{{ number(unloggedDowntimeMachines.length - 8) }} {{ t('moreMachines') }}</span></div></div></div>
+    </div>
 
     <div v-if="loading" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"><div v-for="i in 5" :key="i" class="h-32 animate-pulse rounded-2xl bg-white shadow-sm"><div class="skeleton m-4 h-4 w-24 rounded"></div><div class="skeleton mx-4 mt-5 h-8 w-20 rounded"></div></div></div>
     <template v-else>
