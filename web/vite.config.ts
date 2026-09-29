@@ -1,7 +1,9 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // GitHub Pages serves this repository below /CMMS-Cable/.
+  base: mode === 'github-pages' ? '/CMMS-Cable/' : '/',
   plugins: [vue()],
   build: {
     rolldownOptions: {
@@ -16,4 +18,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

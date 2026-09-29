@@ -5,11 +5,15 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../api/supabase'
 import { useAuthStore } from '../stores/auth'
 import type { Machine } from '../stores/liveMonitoring'
-import { departmentLabels } from '../lib/workOrders'
 import { buildChronology, calculateShiftMinutes, downtimeCategories, downtimeCategoryLabel, formatCairoDate } from '../lib/downtime'
+import { SUPERVISOR_ROLES } from '../lib/roles'
+import { useLocaleStore } from '../stores/locale'
+import { ClipboardList, Clock3, Factory, FileText, Wrench } from 'lucide-vue-next'
 
 type Downtime = { id: string; machine_id: string; category: string | null; reason: string; is_maintenance_requested: boolean; comments: string | null; started_at: string; ended_at: string | null; work_order_id: string | null }
 const auth = useAuthStore()
+const locale = useLocaleStore()
+const t = locale.t
 const route = useRoute()
 const logs = ref<Downtime[]>([])
 const machines = ref<Machine[]>([])
@@ -20,9 +24,9 @@ const notice = ref('')
 const now = ref(Date.now())
 const form = ref({ machineId: String(route.query.machine ?? ''), category: 'processSetup', reason: '', comments: '', maintenanceRequested: false })
 const role = computed(() => auth.role.toUpperCase())
-const canCreate = computed(() => ['OPERATOR', 'MAINTENANCE_SUPERVISOR'].includes(role.value))
-const canClose = computed(() => ['MAINTENANCE_SUPERVISOR', 'PRODUCTION_SUPERVISOR'].includes(role.value))
-const visibleMachines = computed(() => role.value === 'OPERATOR' && auth.department ? machines.value.filter((machine) => machine.department === auth.department) : machines.value)
+const canCreate = computed(() => (SUPERVISOR_ROLES as readonly string[]).includes(role.value))
+const canClose = computed(() => (SUPERVISOR_ROLES as readonly string[]).includes(role.value))
+const visibleMachines = computed(() => machines.value)
 const sortedLogs = computed(() => [...logs.value].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()))
 let channel: RealtimeChannel | null = null
 let timer: ReturnType<typeof setInterval> | null = null
@@ -54,10 +58,10 @@ async function createDowntime() {
       p_start_chronology: buildChronology(), p_shift_minutes: {},
     })
     if (rpcError) throw rpcError
-    notice.value = 'تم تسجيل التوقف.'
+    notice.value = t('downtime.saved')
     form.value.reason = ''; form.value.comments = ''; form.value.maintenanceRequested = false
     await refresh()
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : 'تعذر تسجيل التوقف.' }
+  } catch (cause) { error.value = cause instanceof Error ? cause.message : t('downtime.saveError') }
   finally { saving.value = false }
 }
 
@@ -70,21 +74,24 @@ async function closeDowntime(log: Downtime) {
       p_id: log.id, p_end_chronology: buildChronology(endedAt), p_shift_minutes: calculateShiftMinutes(log.started_at, endedAt),
     })
     if (rpcError) throw rpcError
-    notice.value = 'تم إغلاق التوقف.'
+    notice.value = t('downtime.closedSuccess')
     await refresh()
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : 'تعذر إغلاق التوقف.' }
+  } catch (cause) { error.value = cause instanceof Error ? cause.message : t('downtime.closeError') }
   finally { saving.value = false }
 }
 
 function machineInfo(id: string) {
   const machine = machines.value.find((item) => item.id === id)
-  return machine ? `${machine.code} · ${machine.name} · ${departmentLabels[machine.department] ?? machine.department}` : id
+  return machine ? `${machine.code} · ${machine.name} · ${t(`downtime.departments.${machine.department}`)}` : id
 }
 function duration(startedAt: string, endedAt: string | null) {
   const minutes = Math.max(0, Math.floor(((endedAt ? new Date(endedAt).getTime() : now.value) - new Date(startedAt).getTime()) / 60000))
   const hours = Math.floor(minutes / 60); const days = Math.floor(hours / 24)
+  if (locale.locale === 'en') return days ? `${days} ${t('downtime.day')} ${t('downtime.and')} ${hours % 24} ${t('downtime.hour')}` : hours ? `${hours} ${t('downtime.hour')} ${t('downtime.and')} ${minutes % 60} ${t('downtime.min')}` : `${minutes} ${t('downtime.min')}`
   return days ? `${days} يوم و${hours % 24} ساعة` : hours ? `${hours} ساعة و${minutes % 60} دقيقة` : `${minutes} دقيقة`
 }
+
+function categoryName(value: string | null) { return downtimeCategoryLabel(value, locale.locale) }
 
 onMounted(() => {
   void refresh()
@@ -98,14 +105,25 @@ onUnmounted(() => { if (timer) clearInterval(timer); if (supabase && channel) vo
 </script>
 
 <template>
-  <div>
-    <div class="mb-6"><h1 class="text-2xl font-bold">سجل التوقفات</h1><p class="mt-1 text-sm text-slate-500">تسجيل ومتابعة حالات توقف الماكينات</p></div>
-    <p v-if="error" class="mb-4 rounded-lg bg-red-50 p-4 text-red-700">{{ error }}</p>
-    <p v-if="notice" class="mb-4 rounded-lg bg-emerald-50 p-4 text-emerald-800">{{ notice }}</p>
-    <form v-if="canCreate" class="mb-7 grid gap-3 rounded-xl border bg-white p-5 md:grid-cols-2 xl:grid-cols-3" @submit.prevent="createDowntime"><h2 class="text-lg font-bold md:col-span-2 xl:col-span-3">تسجيل توقف جديد</h2><label class="text-sm">الماكينة<select v-model="form.machineId" required class="mt-1 block w-full rounded-lg border-slate-300"><option v-for="machine in visibleMachines" :key="machine.id" :value="machine.id">{{ machine.code }} · {{ machine.name }}</option></select></label><label class="text-sm">التصنيف<select v-model="form.category" class="mt-1 block w-full rounded-lg border-slate-300"><option v-for="category in downtimeCategories" :key="category.value" :value="category.value">{{ category.label }}</option></select></label><label class="text-sm">سبب التوقف<input v-model="form.reason" required maxlength="500" class="mt-1 block w-full rounded-lg border-slate-300" placeholder="اكتب سبب التوقف" /></label><label class="text-sm md:col-span-2">ملاحظات<textarea v-model="form.comments" rows="2" class="mt-1 block w-full rounded-lg border-slate-300" /></label><label class="flex items-center gap-2 text-sm"><input v-model="form.maintenanceRequested" type="checkbox" class="rounded border-slate-300 text-brand focus:ring-brand" />يتطلب متابعة صيانة</label><div class="md:col-span-2 xl:col-span-3"><button :disabled="saving || !visibleMachines.length" class="rounded-lg bg-brand px-5 py-2 font-semibold text-white hover:bg-brand-dark disabled:opacity-50">{{ saving ? 'جارٍ التسجيل…' : 'تسجيل التوقف' }}</button></div></form>
-    <p v-else class="mb-7 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">صلاحية تسجيل التوقف غير متاحة لدورك الحالي.</p>
-    <div v-if="loading" class="text-slate-500">جارٍ تحميل سجل التوقفات…</div>
-    <div v-else-if="!sortedLogs.length" class="rounded-xl border border-dashed bg-white p-10 text-center text-slate-500">لا توجد سجلات توقف حاليًا.</div>
-    <div v-else class="overflow-x-auto rounded-xl border bg-white"><table class="w-full min-w-[850px] text-right text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">الماكينة والقسم</th><th class="p-3">التصنيف والسبب</th><th class="p-3">البداية</th><th class="p-3">المدة</th><th class="p-3">الحالة</th><th class="p-3">إجراء</th></tr></thead><tbody><tr v-for="log in sortedLogs" :key="log.id" class="border-t"><td class="p-3 font-semibold">{{ machineInfo(log.machine_id) }}</td><td class="max-w-xs p-3"><p>{{ downtimeCategoryLabel(log.category) }}</p><p class="mt-1 text-xs text-slate-500">{{ log.reason || '—' }}</p><p v-if="log.is_maintenance_requested" class="mt-1 text-xs text-amber-700">متابعة صيانة مطلوبة</p></td><td class="p-3">{{ formatCairoDate(log.started_at) }}</td><td class="p-3">{{ duration(log.started_at, log.ended_at) }}</td><td class="p-3"><span class="rounded-full px-3 py-1 text-xs font-semibold" :class="log.ended_at ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-800'">{{ log.ended_at ? 'مغلق' : 'نشط' }}</span></td><td class="p-3"><button v-if="!log.ended_at && canClose" :disabled="saving" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" @click="closeDowntime(log)">إغلاق التوقف</button><span v-else-if="!log.ended_at" class="text-xs text-slate-400">لا توجد صلاحية</span><span v-else class="text-xs text-slate-400">—</span></td></tr></tbody></table></div>
+  <div :dir="locale.direction" :lang="locale.locale">
+    <div class="mb-6"><h1 class="text-2xl font-bold">{{ t('downtime.title') }}</h1><p class="mt-1 text-sm text-slate-500">{{ t('downtime.subtitle') }}</p></div>
+    <p v-if="error" class="mb-4 rounded-lg bg-red-50 p-4 text-red-700" role="alert">{{ error }}</p>
+    <p v-if="notice" class="mb-4 rounded-lg bg-emerald-50 p-4 text-emerald-800" role="status">{{ notice }}</p>
+    <form v-if="canCreate" class="surface-card mb-7 overflow-hidden p-0" @submit.prevent="createDowntime">
+      <div class="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-l from-cyan-50/80 to-white px-5 py-4 md:px-7"><span class="grid h-11 w-11 place-items-center rounded-xl bg-brand text-white shadow-lg shadow-cyan-900/15"><ClipboardList :size="21" /></span><div><h2 class="text-lg font-extrabold text-brand-navy">{{ t('downtime.formTitle') }}</h2><p class="mt-0.5 text-xs text-slate-500">{{ t('downtime.subtitle') }}</p></div></div>
+      <div class="grid gap-x-5 gap-y-4 p-5 md:grid-cols-2 md:p-7 xl:grid-cols-3">
+        <label class="block text-sm font-bold text-slate-700"><span class="flex items-center gap-2"><Factory :size="15" class="text-brand-dark" />{{ t('downtime.machine') }} <b class="text-red-500">*</b></span><select v-model="form.machineId" required class="form-control mt-2" :aria-label="t('downtime.machine')"><option value="" disabled>{{ t('downtime.machinePlaceholder') }}</option><option v-for="machine in visibleMachines" :key="machine.id" :value="machine.id">{{ machine.code }} · {{ machine.name }}</option></select><small v-if="!visibleMachines.length" class="mt-1 block font-normal text-amber-700">{{ t('downtime.noMachines') }}</small></label>
+        <label class="block text-sm font-bold text-slate-700"><span class="flex items-center gap-2"><Wrench :size="15" class="text-brand-dark" />{{ t('downtime.category') }} <b class="text-red-500">*</b></span><select v-model="form.category" required class="form-control mt-2" :aria-label="t('downtime.category')"><option v-for="category in downtimeCategories" :key="category.value" :value="category.value">{{ locale.locale === 'ar' ? category.label : category.labelEn }}</option></select></label>
+        <label class="block text-sm font-bold text-slate-700 xl:col-span-1"><span class="flex items-center gap-2"><Clock3 :size="15" class="text-brand-dark" />{{ t('downtime.reason') }} <b class="text-red-500">*</b></span><input v-model="form.reason" required maxlength="500" class="form-control mt-2" :placeholder="t('downtime.reasonPlaceholder')" /></label>
+        <label class="block text-sm font-bold text-slate-700 md:col-span-2"><span class="flex items-center gap-2"><FileText :size="15" class="text-brand-dark" />{{ t('downtime.comments') }}</span><textarea v-model="form.comments" rows="3" maxlength="2000" class="form-control mt-2 resize-y" :placeholder="t('downtime.commentsPlaceholder')" /></label>
+        <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm font-semibold text-amber-950 transition hover:border-amber-300 hover:bg-amber-50"><input v-model="form.maintenanceRequested" type="checkbox" class="h-4 w-4 rounded border-amber-400 text-brand focus:ring-brand" /><span>{{ t('downtime.maintenance') }}</span></label>
+        <div class="flex items-center justify-end md:col-span-2 xl:col-span-2"><button :disabled="saving || !visibleMachines.length" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand px-6 py-2.5 font-extrabold text-white shadow-md shadow-cyan-900/15 transition hover:-translate-y-0.5 hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50">{{ saving ? t('downtime.submitting') : t('downtime.submit') }}</button></div>
+      </div>
+    </form>
+    <p v-else class="mb-7 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">{{ t('downtime.noPermission') }}</p>
+    <h2 class="mb-3 flex items-center gap-2 text-lg font-extrabold text-brand-navy"><Clock3 :size="18" class="text-brand-dark" />{{ t('downtime.history') }}</h2>
+    <div v-if="loading" class="text-slate-500" role="status">{{ locale.locale === 'ar' ? 'جارٍ تحميل سجل التوقفات…' : 'Loading downtime records…' }}</div>
+    <div v-else-if="!sortedLogs.length" class="rounded-xl border border-dashed bg-white p-10 text-center text-slate-500">{{ t('downtime.noLogs') }}</div>
+    <div v-else class="overflow-x-auto rounded-xl border bg-white shadow-sm"><table class="w-full min-w-[850px] text-sm" :class="locale.direction === 'rtl' ? 'text-right' : 'text-left'"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">{{ t('downtime.machineDepartment') }}</th><th class="p-3">{{ t('downtime.cause') }}</th><th class="p-3">{{ t('downtime.start') }}</th><th class="p-3">{{ t('downtime.duration') }}</th><th class="p-3">{{ t('downtime.status') }}</th><th class="p-3">{{ t('downtime.action') }}</th></tr></thead><tbody><tr v-for="log in sortedLogs" :key="log.id" class="border-t"><td class="p-3 font-semibold">{{ machineInfo(log.machine_id) }}</td><td class="max-w-xs p-3"><p>{{ categoryName(log.category) }}</p><p class="mt-1 text-xs text-slate-500">{{ log.reason || '—' }}</p><p v-if="log.is_maintenance_requested" class="mt-1 text-xs text-amber-700">{{ t('downtime.maintenanceNeeded') }}</p></td><td class="p-3">{{ formatCairoDate(log.started_at) }}</td><td class="p-3">{{ duration(log.started_at, log.ended_at) }}</td><td class="p-3"><span class="rounded-full px-3 py-1 text-xs font-semibold" :class="log.ended_at ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-800'">{{ log.ended_at ? t('downtime.closed') : t('downtime.active') }}</span></td><td class="p-3"><button v-if="!log.ended_at && canClose" :disabled="saving" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" @click="closeDowntime(log)">{{ t('downtime.close') }}</button><span v-else-if="!log.ended_at" class="text-xs text-slate-400">{{ t('downtime.noPermissionClose') }}</span><span v-else class="text-xs text-slate-400">—</span></td></tr></tbody></table></div>
   </div>
 </template>

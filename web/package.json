@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -p tsconfig.json && vite build",
+    "build:pages": "vue-tsc -p tsconfig.json && vite build --mode=github-pages",
     "preview": "vite preview"
   },
   "devDependencies": {

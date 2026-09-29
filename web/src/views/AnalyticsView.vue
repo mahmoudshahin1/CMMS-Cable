@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
@@ -22,6 +23,7 @@ type Funnel = { status: string; count: number }
 type ShiftSplit = { production_date: string; department: string; shift1_morning_minutes: number; shift2_evening_minutes: number; shift3_night_minutes: number }
 
 const colors = ['#00AEEF', '#123B66', '#24B47E', '#F3A63B', '#7C6CE7', '#F06464', '#5AA6B9']
+const router = useRouter()
 const machines = ref<Machine[]>([])
 const availability = ref<Availability[]>([])
 const pareto = ref<Pareto[]>([])
@@ -159,7 +161,7 @@ async function refresh() {
 }
 function availabilityColor(value: number) { return value >= 90 ? 'text-emerald-600' : value >= 75 ? 'text-amber-600' : 'text-red-600' }
 function progressWidth(value: number) { return `${Math.max(0, Math.min(100, value))}%` }
-function openMachine(code: string) { window.location.assign(`/machines/${encodeURIComponent(code)}`) }
+function openMachine(code: string) { void router.push(`/machines/${encodeURIComponent(code)}`) }
 onMounted(() => {
   void refresh()
   if (supabase) channel = supabase.channel('web-analytics-live')

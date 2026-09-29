@@ -16,11 +16,18 @@
 }
 * { box-sizing: border-box; }
 html { min-width: 320px; scroll-behavior: smooth; }
-body { margin: 0; min-width: 320px; min-height: 100vh; direction: rtl; background: #f4f8fc; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: #f4f8fc; }
 button, input, select, textarea { font: inherit; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgb(0 174 239 / .28); outline-offset: 2px; }
 ::selection { color: #0a2540; background: rgb(0 174 239 / .22); }
+
+.form-control { display: block; width: 100%; min-height: 48px; border: 1px solid #cbd5e1; border-radius: .8rem; background-color: #f8fafc; padding: .72rem .9rem; color: #0a2540; font-size: .9rem; font-weight: 500; line-height: 1.5; transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease; }
+.form-control::placeholder { color: #94a3b8; font-weight: 400; }
+.form-control:hover { border-color: #94a3b8; }
+.form-control:focus { border-color: #00aeef; background-color: white; outline: 0; box-shadow: 0 0 0 4px rgb(0 174 239 / .14); }
+select.form-control { cursor: pointer; }
+textarea.form-control { min-height: 100px; }
 
 .page-enter-active, .page-leave-active { transition: opacity .22s ease, transform .22s ease, filter .22s ease; }
 .page-enter-from { opacity: 0; transform: translateY(9px); filter: blur(2px); }

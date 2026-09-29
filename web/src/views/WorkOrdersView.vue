@@ -15,6 +15,7 @@ import {
   workOrderStatuses,
   workOrderTypes,
 } from '../lib/workOrders'
+import { useLocaleStore } from '../stores/locale'
 
 type Machine = { code: string; name: string; department: string }
 type WorkOrder = {
@@ -34,6 +35,8 @@ type WorkOrder = {
 }
 
 const router = useRouter()
+const locale = useLocaleStore()
+const t = locale.t
 const rows = ref<WorkOrder[]>([])
 const people = ref<Record<string, string>>({})
 const error = ref('')
@@ -67,7 +70,7 @@ function machineOf(row: WorkOrder): Machine | null {
 }
 
 function technicianName(id: string | null): string {
-  if (!id) return 'غير مسند'
+  if (!id) return t('workOrders.unassigned')
   return people.value[id] || `فني #${shortId(id)}`
 }
 
@@ -138,51 +141,51 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section>
+  <section :dir="locale.direction">
     <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 class="mb-1 text-2xl font-bold">أوامر الشغل</h1>
-        <p class="text-sm text-slate-500">متابعة أوامر الصيانة الحالية</p>
+        <h1 class="mb-1 text-2xl font-bold">{{ t('workOrders.title') }}</h1>
+        <p class="text-sm text-slate-500">{{ t('workOrders.subtitle') }}</p>
       </div>
-      <p v-if="refreshing" class="text-xs text-slate-500" role="status">جارٍ تحديث البيانات…</p>
+      <p v-if="refreshing" class="text-xs text-slate-500" role="status">{{ t('workOrders.refresh') }}</p>
     </div>
 
-    <p v-if="loading" class="rounded-xl border bg-white p-6 text-slate-500" role="status">جارٍ تحميل أوامر الشغل…</p>
+    <p v-if="loading" class="rounded-xl border bg-white p-6 text-slate-500" role="status">{{ t('workOrders.loading') }}</p>
     <p v-else-if="error && !rows.length" class="rounded-lg bg-red-50 p-4 text-red-700" role="alert">{{ error }}</p>
     <template v-else>
       <div class="mb-5 grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-2 xl:grid-cols-5">
         <label class="grid gap-1 text-sm font-semibold text-slate-700">
-          القسم
+          {{ t('workOrders.department') }}
           <select v-model="departmentFilter" class="rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal focus:border-brand focus:outline-none">
-            <option value="">كل الأقسام</option>
+            <option value="">{{ t('workOrders.allDepartments') }}</option>
             <option v-for="(label, value) in departmentLabels" :key="value" :value="value">{{ label }}</option>
           </select>
         </label>
         <label class="grid gap-1 text-sm font-semibold text-slate-700">
-          الحالة
+          {{ t('workOrders.status') }}
           <select v-model="statusFilter" class="rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal focus:border-brand focus:outline-none">
-            <option value="">كل الحالات</option>
-            <option v-for="status in workOrderStatuses" :key="status.value" :value="status.value">{{ status.label }}</option>
+            <option value="">{{ t('workOrders.allStatuses') }}</option>
+            <option v-for="status in workOrderStatuses" :key="status.value" :value="status.value">{{ statusLabel(status.value, locale.locale) }}</option>
           </select>
         </label>
         <label class="grid gap-1 text-sm font-semibold text-slate-700">
-          الأولوية
+          {{ t('workOrders.priority') }}
           <select v-model="priorityFilter" class="rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal focus:border-brand focus:outline-none">
-            <option value="">كل الأولويات</option>
-            <option v-for="priority in workOrderPriorities" :key="priority.value" :value="priority.value">{{ priority.label }}</option>
+            <option value="">{{ t('workOrders.allPriorities') }}</option>
+            <option v-for="priority in workOrderPriorities" :key="priority.value" :value="priority.value">{{ priorityInfo(priority.value, locale.locale).label }}</option>
           </select>
         </label>
         <label class="grid gap-1 text-sm font-semibold text-slate-700">
-          النوع
+          {{ t('workOrders.type') }}
           <select v-model="typeFilter" class="rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal focus:border-brand focus:outline-none">
-            <option value="">كل الأنواع</option>
-            <option v-for="type in workOrderTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
+            <option value="">{{ t('workOrders.allTypes') }}</option>
+            <option v-for="type in workOrderTypes" :key="type.value" :value="type.value">{{ typeLabel(type.value, locale.locale) }}</option>
           </select>
         </label>
         <label class="grid gap-1 text-sm font-semibold text-slate-700">
-          الفني المكلّف
+          {{ t('workOrders.technician') }}
           <select v-model="technicianFilter" class="rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal focus:border-brand focus:outline-none">
-            <option value="">كل الفنيين</option>
+            <option value="">{{ t('workOrders.allTechnicians') }}</option>
             <option v-for="technician in technicianOptions" :key="technician.id" :value="technician.id">{{ technician.name }}</option>
           </select>
         </label>
@@ -191,25 +194,25 @@ onUnmounted(() => {
       <p v-if="error" class="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800" role="status">تعذر تحديث أحدث البيانات: {{ error }}</p>
 
       <div v-if="!rows.length" class="rounded-xl border border-dashed bg-white p-8 text-center text-slate-500">
-        لا توجد أوامر شغل حاليًا
+        {{ t('workOrders.empty') }}
       </div>
       <div v-else-if="!filteredRows.length" class="rounded-xl border border-dashed bg-white p-8 text-center">
-        <p class="text-slate-600">لا توجد أوامر شغل تطابق عوامل التصفية</p>
-        <button class="mt-3 rounded-lg px-3 py-2 text-sm font-semibold text-brand-dark hover:bg-sky-50" @click="clearFilters">مسح عوامل التصفية</button>
+        <p class="text-slate-600">{{ t('workOrders.noMatch') }}</p>
+        <button class="mt-3 rounded-lg px-3 py-2 text-sm font-semibold text-brand-dark hover:bg-sky-50" @click="clearFilters">{{ t('workOrders.clear') }}</button>
       </div>
       <div v-else class="overflow-x-auto rounded-xl border bg-white shadow-sm">
         <table class="w-full min-w-[960px] text-right text-sm">
           <thead class="bg-slate-50 text-slate-600">
             <tr>
-              <th class="p-3 font-semibold">رقم العرض</th>
-              <th class="p-3 font-semibold">العنوان</th>
-              <th class="p-3 font-semibold">الماكينة</th>
-              <th class="p-3 font-semibold">القسم</th>
-              <th class="p-3 font-semibold">الفني</th>
+              <th class="p-3 font-semibold">{{ t('workOrders.id') }}</th>
+              <th class="p-3 font-semibold">{{ t('workOrders.heading') }}</th>
+              <th class="p-3 font-semibold">{{ t('workOrders.machine') }}</th>
+              <th class="p-3 font-semibold">{{ t('workOrders.department') }}</th>
+              <th class="p-3 font-semibold">{{ t('workOrders.assignee') }}</th>
               <th class="p-3 font-semibold">النوع</th>
               <th class="p-3 font-semibold">الحالة</th>
               <th class="p-3 font-semibold">الأولوية</th>
-              <th class="p-3 font-semibold">تاريخ الإنشاء</th>
+              <th class="p-3 font-semibold">{{ t('workOrders.created') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -227,15 +230,15 @@ onUnmounted(() => {
               <td class="p-3">{{ machineOf(row)?.code ?? shortId(row.machine_id) }}</td>
               <td class="p-3">{{ departmentLabels[machineOf(row)?.department ?? ''] ?? machineOf(row)?.department ?? '—' }}</td>
               <td class="p-3">{{ technicianName(row.assigned_to_technician_id) }}</td>
-              <td class="p-3">{{ typeLabel(row.type) }}</td>
-              <td class="p-3"><span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusClass(row.status)">{{ statusLabel(row.status) }}</span></td>
-              <td class="p-3"><span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="priorityInfo(row.priority).className">{{ priorityInfo(row.priority).label }}</span></td>
+              <td class="p-3">{{ typeLabel(row.type, locale.locale) }}</td>
+              <td class="p-3"><span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusClass(row.status)">{{ statusLabel(row.status, locale.locale) }}</span></td>
+              <td class="p-3"><span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="priorityInfo(row.priority, locale.locale).className">{{ priorityInfo(row.priority, locale.locale).label }}</span></td>
               <td class="p-3 text-slate-600" :title="formatDateTime(row.created_at)">{{ relativeTime(row.created_at) }}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p v-if="rows.length" class="mt-3 text-xs text-slate-500">عرض {{ filteredRows.length }} من {{ rows.length }} أمر شغل</p>
+      <p v-if="rows.length" class="mt-3 text-xs text-slate-500">{{ t('workOrders.count') }} {{ filteredRows.length }} {{ t('workOrders.of') }} {{ rows.length }} {{ t('workOrders.orders') }}</p>
     </template>
   </section>
 </template>

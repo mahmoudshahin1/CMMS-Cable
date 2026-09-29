@@ -1,11 +1,11 @@
 export const downtimeCategories = [
-  { value: 'processSetup', label: 'تجهيز وتشغيل / تغيير مقاس' },
-  { value: 'processMaterialShortage', label: 'نقص مواد وخامات' },
-  { value: 'processQualityHold', label: 'توقف جودة وفحص' },
-  { value: 'mechanicalBreakdown', label: 'عطل ميكانيكي' },
-  { value: 'electricalBreakdown', label: 'عطل كهربائي' },
-  { value: 'utilityFailure', label: 'عطل مرافق (كهرباء/هواء/مياه)' },
-  { value: 'plannedMaintenance', label: 'صيانة وقائية مخططة' },
+  { value: 'processSetup', label: 'تجهيز وتشغيل / تغيير مقاس', labelEn: 'Setup / size change' },
+  { value: 'processMaterialShortage', label: 'نقص مواد وخامات', labelEn: 'Material shortage' },
+  { value: 'processQualityHold', label: 'توقف جودة وفحص', labelEn: 'Quality hold / inspection' },
+  { value: 'mechanicalBreakdown', label: 'عطل ميكانيكي', labelEn: 'Mechanical failure' },
+  { value: 'electricalBreakdown', label: 'عطل كهربائي', labelEn: 'Electrical failure' },
+  { value: 'utilityFailure', label: 'عطل مرافق (كهرباء/هواء/مياه)', labelEn: 'Utility failure (power / air / water)' },
+  { value: 'plannedMaintenance', label: 'صيانة وقائية مخططة', labelEn: 'Planned preventive maintenance' },
 ] as const
 
 const cairoParts = new Intl.DateTimeFormat('en-CA', {
@@ -53,8 +53,10 @@ export function calculateShiftMinutes(startValue: string, endDate = new Date()) 
   return minutes
 }
 
-export const downtimeCategoryLabel = (value: string | null | undefined) =>
-  downtimeCategories.find((item) => item.value === value)?.label ?? value ?? 'غير محدد'
+export const downtimeCategoryLabel = (value: string | null | undefined, locale: 'ar' | 'en' = 'ar') => {
+  const category = downtimeCategories.find((item) => item.value === value)
+  return category ? (locale === 'ar' ? category.label : category.labelEn) : value ?? (locale === 'ar' ? 'غير محدد' : 'Unspecified')
+}
 
 export const formatCairoDate = (value: string | null | undefined) => {
   if (!value) return '—'
