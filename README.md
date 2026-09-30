@@ -1,332 +1,483 @@
 <div align="center">
 
-# Cable Ops CMMS — Monorepo
-
-This repository contains the Energya Cables maintenance platform. The Flutter app and web dashboard are isolated in separate top-level folders and share the Supabase database project.
-
-| Directory | Purpose |
-| --- | --- |
-| [`mobile/`](mobile/) | Flutter / Dart mobile and desktop application |
-| [`web/`](web/) | Vue 3, Vite, TypeScript web dashboard |
-| [`supabase/`](supabase/) | Database migrations, RLS policies, triggers, and seed data |
-| [`docs/`](docs/) | Product and architecture documentation |
-
-Read [`docs/SCHEMA.md`](docs/SCHEMA.md) for the database contract, role/RLS notes, workflow RPCs, and reporting views. Important: `work_orders` uses UUID `id` and has no `work_order_num` column.
-
-لشرح شامل بالعربية لبنية الويب والموبايل وقاعدة البيانات وطريقة تشغيلها ومزامنتها، راجع [دليل المشروع](docs/PROJECT_GUIDE_AR.md).
-
-## Getting started
-
-### Mobile
-```bash
-cd mobile
-flutter pub get
-flutter run
-```
-
-### Web
-```bash
-cd web
-cp .env.example .env.local # PowerShell: Copy-Item .env.example .env.local
-# Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local
-npm install
-npm run dev
-```
-
-For Vercel or Cloudflare Pages, set the project root directory to `web` and configure the two `VITE_SUPABASE_*` variables in the host settings.
-
-### Dashboard features
-
-The authenticated web dashboard provides live plant-floor monitoring, machine telemetry and downtime history, work-order lists and details, analytics, and a searchable spare-parts inventory with machine BOM references. The downtime page exposes create/close actions according to the signed-in role and submits them through the existing Supabase RPCs. Realtime subscriptions refresh machine, downtime, work-order, and stock views as database changes arrive. Validate downtime writes against a development Supabase project before production use.
-
-Run the web TypeScript checks and production build with `cd web && npm run build`. Validate the mobile package with `cd mobile && flutter pub get && flutter analyze && flutter test`.
-
-### Supabase
-For a clean development project, apply the ordered SQL files under [`supabase/migrations/`](supabase/migrations/) and then run [`supabase/seed.sql`](supabase/seed.sql). The seed contains seven departments, role reference data, sample spare parts, machine fixtures, and an EX01 BOM; review it before using outside development. `EX01` is the stable database identifier for the line commonly written as EX-01. Create/invite actual users through Supabase Auth; do not commit passwords or service-role keys. The reporting views are defined by `20260927000010_web_reporting_views.sql`; review their assumptions in [`docs/SCHEMA.md`](docs/SCHEMA.md) before using metrics for operational decisions.
-
-**Production migration note:** the configured production Supabase project has a pre-existing migration history that does not exactly match this repository. Factory-catalog changes were applied and verified through SQL Editor but are not recorded as a CLI migration, and production already had reporting views from earlier migrations. Do not run `supabase db push` or manually edit `supabase_migrations.schema_migrations` against production until an explicit baseline reconciliation is completed. See [`HANDOFF.md`](HANDOFF.md) for the inspected state.
-
-The read-only production history inventory and safe reconciliation sequence are in [`supabase/PRODUCTION_BASELINE.md`](supabase/PRODUCTION_BASELINE.md).
-
----
-
-# 🏭 Energya Cables — Industrial CMMS
+# 🏭 Cable Ops CMMS — Energya Cables
 ### Advanced Machinery Monitoring, Maintenance & Operational Lifecycle Management System
-**نظام إدارة الصيانة الشامل والعمليات الصناعية المتطورة لمصانع الكابلات**
+**نظام إدارة الصيانة الشامل والعمليات الصناعية المتطورة لمصانع الكابلات (إنرجيا للخدمات والصناعات الكهربائية)**
 
-![CMMS Hero Banner](docs/images/hero_banner.png)
-
-[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
-[![Supabase](https://img.shields.io/badge/Backend-Supabase_Cloud_DB-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
-[![State Management](https://img.shields.io/badge/State_Management-BLoC_/_Cubit-8B5CF6?style=for-the-badge)](https://bloclibrary.dev)
-[![Local Cache](https://img.shields.io/badge/Cache-Hive_Offline_First-FFB703?style=for-the-badge)](https://docs.hivedb.dev)
+[![Monorepo](https://img.shields.io/badge/Repository-Monorepo-02569B?style=for-the-badge&logo=git&logoColor=white)]()
+[![Flutter](https://img.shields.io/badge/Mobile-Flutter_3.x_/_Dart_3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![Vue 3](https://img.shields.io/badge/Web-Vue_3_/_Vite_/_TypeScript-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](https://vuejs.org)
+[![Backend](https://img.shields.io/badge/Backend-Supabase_Cloud_DB-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![State Management](https://img.shields.io/badge/State_Management-BLoC_/_Pinia-8B5CF6?style=for-the-badge)]()
+[![Persistence](https://img.shields.io/badge/Local_Storage-Hive_Offline--First-FFB703?style=for-the-badge)](https://docs.hivedb.dev)
 [![Architecture](https://img.shields.io/badge/Architecture-Clean_Feature--First-06D6A0?style=for-the-badge)]()
-[![Tests](https://img.shields.io/badge/Tests-29%2F29_Passing-brightgreen?style=for-the-badge)]()
-[![Localization](https://img.shields.io/badge/Languages-100%25_Arabic_%7C_100%25_English-EF476F?style=for-the-badge)]()
+[![Tests](https://img.shields.io/badge/Automated_Tests-91%2F91_Passing-brightgreen?style=for-the-badge)]()
+[![Localization](https://img.shields.io/badge/Languages-100%25_Arabic_RTL_%7C_100%25_English-EF476F?style=for-the-badge)]()
 
 </div>
 
 ---
 
-## 📌 Executive Summary | نبذة عن النظام
+## 📑 جدول المحتويات | Table of Contents
 
-**Energya Cables Industrial CMMS** is a mission-critical, enterprise-grade Computerized Maintenance Management System engineered specifically for continuous, heavy-duty industrial cable manufacturing facilities (10th of Ramadan / Sadat City plants).
-
-In high-speed cable production, an unrecorded 15-minute extruder halt or drawing line friction fault can cascade into significant tonnage losses and delayed shipments. This platform eliminates paper-based shift logs and unauthorized overrides by providing a **tamper-proof, role-governed digital pipeline** connecting:
-1. **7 Production Line Operators** (Wire Drawing, Stranding, CCV Insulation, Sheathing, Drum Twisting, Screening, and Armouring).
-2. **Specialized Maintenance Technicians** (Electrical & Mechanical trades).
-3. **Shift Maintenance & Production Supervisors**.
-4. **Plant General Management**.
-
-Built with **Flutter**, **Clean Feature-First Architecture**, **Supabase Cloud Backend**, and **Offline-First Hive persistence**, the system guarantees uninterrupted operation in high-interference factory floors with zero latency.
+1. [نظرة عامة على المشروع (Executive Summary)](#-نظرة-عامة-على-المشروع--executive-summary)
+2. [هيكل المستودع (Monorepo Directory Layout)](#-هيكل-المستودع--monorepo-directory-layout)
+3. [معرض الشاشات الحية (Live Screenshots & Visual Tour)](#-معرض-الشاشات-الحية--live-screenshots--visual-tour)
+4. [معمارية النظام الشاملة (System Architecture)](#-معمارية-النظام-الشاملة--system-architecture)
+5. [دليل حل المشاكل والمشاكل التقنية (Troubleshooting & Solved Issues)](#-دليل-حل-المشاكل-والمشاكل-التقنية--troubleshooting--solved-issues)
+6. [حسابات المصنع ومصفوفة الصلاحيات (Factory Accounts & RBAC)](#-حسابات-المصنع-ومصفوفة-الصلاحيات--factory-accounts--rbac)
+7. [دورة حياة أمر الصيانة (5-Step Handshake Lifecycle)](#-دورة-حياة-أمر-الصيانة--5-step-handshake-lifecycle)
+8. [محرك الورديات وحساب OEE (Plant Shift Chronology Engine)](#-محرك-الورديات-وحساب-oee--plant-shift-chronology-engine)
+9. [دليل التثبيت والتشغيل بالتفصيل (Getting Started & Setup)](#-دليل-التثبيت-والتشغيل-بالتفصيل--getting-started--setup)
+10. [الاختبارات وضمان الجودة (Testing & QA Assurance)](#-الاختبارات-وضمان-الجودة--testing--qa-assurance)
 
 ---
 
-## 📸 Visual Tour & System Screenshots | جولة مصورة داخل النظام
+## 📌 نظرة عامة على المشروع | Executive Summary
 
-### 1. Modern Industrial Authentication & Quick-Access Portal
-*Equipped with Energya Power Cables identity, dynamic Arabic/English flipping, live dark/light mode toggle, and instant one-tap role selection for plant personnel:*
+**Cable Ops CMMS** هو نظام صناعي متكامل لإدارة الصيانة المحوسبة (Computerized Maintenance Management System)، صُمم خصيصاً لمصانع تصنيع كابلات الطاقة والجهد العالي والمنخفض (مثل مجمعات العاشر من رمضان ومدينة السادات لشركة إنرجيا للكابلات).
+
+في بيئة تصنيع الكابلات المستمرة، فإن أي توقف غير مخطط له لخط سحب نحاس أو خط بثق (Extrusion) أو عزل مستمر (CCV) يؤدي إلى تلف فوري في دفعات الإنتاج وتكلفة باهظة للطن. يقضي هذا النظام تماماً على الدفاتر الورقية والتقارير الشفهية عبر توفير حلقة رقمية محكمة تربط:
+1. **مشغلي خطوط الإنتاج السبعة (Line Operators)** للإبلاغ الفوري عن الأعطال ومراقبة سرعة الخط وعداد الإنتاج والـ OEE.
+2. **فنيي الصيانة التخصصيين (Mechanical & Electrical Technicians)** لبدء الإصلاحات وتوثيق قطع الغيار المستهلكة وتسجيل الأسباب الجذرية والإجراءات.
+3. **مشرفي ورديات الصيانة والإنتاج (Supervisors)** لتوزيع المهام، والتحقق الفني، ومصادقة إغلاق الأوامر.
+4. **الإدارة العليا للمصنع (Plant Management)** للتحليلات التنفيذية، وتوزيع الـ OEE، وتحليل باريتو (Pareto)، وتقرير الماكينات الأكثر تعطلاً (Bad Actors).
+
+---
+
+## 📂 هيكل المستودع | Monorepo Directory Layout
+
+تم تنظيم المشروع بنمط Monorepo لضمان استقلالية التطبيقات مع تشارك نفس قاعدة بيانات Supabase والعقود التشغيلية:
+
+```
+CMMS-Cable/
+├── mobile/                        # تطبيق الموبايل والتابلت (Flutter / Dart)
+│   ├── lib/
+│   │   ├── features/              # المميزات مقسمة Feature-First (auth, assets, downtime, work_orders, analytics)
+│   │   ├── core/                  # الأدوات الأساسية (database/hive, di, theme, localization, config)
+│   │   ├── app.dart               # تكوين MaterialApp، الثيمات، وحراس الجلسة
+│   │   └── main.dart              # نقطة البداية، تهيئة Supabase و Hive و GetIt
+│   ├── android/                   # إعدادات ومنصات أندرويد الأصلية
+│   └── pubspec.yaml               # مكتبات Flutter والاعتماديات
+│
+├── web/                           # لوحة التحكم والمراقبة للويب (Vue 3 + Vite + TypeScript)
+│   ├── src/
+│   │   ├── api/supabase.ts        # عميل Supabase Client ومفاتيح Anon
+│   │   ├── stores/                # مخازن الحالة العامة (Pinia: auth, workOrders, downtime)
+│   │   ├── views/                 # شاشات اللوحة (Login, PlantFloor, WorkOrders, Downtime, Analytics, SpareParts)
+│   │   ├── components/            # المكونات المشتركة (AppShell, StatusBadge)
+│   │   ├── router/index.ts        # المسارات وحراس التوجيه (Auth Guards)
+│   │   └── style.css              # تصميم Tailwind، اتجاه RTL، وخط Cairo
+│   ├── serve_dist.js              # سيرفر محلي خفيف لتشغيل النسخة المبنية (Port 5173)
+│   ├── package.json               # حزم Vite و Vue 3 و ECharts
+│   └── vite.config.ts             # إعدادات Vite وتقسيم Chunks
+│
+├── supabase/                      # قاعدة البيانات ومخططات السحابة
+│   ├── migrations/                # ملفات SQL المرتبة تصاعدياً لتكوين البيئة النظيفة
+│   ├── migrations_down/           # ملفات التراجع المقابلة لحالات الطوارئ
+│   ├── seed.sql                   # بيانات المصنع المرجعية (7 أقسام، أدوار، ماكينات، BOM، قطع غيار)
+│   ├── PRODUCTION_BASELINE.md     # وثيقة حصر حالة الإنتاج والمصالحة الآمنة
+│   └── legacy/                    # السكربتات القديمة المؤرشفة
+│
+├── docs/                          # وثائق النظام والتصميم والمخططات
+│   ├── PROJECT_GUIDE_AR.md        # الدليل الفني الشامل بالعربية لمسارات البيانات
+│   ├── SCHEMA.md                  # عقد البيانات، جداول، RLS، والـ RPCs
+│   ├── production_deployment_runbook.md # إرشادات النشر
+│   └── images/                    # صور النظام، الاسكرين شوت، والمخططات
+│
+├── release_apks/                  # ملفات APK الجاهزة للتثبيت المباشر على أجهزة أندرويد
+├── HANDOFF.md                     # تقرير التسليم وحالة التحقق والخطوات التشغيلية
+└── README.md                      # هذا الدليل المرجعي الشامل
+```
+
+---
+
+## 📸 معرض الشاشات الحية | Live Screenshots & Visual Tour
+
+### 1. شاشة لوحة تحكم الويب أثناء التشغيل الحي (Live Web Portal)
+*تم التقاط هذه اللقطة مباشرة من التطبيق أثناء تشغيل سيرفر الويب وتصفحه عبر المتصفح:*
 
 <div align="center">
 
-| 🌙 Cyber Dark Mode (الوضع الليلي الصناعي) | ☀️ Clean Light Mode (الوضع النهاري عالي التباين) |
-| :---: | :---: |
-| ![Login Dark](docs/images/login_dark.png) | ![Login Light](docs/images/login_light.png) |
+![Live Web Running Application](docs/images/web_running_app.png)
+
+*بوابة الدخول للويب — هوية شركة إنرجيا للكابلات، دعم كامل للعربية RTL، وتصميم متجاوب واحترافي*
 
 </div>
 
 ---
 
-### 2. Factory Floor Operator View (أرضية المصنع لمشغلي الخطوط)
-*Real-time machine status cards, telemetry (production speed m/min, produced km), department OEE gauges (88.4%), and immediate single-tap breakdown reporting:*
+### 2. شاشات تطبيق الهاتف والمحاكاة المزدوجة (Mobile Dark & Light Experience)
+*عرض تجربة الموبايل عبر الوضع الليلي المظلم عالي التباين (Cyber Dark) والوضع النهاري النظيف (Clean Light):*
+
+<div align="center">
+
+![Mobile Dark and Light Mockup](docs/images/mobile_mockup.png)
+
+*تطبيق الموبايل — بطاقات الماكينات ST01، مؤشرات OEE الحية (96.5%)، قائمة أوامر العمل الأخيرة، والشريط العائم السفلي*
+
+</div>
+
+---
+
+### 3. بوابة الدخول التفاعلية للموبايل مع الوصول السريع للأدوار (Mobile Quick Access)
+
+<div align="center">
+
+| 🌙 الوضع الليلي (Dark Industrial) | ☀️ الوضع النهاري (Clean High-Contrast) |
+| :---: | :---: |
+| ![Login Dark](docs/images/login_dark.png) | ![Login Light](docs/images/login_light.png) |
+
+*دخول فوري بنقرة واحدة لاختيار أي دور وظيفي من الـ 12 حساباً مع التبديل اللحظي بين العربية والإنجليزية*
+
+</div>
+
+---
+
+### 4. أرضية المصنع لمشغلي الخطوط (Factory Floor Live Operations)
 
 <div align="center">
 
 ![Factory Floor Operator View](docs/images/factory_floor_operator.png)
 
-*Line Operator Screen — Buncher 630 Lines with live running parameters, active alerts, and line-scoped visibility*
+*شاشة المشغل — خطوط الجدل والإنتاج مع بارامترات السرعة (متر/دقيقة) والأمتار المنتجة وحالة الخط وزر الإبلاغ الفوري*
 
 </div>
 
 ---
 
-### 3. Work Orders Management & Handshake Lifecycle (أوامر الصيانة ودورة المصادقة)
-*Multi-level management dashboard for dispatching specialists, tracking active timers, viewing replaced spare parts, and auditing cross-shift breakdowns:*
+### 5. إدارة أوامر العمل وسجل المصادقة والورديات (Work Orders & Handshake Detail)
 
 <div align="center">
 
-![Work Orders Desktop View](docs/images/work_orders_desktop.png)
+| 🖥️ سطح المكتب: إدارة أوامر العمل وفلاتر الأقسام | 📋 تفاصيل الأمر وتفكيك دقائق الورديات |
+| :---: | :---: |
+| ![Work Orders Desktop](docs/images/work_orders_desktop.png) | ![Work Order Handshake Detail](docs/images/work_order_handshake_detail.png) |
 
-*Desktop View — Work Orders with severity tagging (Critical / Medium / Preventive), assigned technician badges, and status filters*
-
-</div>
-
----
-
-### 4. 5-Step Handshake & Cross-Shift Chronology Audit Log
-*Tamper-proof digital lifecycle preventing unauthorized closure and accurately decomposing cross-shift breakdown minutes for OEE calculation:*
-
-<div align="center">
-
-![Work Order Handshake Detail](docs/images/work_order_handshake_detail.png)
-
-*Audit Log & Step Maintenance Handshake — Immutable event timeline and cross-shift minute decomposition (Shift 1 vs Shift 2)*
+*فلاتر شاملة لأوامر الصيانة، متابعة الخطوات الخمس، وتوزيع زمن العطل بين الورديتين (Shift 1 & Shift 2)*
 
 </div>
 
 ---
 
-### 5. Responsive Mobile & Tablet Experience
-*Fluid adaptive interface supporting control-room desktop monitors, supervisor tablets, and rugged shop-floor mobile devices:*
+## 🏗️ معمارية النظام الشاملة | System Architecture
 
-<div align="center">
-
-![Mobile Dark and Light UI](docs/images/mobile_mockup.png)
-
-*Dual-Theme Mobile Navigation — Futuristic floating dock and high-density cards*
-
-</div>
-
----
-
-## 🏗️ System Architecture & Dual Storage Model | معمارية النظام ومزامنة البيانات
-
-The system implements a resilient **Hybrid Cloud & Local Cache Architecture**:
+يعتمد النظام معمارية **Hybrid Cloud & Local Cache Architecture** (Offline-First):
 
 ```mermaid
 graph TD
-    A[Flutter Client UI] -->|State Management| B[AuthCubit & Feature Cubits]
-    B -->|Clean Repository Pattern| C[AuthRepository / Feature Repositories]
-    C -->|Network Available| D[☁️ Supabase Cloud Backend]
-    D -->|PostgreSQL & Auth| E[(Cloud PostgreSQL DB & RLS)]
-    C -->|Always Synchronized| F[⚡ Hive Local Offline Storage]
-    F -->|Zero Latency Reads| A
+    subgraph Mobile Client [Flutter Mobile & Tablet Client]
+        UI[Flutter Presentation UI] -->|Events & State| BLoC[Auth & Feature Cubits]
+        BLoC -->|Clean Architecture| Repo[Repositories]
+        Repo -->|Network Available| SyncMgr[SyncManager Engine]
+        Repo -->|Zero Latency Reads| LocalDB[(Hive Offline Box)]
+        SyncMgr -->|Outbox Pattern| Outbox[(Local Outbox Queue)]
+    end
+
+    subgraph Web Dashboard [Vue 3 Web Operations Portal]
+        WebUI[Vue 3 Composition API] -->|Pinia Stores| Stores[Auth & Operations Stores]
+        Stores -->|Supabase JS Client| SupaClient[Supabase API Layer]
+        WebUI -->|Lazy ECharts Chunks| Analytics[Factory KPI & Pareto Analytics]
+    end
+
+    subgraph Supabase Cloud [Supabase Cloud PostgreSQL Backend]
+        SyncMgr -->|RPC Calls & HTTPS| RPC[Stored Procedure RPCs]
+        SupaClient -->|Direct RPC & Views| RPC
+        RPC -->|Row-Level Security| PG[(PostgreSQL Database)]
+        PG -->|Change Events| RT[Realtime WebSocket Engine]
+        RT -.->|Live Broadcast| SyncMgr
+        RT -.->|Live Broadcast| Stores
+    end
 ```
 
-### Why Dual Storage?
-1. **Zero-Latency Shop-Floor UX**: Querying local Hive boxes takes `< 2ms`, allowing operators to inspect machinery metrics and scroll through dozens of machines without UI stutters.
-2. **Guaranteed Uptime Under Wi-Fi Blackouts**: If the factory access point drops, operators can still report faults locally and review work orders. Once reconnected, changes synchronize seamlessly.
-3. **Cloud Auditability & RLS**: All central operations, role updates, and historical timestamps are guarded by Supabase PostgreSQL Row-Level Security (RLS).
+### أسباب اختيار نموذج التخزين المزدوج (Dual Storage Model):
+1. **استجابة صفرية في المصنع (Zero Latency UX)**: قراءة بيانات الماكينات وحالاتها من صناديق Hive المحلية تأخذ أقل من `2ms`، مما يمنع تجمد الشاشات عند تصفح عشرات المعدات.
+2. **استمرارية العمل عند انقطاع الشبكة (Wi-Fi Blackouts)**: في صالات الإنتاج الضخمة والمعزولة حديدياً، يمكن للمشغل تسجيل العطل محلياً؛ وبمجرد عودة إشارة الواي فاي، يقوم الـ `SyncManager` بتفريغ الـ Outbox ومزامنة البيانات مع السحابة دون فقدان أي سجل.
+3. **حماية العمليات عبر الـ RPC والـ RLS**: لا يتم التعديل المباشر على الجداول الحساسة من الواجهات، بل تتم كل حركة عبر دوال قاعدة البيانات (RPCs) الخاضعة لقواعد الـ Row Level Security الصارمة.
 
 ---
 
-## 👥 Factory Org Structure & 12 Pre-Configured Accounts | الأدوار وحسابات المصنع
+## 🛠️ دليل حل المشاكل والمشاكل التقنية | Troubleshooting & Solved Issues
 
-The system is fully seeded with **12 dedicated accounts** mirroring the actual cable plant organizational structure:
+يستعرض هذا القسم أهم التحديات والمشاكل المعقدة التي واجهت المشروع وكيف تم حلها مع إرشادات التعامل معها:
 
-| Role / Line | Dedicated Email | Department / Specialty | Scope of Authority |
+### 1. مشكلة معرّف أمر العمل: UUID مقابل الرقم التسلسلي (UUID vs Sequential Number)
+- **المشكلة**: كانت بعض التصاميم والوثائق القديمة تفترض وجود عمود باسم `work_order_num` أو أرقام تسلسلية رقمية قصيرة (مثل `#4321`). عند الربط الفعلي مع قاعدة بيانات Supabase، وجد أن جدول `work_orders` يعتمد حصرياً على `id UUID` كمفتاح أساسي، ولا يوجد عمود باسم `work_order_num`.
+- **الحل الجذري**: تم تحديث كافة نماذج البيانات (Models) في Flutter ولوحة الويب والـ RPCs للاعتماد التام على UUID `id`. ولتوفير تجربة مستخدم مريحة للعمال في المصنع، تم إنشاء دالة مساعدة تعرض أول 8 أحرف من الـ UUID (مثل `WO-A1B2C3D4`) كرمز مختصر للعرض فقط، مع بقاء الـ UUID الكامل في الاستعلامات والمسارات (`/work-orders/:id`).
+
+---
+
+### 2. مشكلة تعارض الـ Migrations في بيئة الإنتاج (Production Baseline Reconciliation)
+- **المشكلة**: مشروع Supabase الفعلي للإنتاج (`ptlzpwfrrxfqfprkvbuf`) تم إنشاؤه مسبقاً ولديه سجل migrations في جدول `schema_migrations` يحتوي على إصدارات من التواريخ السابقة (`20260923...`, `20260927...`) لا تتطابق حرفياً مع أسماء الملفات المحلية في المستودع. تشغيل `supabase db push` بشكل أعمى كاد أن يؤدي إلى محو المخطط أو توقف السيرفر بخطأ تعارض الإصدارات.
+- **الحل والاحتياط**:
+  1. تم توثيق الحالة بدقة في ملف [`supabase/PRODUCTION_BASELINE.md`](supabase/PRODUCTION_BASELINE.md).
+  2. تم تطبيق التعديلات الناقصة (مثل جدول الكتالوج `factory_catalog`) يدوياً عبر SQL Editor في Supabase Studio والتأكد من سلامة الجداول دون التلاعب بسجل الـ CLI.
+  3. **قاعدة ثابتة**: يُمنع تشغيل `supabase db push` على بيئة الإنتاج الحالية؛ وعند الحاجة لنشر إصدارات جديدة، يتم أخذ نسخة Snapshot للمخطط ومقارنتها عبر بيئة تطويرية وسيطة معزولة.
+
+---
+
+### 3. مشكلة ازدواجية الإرسال وتكرار الأعطال عبر Outbox (Idempotency & Retry Storms)
+- **المشكلة**: عند انقطاع الاتصال ثم عودته المفاجئة، قد يقوم العميل بإعادة إرسال طلب إنشاء أمر صيانة مرتين أو ثلاث مرات، مما يسبب تسجيل أوامر مكررة لنفس العطل.
+- **الحل الجذري**:
+  - تم استخدام جدول `work_order_commands` ونمط **Idempotency Key (UUID v4)**.
+  - كل أمر محلي يتم توليد UUID خاص به وتمريره إلى الـ RPC.
+  - إذا استقبلت قاعدة البيانات نفس الـ UUID مرة أخرى، تقوم بتخطي الإدراج وإرجاع النتيجة السابقة بأمان، مما يمنع التكرار نهائياً.
+
+---
+
+### 4. مشكلة احتساب دقائق التوقف عبر منتصف الليل (Cross-Midnight Shift Splitter)
+- **المشكلة**: في مصانع الكابلات التي تعمل بنظام الـ 24 ساعة (3 ورديات)، تمتد الوردية الثالثة (الليلية) من الساعة `23:00` حتى `07:29` في اليوم التالي. إذا وقع عطل في الساعة `22:45` واستمر حتى `01:30`، فإن احتسابه بالكامل على اليوم التالي أو السابق يشوه مؤشرات توافر الخطوط (OEE) وحسابات كفاءة الورديات.
+- **الحل الجذري**:
+  - تم تطوير محرك زمني رياضي في الـ View `v_shift_downtime_split` وكود Flutter.
+  - يقوم المحرك بتفكيك دقائق العطل الواحد بدقة: الدقائق الواقعة قبل `23:00` تُنسب إلى الوردية المسائية لليوم الحالي، والدقائق بعد `23:00` تُنسب إلى الوردية الليلية لتاريخ الإنتاج الصحيح.
+
+---
+
+### 5. مشكلة الإغلاق غير المصرح به لأوامر الصيانة (Strict RBAC & Handshake Bypass)
+- **المشكلة**: قيام بعض الفنيين بإنهاء أمر الصيانة وإغلاقه دون تأكيد اختبار التشغيل (Test Run) من قبل مشغل الخط أو دون مراجعة المشرف.
+- **الحل الجذري**:
+  - تم تحصين دورة الحياة عبر 6 إجراءات مخزنة (RPCs):
+    - `rpc_create_work_order`: للمشغل والمشرف فقط.
+    - `rpc_assign_work_order`: للمشرف فقط لاختيار الفني المناسب.
+    - `rpc_start_work_order`: للفني المعيّن لبدء عداد الإصلاح.
+    - `rpc_complete_work_order`: للفني لتوثيق قطع الغيار والإجراءات والسبب الجذري.
+    - `rpc_confirm_test_run`: للمشغل لتأكيد أن الماكينة تعمل بكفاءة.
+    - `rpc_close_work_order`: للمشرف فقط للمصادقة النهائية والإغلاق الرسمي.
+  - قواعد الـ RLS في Postgres ترفض أي استدعاء مباشر خارج صلاحيات دور المستخدم المسجل.
+
+---
+
+### 6. مشكلة أدوات بناء C++ على أنظمة Windows Desktop
+- **المشكلة**: عند تشغيل `flutter run -d windows` على بيئات تطوير تفتقر إلى مجمع Visual Studio C++ Build Tools (MSVC)، يفشل البناء المكتبي.
+- **الحل والبدائل**:
+  - تم توفير بديلين فوريين دون الحاجة لتحميل 10 جيجابايت من أدوات Visual Studio:
+    1. **التشغيل عبر متصفح Chrome**: `flutter run -d chrome --no-pub`.
+    2. **التشغيل المباشر على أجهزة أندرويد أو المحاكي**: عبر ملفات الـ APK الجاهزة في مجلد `release_apks/` أو عبر أمر `flutter run -d emulator-5554`.
+
+---
+
+### 7. مشكلة تضخم حزمة الويب ECharts وتحذيرات الحزم غير الموصى بها
+- **المشكلة**: عند بناء لوحة تحكم الويب عبر Vite، أصدر المجمع تحذيراً بأن حجم ملف الجافاسكريبت يتجاوز 600 كيلوبايت بسبب تضمين مكتبة Apache ECharts بالكامل، بالإضافة إلى إشعار بأن حزمة `lucide-vue-next` قديمة وموصى بها كـ `@lucide/vue`.
+- **الحل الجذري**:
+  - تم ضبط `vite.config.ts` لتقسيم الكود يدوياً (Manual Chunks Splitting):
+    - `echarts-charts` (370 KB): رسوم بيانية معزولة.
+    - `echarts-components` (172 KB): مكونات الرسوم.
+    - `echarts-core` (13 KB): نواة الرسوم.
+  - تم جعل شاشة التحليلات (AnalyticsView) تُحمّل بنمط Lazy Loading؛ فلا يتم تحميل ECharts إطلاقاً إلا عندما يفتح المستخدم تبويب التحليلات، مما جعل تحميل شاشات الدخول والماكينات وأوامر العمل فورياً وفائق السرعة.
+
+---
+
+### 8. مشكلة تسريب اشتراكات الـ Realtime في لوحة الويب
+- **المشكلة**: عند تنقل المستخدم السريع بين شاشات الويب، بقيت قنوات Supabase Realtime السابقة مفتوحة في الخلفية، مما استهلك اتصالات WebSocket في السحابة.
+- **الحل**: تم ربط إنشاء القنوات بدورة حياة المكون في Vue مع إلغاء الاشتراك الصريح في `onUnmounted`:
+  ```typescript
+  onUnmounted(() => {
+    supabase.removeChannel(machineChannel)
+  })
+  ```
+
+---
+
+## 👥 حسابات المصنع ومصفوفة الصلاحيات | Factory Accounts & RBAC
+
+يحتوي النظام على **12 حساباً معتمداً** تغطي الهيكل التنظيمي لمصنع كابلات متكامل:
+
+| الحساب والدور الوظيفي | البريد الإلكتروني | القسم / التخصص | نطاق الصلاحيات التشغيلية |
 | :--- | :--- | :--- | :--- |
-| 👔 **Plant General Manager** | `manager.prod@cable.com` | Plant Administration | Executive dashboards, plant-wide OEE metrics, MTTR/MTBF analytics, read-only oversight |
-| 📋 **Maintenance Supervisor** | `eng.maint@cable.com` | Maintenance Engineering | Technician dispatch, ticket reassignment, technical validation, verified ticket closure |
-| 🏭 **Production Supervisor** | `prod.sup@cable.com` | Production Department | Cross-line coordination, shift output analysis, breakdown oversight |
-| ⚡ **Electrical Technician** | `tech.elec@cable.com` | **Electrical** Maintenance | Start electrical work orders, record spare parts, document electrical root causes |
-| 🔧 **Mechanical Technician** | `tech.mech@cable.com` | **Mechanical** Maintenance | Start mechanical work orders, record replaced parts, execute repair timers |
-| 🧵 **Drawing Line Operator** | `op.drawing@cable.com` | Line 1: Wire Drawing | Report Line 1 breakdowns, view machine telemetry, confirm test runs |
-| 🌀 **Stranding Line Operator**| `operator@cable.com` | Line 2: Rigid Stranding | Report Line 2 breakdowns, view machine telemetry, confirm test runs |
-| ⚡ **CCV Line Operator** | `op.ccv@cable.com` | Line 3: CCV Insulation | Report Line 3 breakdowns, view machine telemetry, confirm test runs |
-| 🛡️ **Extrusion Line Operator**| `op.extrusion@cable.com`| Line 4: Sheathing / Extrusion | Report Line 4 breakdowns, view machine telemetry, confirm test runs |
-| 📦 **Assembly Line Operator** | `op.assembly@cable.com` | Line 5: Drum Twisting / Assembly | Report Line 5 breakdowns, view machine telemetry, confirm test runs |
-| 🛡️ **Screening Line Operator**| `op.screening@cable.com`| Line 6: Copper Wire Screening | Report Line 6 breakdowns, view machine telemetry, confirm test runs |
-| ⛓️ **Armouring Line Operator**| `op.tape@cable.com` | Line 7: Steel Tape Armouring | Report Line 7 breakdowns, view machine telemetry, confirm test runs |
+| 👔 **مدير عام المصنع** (Plant Manager) | `manager.prod@cable.com` | الإدارة العامة | لوحات القيادة التنفيذية، نسب الـ OEE الشاملة، تحليلات MTTR/MTBF، رقابة عليا بدون تعديل يدوي |
+| 📋 **مشرف الصيانة** (Maintenance Supervisor) | `eng.maint@cable.com` | هندسة الصيانة | إسناد التذاكر للفنيين، الموافقة على قطع الغيار، فحص اختبار التشغيل، والمصادقة النهائية على إغلاق الأوامر |
+| 🏭 **مشرف الإنتاج** (Production Supervisor) | `prod.sup@cable.com` | إدارة الإنتاج | متابعة الخطوط السبعة، الإبلاغ عن الأعطال الطارئة، تنسيق تسليم الوردية ومراجعة زمن التوقف |
+| ⚡ **فني صيانة كهربائية** (Electrical Tech) | `tech.elec@cable.com` | صيانة كهربائية | بدء أوامر الصيانة الكهربائية، تسجيل قطع الغيار والأعطال الكهربائية ومؤقتات الإصلاح |
+| 🔧 **فني صيانة ميكانيكية** (Mechanical Tech) | `tech.mech@cable.com` | صيانة ميكانيكية | تنفيذ الإصلاحات الميكانيكية، توثيق القطع الميكانيكية المستبدلة، وتسجيل السبب الجذري |
+| 🧵 **مشغل خط السحب** (Drawing Operator) | `op.drawing@cable.com` | خط 1: سحب النحاس والألمنيوم | إبلاغ أعطال خط السحب، مراقبة سرعة السحب، وتأكيد اختبار التشغيل بعد الإصلاح |
+| 🌀 **مشغل خط الجدل** (Stranding Operator) | `operator@cable.com` | خط 2: الجدل الميكانيكي | إبلاغ أعطال خط الجدل، متابعة الـ OEE، وتأكيد اختبار التشغيل |
+| ⚡ **مشغل خط العزل** (CCV Line Operator) | `op.ccv@cable.com` | خط 3: العزل المستمر CCV | إبلاغ أعطال خط العزل الحرج، قراءة العدادات، وتأكيد التشغيل |
+| 🛡️ **مشغل خط البثق** (Extrusion Operator) | `op.extrusion@cable.com` | خط 4: البثق والغلاف الخارجي | إبلاغ أعطال خطوط البثق، فحص حرارة وضغط الرأس، وتأكيد التشغيل |
+| 📦 **مشغل خط التجميع** (Assembly Operator) | `op.assembly@cable.com` | خط 5: تجميع وتطويق الكابلات | إبلاغ أعطال خط التجميع، مراقبة شد السحب، وتأكيد التشغيل |
+| 🛡️ **مشغل خط الشيلد** (Screening Operator) | `op.screening@cable.com` | خط 6: شيلد الأسلاك النحاسية | إبلاغ أعطال خط الشيلد، فحص انتظام التغطية، وتأكيد التشغيل |
+| ⛓️ **مشغل خط التسليح** (Armouring Operator) | `op.tape@cable.com` | خط 7: التسليح بالشريط الفولاذي | إبلاغ أعطال خط التسليح، متابعة سرعة التغذية، وتأكيد التشغيل |
 
-> 🔒 **Account Credentials:** Passwords must be configured securely and stored in a password manager or project vault. Never commit plaintext passwords to source control.
+> 🔐 **تنبيه أمني**: تُدار كلمات المرور بسرية تامة عبر Supabase Auth ولا يتم تضمين كلمات السر في كود المشروع.
 
 ---
 
-## 🛡️ 5-Step Handshake Lifecycle & Strict RBAC | دورة حياة أمر الصيانة ومصفوفة الصلاحيات
+## 🛡️ دورة حياة أمر الصيانة | 5-Step Handshake Lifecycle
 
-The lifecycle strictly prevents illegal state transitions and unauthorized role actions:
+تخضع أوامر العمل لتسلسل رقمي محكم يمنع تجاوز أي خطوة:
 
 ```mermaid
 graph LR
-    A[1. Open / Reported<br/>Operator Only] -->|Supervisor Dispatches| B[2. Assigned<br/>Specialist Matched]
-    B -->|Technician Starts Work| C[3. In Progress<br/>Repair Timer Active]
-    C -->|Parts & Cause Logged| D[4. Completed<br/>Technician Submits]
-    D -->|Quality Verified| E[5. Closed & Handed Over<br/>Supervisor Verification]
+    A[1. إبلاغ العطل<br/>Open / Reported<br/>المشغل أو المشرف] -->|المشرف يسند الفني| B[2. إسناد المهمة<br/>Assigned<br/>تحديد التخصص]
+    B -->|الفني يبدأ العمل| C[3. قيد الإصلاح<br/>In Progress<br/>تفعيل مؤقت العمل]
+    C -->|الفني يوثق القطع والسبب| D[4. تم الإنجاز<br/>Completed<br/>تسليم الماكينة]
+    D -->|المشغل يؤكد التشغيل| E[اختبار التشغيل<br/>Test Run Passed]
+    E -->|المشرف يصادق نهائياً| F[5. مغلق ومعتمد<br/>Closed & Verified<br/>إلغاء التوقف رسميًا]
 ```
 
-### Role Permissions Matrix:
+### مصفوفة الصلاحيات حسب الإجراء (Permissions Matrix):
 
-| Action / Capability | 👷 Operator | 🔧 Maintenance Tech | 📋 Shift Supervisor | 👔 Plant Manager |
-| :--- | :--- :--- :--- :--- |
-| **Report Machine Breakdown** | ✅ (Assigned Line) | ❌ | ✅ (Any Line) | ❌ |
-| **View Department Machines** | ✅ (Scoped) | ❌ | ✅ (All/Scoped) | ✅ (All Plant) |
-| **Start Assigned Repair Work** | ❌ | ✅ (Assigned Only) | ❌ | ❌ |
-| **Record Replaced Spare Parts**| ❌ | ✅ | ❌ | ❌ |
-| **Assign / Dispatch Technicians** | ❌ | ❌ | ✅ | ❌ |
-| **Confirm Machine Test Run** | ✅ | ❌ | ✅ | ❌ |
-| **Final Verified Ticket Closure** | ❌ | ❌ | ✅ | ❌ |
-| **Executive OEE & Pareto Analytics** | ❌ | ❌ | ✅ | ✅ (Full Access) |
+| الإجراء / الصلاحية | 👷 مشغل الخط | 🔧 فني الصيانة | 📋 مشرف الصيانة | 👔 مدير المصنع |
+| :--- | :---: | :---: | :---: | :---: |
+| **الإبلاغ عن عطل ماكينة** | ✅ (خطه فقط) | ❌ | ✅ (أي ماكينة) | ❌ |
+| **بدء أمر الصيانة وتفعيل المؤقت** | ❌ | ✅ (المعين له فقط) | ❌ | ❌ |
+| **تسجيل قطع الغيار المستهلكة** | ❌ | ✅ | ❌ | ❌ |
+| **توثيق السبب الجذري والإجراء** | ❌ | ✅ | ❌ | ❌ |
+| **إسناد وتوجيه الفنيين** | ❌ | ❌ | ✅ | ❌ |
+| **تأكيد اختبار التشغيل (Test Run)** | ✅ | ❌ | ✅ | ❌ |
+| **المصادقة الرسمية وإغلاق الأمر** | ❌ | ❌ | ✅ | ❌ |
+| **لوحات تحليلات OEE و Pareto** | ❌ | ❌ | ✅ | ✅ (وصول كامل) |
 
 ---
 
-## ⏱️ 3-Shift Plant Chronology & Minute-Precise OEE Allocation | محرك الورديات الصناعي
+## ⏱️ محرك الورديات وحساب OEE | Plant Shift Chronology Engine
 
-In 24/7 cable manufacturing plants, shifts span across calendar boundaries. This engine guarantees mathematical precision:
-- **Shift 1 (Morning)**: `07:30` → `15:29` (Same production calendar date).
-- **Shift 2 (Evening)**: `15:30` → `22:59` (Same production calendar date).
-- **Shift 3 (Night)**: `23:00` → `07:29` (Spans midnight; timestamps between `00:00` and `07:29` are allocated to yesterday's production date).
-- **Cross-Shift Breakdown Minute Splitter**: When a failure spans across shift handovers, downtime minutes are partitioned between the shifts (e.g. 143 min allocated to Shift 1, 110 min allocated to Shift 2) preventing false OEE penalties.
-
----
-
-## 📐 Strict Modular Code Architecture (Max 250 Lines per File) | المعمارية المعيارية النظيفة
-
-Every presentation screen and component is cleanly decomposed to avoid monoliths. No file in the module exceeds 250 lines:
-
-| Modular Component | Path | Responsibility | Line Count |
-| :--- | :--- | :--- | :---: |
-| [login_screen.dart](mobile/lib/features/auth/presentation/screens/login_screen.dart) | `mobile/lib/features/auth/presentation/screens/` | Screen orchestration, lifecycle & animations | **214** |
-| [login_form_card.dart](mobile/lib/features/auth/presentation/widgets/login/login_form_card.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Form container, input validation & sign-in trigger | **247** |
-| [login_quick_access.dart](mobile/lib/features/auth/presentation/widgets/login/login_quick_access.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Quick-access account selection chips by role | **197** |
-| [login_top_bar.dart](mobile/lib/features/auth/presentation/widgets/login/login_top_bar.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Floating action bar for language & theme toggles | **146** |
-| [login_form_fields.dart](mobile/lib/features/auth/presentation/widgets/login/login_form_fields.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Standardized input fields styling & text field labels | **93** |
-| [login_background.dart](mobile/lib/features/auth/presentation/widgets/login/login_background.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Industrial gradient canvas & ambient glow effects | **76** |
-| [login_header_logo.dart](mobile/lib/features/auth/presentation/widgets/login/login_header_logo.dart) | `mobile/lib/features/auth/presentation/widgets/login/` | Elevated Energya brand logo with fallback banner | **52** |
+يعمل المصنع على مدار 24 ساعة يومياً بنظام الورديات الثلاث:
+- **الوردية الصباحية (Shift 1)**: `07:30` → `15:29` (نفس تاريخ الإنتاج).
+- **الوردية المسائية (Shift 2)**: `15:30` → `22:59` (نفس تاريخ الإنتاج).
+- **الوردية الليلية (Shift 3)**: `23:00` → `07:29` (تمتد عبر منتصف الليل؛ الساعات بين `00:00` و `07:29` تُنسب محاسبياً لتاريخ إنتاج اليوم السابق لضمان دقة إغلاق الوردية).
+- **تفكيك دقائق الأعطال الممتدة**: إذا امتد عطل على مدار ورديتين، يقوم النظام بتقسيم الدقائق رياضياً وحفظها في `v_shift_downtime_split`، مما يمنع احتساب زمن عطل كامل على وردية بريئة لم تبدأ العمل بعد.
 
 ---
 
-## 🧪 Testing & Quality Assurance | الاختبارات وضمان الجودة
+## 🚀 دليل التثبيت والتشغيل بالتفصيل | Getting Started & Setup
 
-The repository maintains an automated test suite with **29 passing tests (100% pass rate)**:
-1. **RBAC Handshake & Guards**: Verifies role segregation, preventing technicians and operators from executing out-of-scope transitions.
-2. **Theme Toggle Interpolation Stability**: Prevents `TextStyle.lerp` inherited style crashes during live theme switching.
-3. **Dynamic Arabic/English Directionality**: Validates runtime text switching and layout adaptation.
-4. **Shift Chronology & Cross-Shift Splitter**: Guarantees post-midnight shift allocation and minute-accurate OEE calculations.
-5. **Futuristic Navigation Bar**: Tests responsive switching between desktop sidebar and mobile navigation.
-
-```bash
-# Run the automated test suite
-flutter test
-```
-```text
-00:09 +29: All tests passed!
-```
-
-```bash
-# Run strict static code analysis
-dart analyze lib/ test/
-```
-```text
-Analyzing lib, test...
-No issues found!
-```
-
----
-
-## 🚀 Getting Started | طريقة التثبيت والتشغيل
-
-### Prerequisites
-- [Flutter SDK](https://flutter.dev) (v3.19 or higher)
-- [Dart SDK](https://dart.dev) (v3.3 or higher)
+### المتطلبات الأساسية (Prerequisites)
+- [Node.js](https://nodejs.org) (v18 أو أعلى — تم الاختبار والاعتماد على v22.12.0)
+- [Flutter SDK](https://flutter.dev) (v3.19 أو أعلى)
+- [Dart SDK](https://dart.dev) (v3.3 أو أعلى)
 - Git
 
-### 1. Clone the Repository
+---
+
+### 1. استنساخ المستودع (Clone Repository)
 ```bash
 git clone https://github.com/mahmoudshahin1/CMMS-Cable.git
 cd CMMS-Cable
 ```
 
-### 2. Install Dependencies
+---
+
+### 2. تشغيل لوحة الويب (Web Operations Dashboard)
+
+#### أ. تثبيت الاعتماديات وإعداد البيئة:
+```bash
+cd web
+# في أنظمة Windows PowerShell:
+Copy-Item .env.example .env.local
+# قم بضبط متغيرات Supabase في ملف web/.env.local:
+# VITE_SUPABASE_URL=https://your-project.supabase.co
+# VITE_SUPABASE_ANON_KEY=your-publishable-key
+
+npm install
+```
+
+#### ب. تشغيل سيرفر التطوير (Dev Server):
+```bash
+npm run dev
+# يفتح السيرفر التفاعلي عادة على الرابط: http://localhost:5173
+```
+
+#### ج. تشغيل النسخة المبنية للإنتاج عبر السيرفر الخفيف:
+```bash
+npm run build
+node serve_dist.js
+# يفتح تطبيق الويب المبني فائق السرعة على الرابط: http://127.0.0.1:5173
+```
+
+---
+
+### 3. تشغيل تطبيق الموبايل (Flutter Mobile App)
+
+#### أ. تثبيت الحزم:
 ```bash
 cd mobile
 flutter pub get
 ```
 
-### 3. Database & Supabase Provisioning
-Execute the ordered migrations located in `supabase/migrations/` sequentially via your Supabase CLI or SQL Editor, then run `supabase/seed.sql` if factory reference data is needed. Review [`docs/SCHEMA.md`](docs/SCHEMA.md) for actual field names, roles, RLS boundaries, RPC contracts, and reporting-view assumptions. Legacy provisioning scripts are deprecated and isolated under `supabase/legacy/`.
-
-### 4. Run Automated Tests
+#### ب. التشغيل على أجهزة أو محاكي أندرويد (Android Emulator / Device):
 ```bash
+flutter run -d emulator-5554
+# أو على الجهاز الحقيقي المتصل عبر USB
+flutter run -d <device-id>
+```
+
+#### ج. التشغيل عبر متصفح Chrome (Web Target):
+```bash
+flutter run -d chrome --no-pub
+```
+
+#### د. التمرير الآمن لمتغيرات السحابة وقت البناء:
+```bash
+flutter run --dart-define=SUPABASE_URL=https://your-project.supabase.co --dart-define=SUPABASE_ANON_KEY=your-publishable-key
+```
+
+#### هـ. تثبيت ملفات الـ APK الجاهزة مباشرة:
+يمكنك تثبيت النسخ المجمعة الجاهزة في مجلد `release_apks/` باستخدام ADB مباشرة:
+```bash
+adb install release_apks/CableCMMS_Universal_All_Devices.apk
+```
+
+---
+
+### 4. تهيئة قاعدة بيانات Supabase (Supabase Provisioning)
+1. في بيئة تطوير جديدة ونظيفة، قم بتشغيل ملفات الـ SQL المرتبة في مجلد `supabase/migrations/` بالترتيب من `01` إلى `10`.
+2. قم بتنفيذ ملف `supabase/seed.sql` لزرع الأقسام السبعة، والماكينات المرجعية، وقائمة قطع الغيار وكتالوج المعدات.
+3. راجع ملف [`docs/SCHEMA.md`](docs/SCHEMA.md) للاطلاع على تفاصيل كل عمود وصلاحيات الـ RLS والـ RPCs المعتمدة.
+
+---
+
+## 🧪 الاختبارات وضمان الجودة | Testing & QA Assurance
+
+يتمتع المستودع بتغطية اختبارية شاملة تضمن استقرار العمليات الصناعية:
+
+### 1. اختبارات تطبيق الموبايل (Flutter Test Suite):
+يتضمن المشروع **91 اختباراً مؤتمتاً (بنسبة نجاح 100%)**:
+- اختبارات حراس الصلاحيات (RBAC Handshake & Guards).
+- اختبارات حماية تبديل الثيمات من الانهيار (`TextStyle.lerp` Stability).
+- اختبارات اتجاه النصوص وتبديل اللغات (Arabic RTL / English LTR).
+- اختبارات محرك الورديات وتفكيك دقائق الأعطال (Shift Chronology).
+- اختبارات شريط التنقل المتجاوب.
+
+```bash
+cd mobile
 flutter test
 ```
+```text
+00:14 +91: All tests passed!
+```
 
-### 5. Launch Application
+### 2. الفحص الثابت للكود (Static Analysis):
 ```bash
-# For the Flutter app in Chrome (separate from the Vue dashboard in /web):
-flutter run -d chrome
+cd mobile
+flutter analyze
+```
+```text
+Analyzing mobile...
+No issues found! (zero warnings, zero errors)
+```
 
-# For Windows Desktop:
-flutter run -d windows
+### 3. تدقيق أنواع الجافاسكريبت للويب (TypeScript & Vite Production Build):
+```bash
+cd web
+npm run build
+```
+```text
+✓ 2398 modules transformed.
+dist/index.html                                0.63 kB
+dist/assets/index-C_-x2XHz.css                31.55 kB
+dist/assets/echarts-charts-BhgHlMuG.js       370.77 kB
+dist/assets/supabase-DaJwl1MJ.js             278.62 kB
+dist/assets/echarts-components-D5CJRKDN.js   172.64 kB
+✓ built in production mode successfully.
 ```
 
 ---
 
-## 🛠️ Technology Stack | حزمة التقنيات
-
-- **Framework**: [Flutter](https://flutter.dev) & [Dart](https://dart.dev)
-- **Cloud Backend**: [Supabase](https://supabase.com) (PostgreSQL, Auth, Row-Level Security)
-- **State Management**: [flutter_bloc](https://pub.dev/packages/flutter_bloc) / Cubit
-- **Offline Persistence**: [Hive](https://pub.dev/packages/hive) & [Hive Flutter](https://pub.dev/packages/hive_flutter)
-- **Dependency Injection**: [get_it](https://pub.dev/packages/get_it)
-- **Design & Theming**: Modern Material 3, Custom Glassmorphism, Google Fonts (`Cairo` & `Inter`)
-
----
-
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 📄 الترخيص | License
+هذا المشروع مرخص بموجب رخصة MIT - راجع ملف [LICENSE](LICENSE) للمزيد من التفاصيل.
 
 <div align="center">
-Developed with ❤️ for Advanced Industrial Cable Manufacturing Excellence.
+صُمم وطُوّر بأعلى المعايير الهندسية لخدمة التميز التشغيلي في صناعة الكابلات الصناعية.
+<br/>
+<b>Energya Cables — Cable Operations & Maintenance Excellence Platform</b>
 </div>

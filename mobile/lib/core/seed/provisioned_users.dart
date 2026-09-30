@@ -8,7 +8,7 @@ import '../../features/auth/domain/models/user_model.dart';
 final List<UserModel> provisionedUsers = [
   // --- Maintenance Technicians (Electrical & Mechanical) ---
   const UserModel(
-    id: 'cc9f6212-bf05-4610-b8a5-64f911565f37',
+    id: 'a777edcb-e42e-4c94-aac9-1b89dd364ce5',
     name: 'طارق المنصور - فني كهرباء وتحكم',
     email: 'tech.elec@cable.com',
     role: UserRole.maintenanceTech,
@@ -24,7 +24,7 @@ final List<UserModel> provisionedUsers = [
     employeeCode: 'EMP-004',
   ),
   const UserModel(
-    id: 'a777edcb-e42e-4c94-aac9-1b89dd364ce5',
+    id: 'cc9f6212-bf05-4610-b8a5-64f911565f37',
     name: 'طارق المنصور - فني كهرباء وتحكم',
     email: 'tech.elec@cableops.local',
     role: UserRole.maintenanceTech,

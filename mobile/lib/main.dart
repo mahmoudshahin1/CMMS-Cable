@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'core/config/supabase_config.dart';
 import 'core/database/hive_service.dart';
 import 'core/di/service_locator.dart';
