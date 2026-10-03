@@ -6,6 +6,7 @@
 [![Flutter](https://img.shields.io/badge/Mobile-Flutter_3.x_/_Dart_3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Vue 3](https://img.shields.io/badge/Web-Vue_3_/_Vite_/_TypeScript-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](https://vuejs.org)
 [![Supabase](https://img.shields.io/badge/Backend-Supabase_PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![Firebase FCM](https://img.shields.io/badge/Notifications-Firebase_FCM-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
 [![BLoC](https://img.shields.io/badge/State-BLoC_/_Pinia-8B5CF6?style=for-the-badge)](https://bloclibrary.dev)
 [![Hive](https://img.shields.io/badge/Offline-Hive_Local_DB-FFB703?style=for-the-badge)](https://docs.hivedb.dev)
 
@@ -24,10 +25,11 @@
 4.  [Screenshots](#-screenshots)
 5.  [System Architecture](#-system-architecture)
 6.  [The Work Order Lifecycle (Report → Close)](#-the-work-order-lifecycle-report--close)
-7.  [Roles & Permissions](#-roles--permissions)
-8.  [Realtime Behavior](#-realtime-behavior)
-9.  [Getting Started](#-getting-started)
-10. [Database Notes](#-database-notes)
+7.  [Push Notifications (FCM)](#-push-notifications-fcm)
+8.  [Roles & Permissions](#-roles--permissions)
+9.  [Realtime Behavior](#-realtime-behavior)
+10. [Getting Started](#-getting-started)
+11. [Database Notes](#-database-notes)
 
 ---
 
@@ -39,6 +41,7 @@
 | :--- | :--- | :--- |
 | **Framework** | Flutter 3.x / Dart 3.x | Cross-platform native UI for Android & iOS |
 | **State Management** | flutter_bloc (BLoC / Cubit) | Predictable state, separated business logic |
+| **Push Notifications** | Firebase Cloud Messaging (FCM) + flutter_local_notifications | Heads-up system alerts across foreground, background, and killed app states |
 | **Local Database** | Hive (Offline-First) | Zero-latency reads (<2 ms), works without network |
 | **Dependency Injection** | get_it | Service locator for clean architecture |
 | **Backend Client** | supabase_flutter | Auth, Realtime, RPC calls to Supabase |
@@ -71,7 +74,8 @@
 | **Security** | Row Level Security (RLS) | Every table gated by role + department |
 | **Business Logic** | SECURITY DEFINER RPC functions | Transactional state transitions with version checks |
 | **Realtime** | Logical Replication (WebSocket) | Live broadcast of all operational table changes |
-| **Migrations** | Supabase CLI (10 ordered migrations) | Versioned, reproducible schema management |
+| **Push Registry** | public.device_tokens with RLS | Multi-device FCM token registry with lifecycle synchronization |
+| **Migrations** | Supabase CLI (11 ordered migrations) | Versioned, reproducible schema management |
 | **Reporting** | 7 PostgreSQL views | `v_machine_status_live`, `v_downtime_pareto`, `v_work_order_funnel`, etc. |
 
 ---
@@ -99,10 +103,12 @@ CMMS-Cable/
 ├── mobile/          Flutter app — used by operators and technicians on the shop floor
 │   ├── lib/
 │   │   ├── features/        Feature modules (auth, assets, work_orders, downtime, analytics)
-│   │   ├── core/            Shared services (database, DI, theme, localization, config)
+│   │   ├── core/            Shared services (database, notifications/FCM, DI, theme, localization, config)
+│   │   ├── firebase_options.dart Auto-generated multi-platform Firebase configuration
 │   │   ├── app.dart         MaterialApp configuration, themes, session guards
-│   │   └── main.dart        Entry point — initializes Supabase, Hive, GetIt
-│   ├── android/             Android platform configuration
+│   │   └── main.dart        Entry point — initializes Firebase FCM, Supabase, Hive, GetIt
+│   ├── android/             Android platform configuration (google-services.json, notification channels)
+│   ├── ios/                 iOS platform configuration (GoogleService-Info.plist, APNs)
 │   └── pubspec.yaml         Flutter dependencies
 │
 ├── web/             Vue 3 + Vite dashboard — used by supervisors and plant management
@@ -119,7 +125,7 @@ CMMS-Cable/
 │   └── vite.config.ts       Build config with ECharts chunk splitting
 │
 ├── supabase/        Database schema, RLS policies, and RPC functions (single source of truth)
-│   ├── migrations/          10 ordered SQL migration files
+│   ├── migrations/          11 ordered SQL migration files (including 20261003000011_device_tokens.sql)
 │   ├── migrations_down/     Rollback scripts for emergencies
 │   ├── seed.sql             Factory reference data (7 departments, roles, machines, BOM, spare parts)
 │   └── PRODUCTION_BASELINE.md
@@ -298,6 +304,38 @@ This is the core of the system. A work order moves through exactly **seven state
 
 ---
 
+## 🔔 Push Notifications (FCM)
+
+To guarantee immediate response times across the shop floor, the system integrates **Firebase Cloud Messaging (FCM)** with high-priority channels, heads-up local alerts, and device token lifecycle synchronization:
+
+```
+┌─────────────────────────┐          ┌───────────────────────┐          ┌─────────────────────────┐
+│  Shop Floor Action      │          │  Database & Functions │          │  Target Mobile Device   │
+│  • Operator reports WO  │ ───────► │  • Triggers / Server  │ ───────► │  • System Heads-Up Alert│
+│  • Supervisor assigns WO│          │  • Reads device_tokens│          │  • Tap -> Open WO Screen│
+└─────────────────────────┘          └───────────────────────┘          └─────────────────────────┘
+```
+
+### Key Capabilities
+
+1. **Role-Targeted Alerts**:
+   - **Technician Alert**: When a maintenance supervisor dispatches a work order (`Step 2 -> Assigned`), the designated technician receives an immediate push alert even if their phone is locked or the app is killed.
+   - **Supervisor Alert**: When an operator logs an emergency breakdown on a production line (`Step 1 -> Open`), the department maintenance engineer receives an alert to triage and dispatch.
+
+2. **Full Lifecycle State Handling**:
+   - **Foreground**: Displays high-importance Heads-Up notification banners via `flutter_local_notifications` with audio and vibration alerts (`cable_cmms_high_importance_channel`).
+   - **Background & Terminated**: Managed seamlessly by Firebase background messaging (`FirebaseMessaging.onBackgroundMessage`), presenting standard OS system notifications.
+
+3. **Direct Deep Linking**:
+   - Tapping any notification automatically parses the embedded `workOrderId` (or `work_order_id`) payload and navigates directly to `WorkOrderDetailScreen`.
+
+4. **Multi-Device Token Lifecycle**:
+   - **Automatic Registration**: On user login or token refresh, `PushNotificationService` captures the FCM token and upserts it into `public.device_tokens` along with platform (`android`/`ios`/`web`) and timestamp.
+   - **Clean Session Termination**: On logout, the token is automatically deleted from `public.device_tokens` before session teardown, ensuring retired or logged-out devices never receive unauthorized factory notifications.
+   - **Security (RLS)**: Row Level Security restricts users so they can only insert, select, or delete their own device tokens (`auth.uid() = user_id`).
+
+---
+
 ## 👥 Roles & Permissions
 
 | Role | Can use web dashboard | Can report a fault | Can assign a technician | Can perform the repair | Can confirm the fix | Can close the fault |
@@ -413,6 +451,7 @@ The database is structured around these core tables:
 | `machine_bom` | Bill of materials linking machines to spare parts |
 | `factory_departments` | Reference: 7 factory departments (`code`, `name_en`, `name_ar`) |
 | `factory_roles` | Reference: role definitions with `web_access` flag |
+| `device_tokens` | Multi-device FCM push tokens — UUID `id`, `user_id`, `fcm_token` (unique), `platform`, `device_info`, timestamps |
 
 ### Workflow RPC Functions
 

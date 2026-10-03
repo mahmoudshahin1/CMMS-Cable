@@ -10,6 +10,7 @@ import '../../domain/enums/app_permission.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../../core/errors/auth_exceptions.dart';
 import '../../../../core/sync/manager/sync_manager.dart';
+import '../../../../core/notifications/push_notification_service.dart';
 
 /// Manages authentication state using a [AuthRepository] backend.
 ///
@@ -41,6 +42,9 @@ class AuthCubit extends Cubit<AuthState> {
         final profile = await _authRepository.getUserProfile(userId);
         emit(Authenticated(profile));
         unawaited(_syncManager?.onUserAuthenticated(profile));
+        // Register FCM token and process any cold-start notification
+        unawaited(PushNotificationService.instance.registerDevice(userId));
+        PushNotificationService.instance.processPendingInitialMessage();
       } else {
         emit(Unauthenticated());
       }
@@ -65,6 +69,8 @@ class AuthCubit extends Cubit<AuthState> {
       debugPrint('✅ AuthCubit.signIn success: ${user.name} (${user.role})');
       emit(Authenticated(user));
       unawaited(_syncManager?.onUserAuthenticated(user, forceInitialSync: true));
+      // Register FCM token for push notifications
+      unawaited(PushNotificationService.instance.registerDevice(user.id));
     } on InvalidCredentialsException catch (e) {
       debugPrint('❌ AuthCubit.signIn InvalidCredentialsException: ${e.message}');
       emit(AuthError(e.message));
@@ -83,6 +89,12 @@ class AuthCubit extends Cubit<AuthState> {
   /// Sign out and clear the session.
   Future<void> signOut() async {
     _syncManager?.onUserLoggedOut();
+    // Remove device token before signing out (while session is still valid)
+    try {
+      await PushNotificationService.instance.unregisterDevice();
+    } catch (e) {
+      debugPrint('⚠️ Error during unregisterDevice: $e');
+    }
     try {
       await _authRepository.signOut();
     } catch (_) {

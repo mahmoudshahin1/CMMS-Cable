@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "23972016733",
+    "project_id": "cmms-cable-app",
+    "storage_bucket": "cmms-cable-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:23972016733:android:d3577629101f12de7093b4",
+        "android_client_info": {
+          "package_name": "com.cablecmms.orning_and_evening_remembrances"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaAIv7AVgLEtHMvzi26XNZwkXUN66bue4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
