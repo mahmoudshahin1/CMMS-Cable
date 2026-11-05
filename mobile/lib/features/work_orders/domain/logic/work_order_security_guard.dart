@@ -28,7 +28,7 @@ class WorkOrderSecurityGuard {
         requiredRole: 'Operator of ${machine.department.displayName}',
         actualRole: 'Operator of ${caller.department!.displayName}',
         message:
-            'SECURITY ERROR: Line operators can only log work orders for machines in their own department.',
+            'SECURITY ERROR: Line operators can only create work orders for machines in their own department.',
       );
     }
   }
@@ -106,12 +106,13 @@ class WorkOrderSecurityGuard {
   }
 
   static void validateConfirmTestRun(UserModel caller, [MachineModel? machine]) {
-    if (caller.role != UserRole.operator) {
+    if (caller.role != UserRole.operator &&
+        caller.role != UserRole.productionSupervisor) {
       throw UnauthorizedRoleException(
-        requiredRole: 'Operator',
+        requiredRole: 'Operator or Production Supervisor',
         actualRole: caller.role.name,
         message:
-            'SECURITY ERROR: Only Line Operators can confirm field test runs.',
+            'SECURITY ERROR: Only Line Operators and Production Supervisors can confirm field test runs.',
       );
     }
 
@@ -119,10 +120,10 @@ class WorkOrderSecurityGuard {
         machine != null &&
         machine.department != caller.department) {
       throw UnauthorizedRoleException(
-        requiredRole: 'Operator of ${machine.department.displayName}',
-        actualRole: 'Operator of ${caller.department!.displayName}',
+        requiredRole: '${caller.role.displayName} of ${machine.department.displayName}',
+        actualRole: '${caller.role.displayName} of ${caller.department!.displayName}',
         message:
-            'SECURITY ERROR: Line operators can only confirm field test runs for machines in their own department.',
+            'SECURITY ERROR: ${caller.role.displayName}s can only confirm field test runs for machines in their own department.',
       );
     }
   }

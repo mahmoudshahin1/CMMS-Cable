@@ -4,6 +4,7 @@ import 'package:orning_and_evening_remembrances/features/auth/data/mock_users.da
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/models/work_order_model.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/models/work_order_activity_log.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/models/spare_part_model.dart';
+import 'package:orning_and_evening_remembrances/features/work_orders/domain/models/repair_step_model.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/enums/work_order_status.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/enums/work_order_type.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/enums/priority.dart';
@@ -188,6 +189,8 @@ class InMemorySecureWorkOrderRepository implements WorkOrderRepository {
     String workOrderId, {
     required String rootCause,
     required String actionsTaken,
+    List<RepairStepModel>? repairSteps,
+    String? repairVoiceUrl,
     UserModel? caller,
   }) async {
     if (caller != null && caller.role != UserRole.maintenanceTech) {
@@ -214,25 +217,45 @@ class InMemorySecureWorkOrderRepository implements WorkOrderRepository {
   }
 
   @override
-  Future<void> confirmTestRun(String workOrderId,
-      {required UserModel caller}) async {
-    if (caller.role != UserRole.operator) {
+  Future<void> confirmTestRun(
+    String workOrderId, {
+    required UserModel caller,
+    String outcome = 'fixed',
+    String? comments,
+    int? confirmedDowntimeMinutes,
+  }) async {
+    if (caller.role != UserRole.operator &&
+        caller.role != UserRole.productionSupervisor) {
       throw UnauthorizedRoleException(
-        requiredRole: 'Operator',
+        requiredRole: 'Operator or Production Supervisor',
         actualRole: caller.role.name,
       );
     }
     final wo = _storage[workOrderId];
     if (wo == null) return;
-    _validateTransition(wo.status, WorkOrderStatus.verified);
+    final targetStatus = outcome == 'fixed'
+        ? WorkOrderStatus.verified
+        : WorkOrderStatus.inProgress;
+    _validateTransition(wo.status, targetStatus);
     final log = _createLog(
-      stepName: 'TEST_RUN_PASSED',
+      stepName: outcome == 'fixed' ? 'TEST_RUN_PASSED' : 'TEST_RUN_REJECTED',
       caller: caller,
-      actionSummary: 'Test run passed',
+      actionSummary: outcome == 'fixed'
+          ? 'Test run passed'
+          : 'Test run bounced back (): ',
     );
     _storage[workOrderId] = wo.copyWith(
-      status: WorkOrderStatus.verified,
+      status: targetStatus,
       activityLogs: [...wo.activityLogs, log],
+      checks: [
+        ...wo.checks,
+        {
+          'at': DateTime.now().toIso8601String(),
+          'by': caller.id,
+          'outcome': outcome,
+          if (comments != null) 'notes': comments,
+        }
+      ],
     );
   }
 

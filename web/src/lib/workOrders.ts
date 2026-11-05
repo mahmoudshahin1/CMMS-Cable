@@ -55,10 +55,11 @@ export const departmentLabels: Record<string, string> = {
   drawing: 'السحب',
   ccv: 'العزل والتكسية',
   stranding: 'الجدل',
-  tapeArmour: 'التسليح',
+  armouring: 'قسم التسليح والتدريع',
   extrusion: 'الغلاف الخارجي',
-  assembly: 'إعادة لف',
+  assembly: 'التجميع',
   screening: 'التجهيز',
+  rewinding: 'قسم إعادة اللف والتجهيز',
 }
 
 export const workOrderStatuses = [

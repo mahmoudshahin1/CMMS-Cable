@@ -21,7 +21,10 @@ enum DepartmentType {
   screening,
 
   @HiveField(6)
-  tapeArmour,
+  armouring,
+
+  @HiveField(7)
+  rewinding,
 }
 
 extension DepartmentTypeExtension on DepartmentType {
@@ -36,11 +39,13 @@ extension DepartmentTypeExtension on DepartmentType {
       case DepartmentType.extrusion:
         return 'Extrusion Lines';
       case DepartmentType.assembly:
-        return 'Assembly & Armouring';
+        return 'Assembly';
       case DepartmentType.screening:
         return 'Screening & Taping';
-      case DepartmentType.tapeArmour:
-        return 'Tape Armouring';
+      case DepartmentType.armouring:
+        return 'Armouring Department';
+      case DepartmentType.rewinding:
+        return 'Rewinding Department';
     }
   }
 
@@ -55,11 +60,13 @@ extension DepartmentTypeExtension on DepartmentType {
       case DepartmentType.extrusion:
         return 'خطوط العزل والبثق';
       case DepartmentType.assembly:
-        return 'قسم التجميع والتسليح';
+        return 'قسم التجميع';
       case DepartmentType.screening:
         return 'قسم الحجب والشريط';
-      case DepartmentType.tapeArmour:
-        return 'قسم تدريع الأشرطة';
+      case DepartmentType.armouring:
+        return 'قسم التسليح والتدريع';
+      case DepartmentType.rewinding:
+        return 'قسم إعادة اللف والتجهيز';
     }
   }
 
@@ -79,8 +86,10 @@ extension DepartmentTypeExtension on DepartmentType {
         return 'assembly';
       case DepartmentType.screening:
         return 'screening';
-      case DepartmentType.tapeArmour:
-        return 'tapeArmour';
+      case DepartmentType.armouring:
+        return 'armouring';
+      case DepartmentType.rewinding:
+        return 'rewinding';
     }
   }
 
@@ -89,7 +98,10 @@ extension DepartmentTypeExtension on DepartmentType {
     if (value == null || value.trim().isEmpty) return null;
     final clean = value.trim().toLowerCase();
 
-    // 1. Direct code or enum name match
+    // 1. Direct code or enum name match (with legacy tapeArmour fallback)
+    if (clean == 'tapearmour' || clean == 'tapearmo') {
+      return DepartmentType.armouring;
+    }
     for (final dept in DepartmentType.values) {
       if (dept.name.toLowerCase() == clean ||
           dept.code.toLowerCase() == clean ||
@@ -127,10 +139,16 @@ extension DepartmentTypeExtension on DepartmentType {
         clean.contains('شريط')) {
       return DepartmentType.screening;
     }
-    if (clean.contains('tape') ||
-        clean.contains('armour') ||
+    if (clean.contains('armour') ||
+        clean.contains('تسليح') ||
+        clean.contains('tape') ||
         clean.contains('تدريع')) {
-      return DepartmentType.tapeArmour;
+      return DepartmentType.armouring;
+    }
+    if (clean.contains('rewind') ||
+        clean.contains('لف') ||
+        clean.contains('تجهيز')) {
+      return DepartmentType.rewinding;
     }
 
     return null;
@@ -166,8 +184,11 @@ extension DepartmentTypeExtension on DepartmentType {
       if (emailLower.contains('screening') || emailLower.contains('screen')) {
         return DepartmentType.screening;
       }
-      if (emailLower.contains('tape') || emailLower.contains('armour')) {
-        return DepartmentType.tapeArmour;
+      if (emailLower.contains('armour') || emailLower.contains('tape')) {
+        return DepartmentType.armouring;
+      }
+      if (emailLower.contains('rewind') || emailLower.contains('لف')) {
+        return DepartmentType.rewinding;
       }
     }
 
@@ -198,9 +219,13 @@ extension DepartmentTypeExtension on DepartmentType {
           idLower == 'e5555555-5555-4555-8555-555555555555') {
         return DepartmentType.screening;
       }
-      if (idLower.contains('tape') ||
+      if (idLower.contains('armour') ||
+          idLower.contains('tape') ||
           idLower == 'f6666666-6666-4666-8666-666666666666') {
-        return DepartmentType.tapeArmour;
+        return DepartmentType.armouring;
+      }
+      if (idLower.contains('rewind')) {
+        return DepartmentType.rewinding;
       }
     }
 

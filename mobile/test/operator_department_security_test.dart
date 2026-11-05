@@ -17,7 +17,8 @@ void main() {
       expect(MockUsers.extrusionLead.department, DepartmentType.extrusion);
       expect(MockUsers.assemblyLead.department, DepartmentType.assembly);
       expect(MockUsers.screeningLead.department, DepartmentType.screening);
-      expect(MockUsers.tapeArmourLead.department, DepartmentType.tapeArmour);
+      expect(MockUsers.armouringLead.department, DepartmentType.armouring);
+      expect(MockUsers.rewindingLead.department, DepartmentType.rewinding);
     });
 
     test('UserModel.department getter never returns null for operators even if created with null', () {
@@ -50,8 +51,12 @@ void main() {
       expect(DepartmentTypeExtension.fromString('assembly'), DepartmentType.assembly);
       expect(DepartmentTypeExtension.fromString('حجب/شريط'), DepartmentType.screening);
       expect(DepartmentTypeExtension.fromString('screening'), DepartmentType.screening);
-      expect(DepartmentTypeExtension.fromString('تدريع'), DepartmentType.tapeArmour);
-      expect(DepartmentTypeExtension.fromString('tapeArmour'), DepartmentType.tapeArmour);
+      expect(DepartmentTypeExtension.fromString('تسليح'), DepartmentType.armouring);
+      expect(DepartmentTypeExtension.fromString('تدريع'), DepartmentType.armouring);
+      expect(DepartmentTypeExtension.fromString('armouring'), DepartmentType.armouring);
+      expect(DepartmentTypeExtension.fromString('tapeArmour'), DepartmentType.armouring);
+      expect(DepartmentTypeExtension.fromString('إعادة لف'), DepartmentType.rewinding);
+      expect(DepartmentTypeExtension.fromString('rewinding'), DepartmentType.rewinding);
     });
 
     test('DepartmentTypeExtension.resolveOperatorDepartment falls back cleanly from email', () {
@@ -59,6 +64,11 @@ void main() {
         email: 'op.assembly@cable.com',
       );
       expect(dept, DepartmentType.assembly);
+
+      final rewindDept = DepartmentTypeExtension.resolveOperatorDepartment(
+        email: 'op.rewind@cable.com',
+      );
+      expect(rewindDept, DepartmentType.rewinding);
     });
   });
 
@@ -145,6 +155,28 @@ void main() {
         throwsA(isA<UnauthorizedRoleException>()),
       );
     });
+
+    test('Production Supervisor from Department A is accepted for Department A and rejected for Department B', () {
+      final prodSupervisorDeptA = MockUsers.productionSupervisor.copyWith(
+        department: DepartmentType.drawing,
+      );
+
+      expect(
+        () => WorkOrderSecurityGuard.validateConfirmTestRun(
+          prodSupervisorDeptA,
+          drawingMachine,
+        ),
+        returnsNormally,
+      );
+
+      expect(
+        () => WorkOrderSecurityGuard.validateConfirmTestRun(
+          prodSupervisorDeptA,
+          strandingMachine,
+        ),
+        throwsA(isA<UnauthorizedRoleException>()),
+      );
+    });
   });
 
   group('Plant Floor Operator UI Scoping Logic', () {
@@ -175,6 +207,13 @@ void main() {
       final hasDeptScope = isOperator || (userDept != null && !isPlantManager);
 
       expect(hasDeptScope, isFalse);
+    });
+
+    test('Production Supervisor is recognized as department-restricted like Operator', () {
+      final ps = MockUsers.productionSupervisor.copyWith(department: DepartmentType.drawing);
+      final isRestricted = ps.role == UserRole.operator || ps.role == UserRole.productionSupervisor;
+      expect(isRestricted, isTrue);
+      expect(ps.department, DepartmentType.drawing);
     });
   });
 }

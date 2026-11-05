@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../features/assets/domain/models/machine_model.dart';
 import '../../features/assets/domain/enums/machine_status.dart';
+import '../../features/work_orders/domain/models/work_order_model.dart';
+import '../../features/work_orders/presentation/cubit/work_order_cubit.dart';
+import '../../features/work_orders/presentation/cubit/work_order_state.dart';
+import '../../features/work_orders/presentation/widgets/live_downtime_counter_widget.dart';
 import '../theme/app_colors.dart';
 import 'status_badge.dart';
 
 class MachineCard extends StatefulWidget {
   final MachineModel machine;
+  final WorkOrderModel? activeWorkOrder;
   final VoidCallback onTap;
   final VoidCallback onReportDowntime;
 
   const MachineCard({
     super.key,
     required this.machine,
+    this.activeWorkOrder,
     required this.onTap,
     required this.onReportDowntime,
   });
@@ -23,21 +30,31 @@ class MachineCard extends StatefulWidget {
 class _MachineCardState extends State<MachineCard> {
   double _scale = 1.0;
 
-  void _onTapDown(TapDownDetails details) {
-    setState(() => _scale = 0.96);
-  }
+  void _onTapDown(TapDownDetails details) => setState(() => _scale = 0.96);
+  void _onTapUp(TapUpDetails details) => setState(() => _scale = 1.0);
+  void _onTapCancel() => setState(() => _scale = 1.0);
 
-  void _onTapUp(TapUpDetails details) {
-    setState(() => _scale = 1.0);
-  }
-
-  void _onTapCancel() {
-    setState(() => _scale = 1.0);
+  WorkOrderModel? _resolveActiveWorkOrder(BuildContext context, bool isDowntime) {
+    if (widget.activeWorkOrder != null) return widget.activeWorkOrder;
+    if (!isDowntime) return null;
+    try {
+      final woState = context.watch<WorkOrderCubit>().state;
+      if (woState is WorkOrderLoaded) {
+        final mid = widget.machine.id.toLowerCase();
+        final code = widget.machine.code.toLowerCase();
+        for (final w in woState.activeWorkOrders) {
+          final target = w.machineId.toLowerCase();
+          if (target == mid || target == code) return w;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final isDowntime = widget.machine.status.isDowntime;
+    final activeWo = _resolveActiveWorkOrder(context, isDowntime);
 
     return GestureDetector(
       onTapDown: _onTapDown,
@@ -62,9 +79,7 @@ class _MachineCardState extends State<MachineCard> {
               BoxShadow(
                 color: isDowntime
                     ? AppColors.downMaintenanceRed.withValues(alpha: 0.15)
-                    : (context.isDarkMode
-                        ? Colors.black26
-                        : Colors.black.withValues(alpha: 0.03)),
+                    : (context.isDarkMode ? Colors.black26 : Colors.black.withValues(alpha: 0.03)),
                 blurRadius: context.isDarkMode ? 10 : 6,
                 offset: const Offset(0, 2),
               ),
@@ -78,21 +93,16 @@ class _MachineCardState extends State<MachineCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: context.isDarkMode
-                          ? AppColors.darkNavy
-                          : AppColors.lightBg,
+                      color: context.isDarkMode ? AppColors.darkNavy : AppColors.lightBg,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: context.borderColor),
                     ),
                     child: Text(
                       widget.machine.code,
                       style: TextStyle(
-                        color: context.isDarkMode
-                            ? AppColors.cyberCyan
-                            : AppColors.energyaPrimaryBlue,
+                        color: context.isDarkMode ? AppColors.cyberCyan : AppColors.energyaPrimaryBlue,
                         fontWeight: FontWeight.w900,
                         fontSize: 13,
                         letterSpacing: 0.6,
@@ -108,7 +118,11 @@ class _MachineCardState extends State<MachineCard> {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              if (activeWo != null) ...[
+                const SizedBox(height: 4),
+                LiveDowntimeCounterWidget.fromWorkOrder(activeWo),
+              ],
+              const SizedBox(height: 4),
               Text(
                 widget.machine.name,
                 style: TextStyle(
@@ -121,14 +135,11 @@ class _MachineCardState extends State<MachineCard> {
               ),
               Text(
                 widget.machine.subCategory,
-                style: TextStyle(
-                  color: context.textMutedColor,
-                  fontSize: 11,
-                ),
+                style: TextStyle(color: context.textMutedColor, fontSize: 11),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              Divider(color: context.borderColor, height: 14),
+              Divider(color: context.borderColor, height: 12),
               Row(
                 children: [
                   Expanded(
@@ -144,8 +155,7 @@ class _MachineCardState extends State<MachineCard> {
                     child: _buildMetric(
                       context: context,
                       label: 'PROD',
-                      value:
-                          '${(widget.machine.totalMetersProduced / 1000).toStringAsFixed(1)}k m',
+                      value: '${(widget.machine.totalMetersProduced / 1000).toStringAsFixed(1)}k m',
                       icon: Icons.straighten_rounded,
                     ),
                   ),
@@ -160,35 +170,23 @@ class _MachineCardState extends State<MachineCard> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isDowntime
                         ? AppColors.downMaintenanceRed
-                        : (context.isDarkMode
-                            ? AppColors.slateBorder
-                            : const Color(0xFFE2E8F0)),
+                        : (context.isDarkMode ? AppColors.slateBorder : const Color(0xFFE2E8F0)),
                     foregroundColor: isDowntime
                         ? Colors.white
-                        : (context.isDarkMode
-                            ? Colors.white
-                            : AppColors.lightTextPrimary),
+                        : (context.isDarkMode ? Colors.white : AppColors.lightTextPrimary),
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                   icon: Icon(
-                    isDowntime
-                        ? Icons.build_circle_rounded
-                        : Icons.warning_amber_rounded,
+                    isDowntime ? Icons.build_circle_rounded : Icons.warning_amber_rounded,
                     size: 14,
                   ),
                   label: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
                       isDowntime ? 'VIEW DOWNTIME' : 'REPORT ISSUE',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.3,
-                      ),
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                     ),
                   ),
                 ),
@@ -218,11 +216,7 @@ class _MachineCardState extends State<MachineCard> {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: context.textMutedColor,
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: context.textMutedColor, fontSize: 9.5, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -232,11 +226,7 @@ class _MachineCardState extends State<MachineCard> {
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: context.textPrimaryColor,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(color: context.textPrimaryColor, fontSize: 12, fontWeight: FontWeight.w700),
         ),
       ],
     );

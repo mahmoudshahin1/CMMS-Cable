@@ -1,5 +1,6 @@
 import '../models/work_order_model.dart';
 import '../models/spare_part_model.dart';
+import '../models/repair_step_model.dart';
 import '../enums/work_order_status.dart';
 import '../../../auth/domain/models/user_model.dart';
 
@@ -23,8 +24,16 @@ abstract class WorkOrderRepository {
     String workOrderId, {
     required String rootCause,
     required String actionsTaken,
+    List<RepairStepModel>? repairSteps,
+    String? repairVoiceUrl,
     UserModel? caller,
   });
-  Future<void> confirmTestRun(String workOrderId, {required UserModel caller});
+  Future<void> confirmTestRun(
+    String workOrderId, {
+    required UserModel caller,
+    String outcome = 'fixed',
+    String? comments,
+    int? confirmedDowntimeMinutes,
+  });
   Future<void> approveAndClose(String workOrderId, {required UserModel caller});
 }

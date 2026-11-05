@@ -65,9 +65,60 @@ class ActionCardTechRepairSection extends StatelessWidget {
       );
     }
 
+    final rejectionNotes = workOrder.latestRejectionNotes;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (rejectionNotes != null && rejectionNotes.trim().isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.downMaintenanceRed.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: AppColors.downMaintenanceRed.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: AppColors.downMaintenanceRed,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Test Run Rejected — Production Feedback',
+                        style: TextStyle(
+                          color: AppColors.downMaintenanceRed,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        rejectionNotes,
+                        style: TextStyle(
+                          color: context.textPrimaryColor,
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         Text(
           'Action Required: Record replaced spare parts and root cause, then complete field repair.',
           style: TextStyle(color: context.textPrimaryColor, fontSize: 12.5),

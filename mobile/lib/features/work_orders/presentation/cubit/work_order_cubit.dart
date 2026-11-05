@@ -4,6 +4,7 @@ import 'work_order_state.dart';
 import '../../domain/repositories/work_order_repository.dart';
 import '../../domain/models/work_order_model.dart';
 import '../../domain/models/spare_part_model.dart';
+import '../../domain/models/repair_step_model.dart';
 import '../../domain/enums/work_order_status.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../../../../core/errors/security_exceptions.dart';
@@ -99,9 +100,27 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
     }
   }
 
+  Future<void> updateWorkOrderStatus(String workOrderId, WorkOrderStatus status,
+      {UserModel? caller}) async {
+    try {
+      await repository.updateWorkOrderStatus(workOrderId, status,
+          caller: caller);
+      await loadWorkOrders(silent: true);
+    } on SecurityException catch (e) {
+      emit(WorkOrderError(e.message, previousWorkOrders: _currentOrders));
+    } catch (e) {
+      emit(WorkOrderError('Failed to update status: ${e.toString()}',
+          previousWorkOrders: _currentOrders));
+    }
+  }
+
   Future<void> assignTechnician(
-      String workOrderId, String technicianId, String supervisorId,
-      {UserModel? caller, String? technicianName}) async {
+    String workOrderId,
+    String technicianId,
+    String supervisorId, {
+    UserModel? caller,
+    String? technicianName,
+  }) async {
     try {
       await repository.assignTechnician(
         workOrderId,
@@ -132,21 +151,6 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
     }
   }
 
-  Future<void> updateStatus(
-      String workOrderId, WorkOrderStatus status,
-      {UserModel? caller}) async {
-    try {
-      await repository.updateWorkOrderStatus(workOrderId, status,
-          caller: caller);
-      await loadWorkOrders(silent: true);
-    } on SecurityException catch (e) {
-      emit(WorkOrderError(e.message, previousWorkOrders: _currentOrders));
-    } catch (e) {
-      emit(WorkOrderError('Failed to update status: ${e.toString()}',
-          previousWorkOrders: _currentOrders));
-    }
-  }
-
   Future<void> addSparePart(
       String workOrderId, SparePartModel sparePart,
       {UserModel? caller}) async {
@@ -165,6 +169,8 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
     String workOrderId, {
     required String rootCause,
     required String actionsTaken,
+    List<RepairStepModel>? repairSteps,
+    String? repairVoiceUrl,
     UserModel? caller,
   }) async {
     try {
@@ -172,6 +178,8 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
         workOrderId,
         rootCause: rootCause,
         actionsTaken: actionsTaken,
+        repairSteps: repairSteps,
+        repairVoiceUrl: repairVoiceUrl,
         caller: caller,
       );
       await loadWorkOrders(silent: true);
@@ -183,10 +191,21 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
     }
   }
 
-  Future<void> confirmTestRun(String workOrderId,
-      {required UserModel caller}) async {
+  Future<void> confirmTestRun(
+    String workOrderId, {
+    required UserModel caller,
+    String outcome = 'fixed',
+    String? comments,
+    int? confirmedDowntimeMinutes,
+  }) async {
     try {
-      await repository.confirmTestRun(workOrderId, caller: caller);
+      await repository.confirmTestRun(
+        workOrderId,
+        caller: caller,
+        outcome: outcome,
+        comments: comments,
+        confirmedDowntimeMinutes: confirmedDowntimeMinutes,
+      );
       await loadWorkOrders(silent: true);
     } on SecurityException catch (e) {
       emit(WorkOrderError(e.message, previousWorkOrders: _currentOrders));

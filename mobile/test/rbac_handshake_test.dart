@@ -78,6 +78,17 @@ void main() {
       expect(authCubit.can(AppPermission.confirmTestRun), isFalse);
     });
 
+    test('Production Supervisor permissions: Can confirm test run and approve/close ticket', () {
+      authCubit.switchUser(MockUsers.productionSupervisor);
+
+      expect(authCubit.can(AppPermission.confirmTestRun), isTrue);
+      expect(authCubit.can(AppPermission.approveAndClose), isTrue);
+      expect(authCubit.can(AppPermission.reclassifyDowntime), isTrue);
+
+      expect(authCubit.can(AppPermission.assignTechnician), isFalse);
+      expect(authCubit.can(AppPermission.startRepair), isFalse);
+    });
+
     test('Plant Manager has read-only analytics access and all operational gates hidden', () {
       authCubit.switchUser(MockUsers.plantManager);
 

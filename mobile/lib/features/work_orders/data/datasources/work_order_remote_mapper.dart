@@ -1,12 +1,13 @@
 import '../../domain/models/work_order_model.dart';
 import '../../domain/models/spare_part_model.dart';
+import '../../domain/models/repair_step_model.dart';
 import '../../domain/models/work_order_activity_log.dart';
 import '../../domain/enums/work_order_status.dart';
 import '../../domain/enums/work_order_type.dart';
 import '../../domain/enums/priority.dart';
 import '../../../../core/chronology/event_chronology.dart';
 import '../../../../core/auth/user_directory_helper.dart';
-import '../../../../features/auth/domain/enums/user_role.dart';
+import '../../../auth/domain/enums/user_role.dart';
 
 /// Pure mapping logic between Supabase JSON representations and domain models.
 class WorkOrderRemoteMapper {
@@ -31,6 +32,18 @@ class WorkOrderRemoteMapper {
     final rawVersion = row['version'];
     final version = (rawVersion as num?)?.toInt() ?? 1;
 
+    final rawChecks = row['checks'];
+    final checks = (rawChecks is List)
+        ? rawChecks.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+        : const <Map<String, dynamic>>[];
+
+    final rawRepairSteps = row['repair_steps'];
+    final repairSteps = (rawRepairSteps is List)
+        ? rawRepairSteps
+            .map((e) => RepairStepModel.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList()
+        : const <RepairStepModel>[];
+
     return WorkOrderModel(
       id: row['id'] as String,
       title: row['title'] as String? ?? '',
@@ -54,6 +67,10 @@ class WorkOrderRemoteMapper {
       activityLogs: activityLogs,
       chronology: chrono,
       version: version,
+      checks: checks,
+      repairSteps: repairSteps,
+      voiceNoteUrl: row['voice_note_url'] as String?,
+      repairVoiceUrl: row['repair_voice_url'] as String?,
     );
   }
 

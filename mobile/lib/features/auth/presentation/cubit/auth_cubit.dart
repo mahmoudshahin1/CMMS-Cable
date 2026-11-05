@@ -135,7 +135,8 @@ class AuthCubit extends Cubit<AuthState> {
         return role == UserRole.operator ||
             role == UserRole.maintenanceSupervisor;
       case AppPermission.confirmTestRun:
-        return role == UserRole.operator;
+        return role == UserRole.operator ||
+            role == UserRole.productionSupervisor;
       case AppPermission.recordProcessLogs:
         return role == UserRole.operator;
       case AppPermission.assignTechnician:

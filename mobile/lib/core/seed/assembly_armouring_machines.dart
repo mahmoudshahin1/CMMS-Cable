@@ -117,12 +117,12 @@ const List<MachineModel> assemblyArmouringMachines = [
     totalMetersProduced: 235000.0,
   ),
 
-  // 7. Tape Armouring Department (tapeArmour)
+  // 7. Armouring Department (armouring)
   MachineModel(
     id: 'ST01',
     code: 'ST01',
     name: 'Steel Tape Armouring Line 01',
-    department: DepartmentType.tapeArmour,
+    department: DepartmentType.armouring,
     status: MachineStatus.running,
     subCategory: 'Steel Tape Armouring',
     currentSpeedMpm: 140.0,
@@ -132,7 +132,7 @@ const List<MachineModel> assemblyArmouringMachines = [
     id: 'ST02',
     code: 'ST02',
     name: 'Steel Tape Armouring Line 02',
-    department: DepartmentType.tapeArmour,
+    department: DepartmentType.armouring,
     status: MachineStatus.running,
     subCategory: 'Steel Tape Armouring',
     currentSpeedMpm: 145.0,
@@ -142,7 +142,7 @@ const List<MachineModel> assemblyArmouringMachines = [
     id: 'ST03',
     code: 'ST03',
     name: 'Steel Tape Armouring Line 03',
-    department: DepartmentType.tapeArmour,
+    department: DepartmentType.armouring,
     status: MachineStatus.running,
     subCategory: 'Steel Tape Armouring',
     currentSpeedMpm: 138.0,
@@ -152,10 +152,30 @@ const List<MachineModel> assemblyArmouringMachines = [
     id: 'ST04',
     code: 'ST04',
     name: 'Steel Tape Armouring Line 04',
-    department: DepartmentType.tapeArmour,
+    department: DepartmentType.armouring,
     status: MachineStatus.running,
     subCategory: 'Steel Tape Armouring',
     currentSpeedMpm: 142.0,
     totalMetersProduced: 285000.0,
+  ),
+  MachineModel(
+    id: 'SWA01',
+    code: 'SWA01',
+    name: 'Steel Wire Armouring Line 01',
+    department: DepartmentType.armouring,
+    status: MachineStatus.running,
+    subCategory: 'Steel Wire Armouring (SWA)',
+    currentSpeedMpm: 0.0, // TODO: Real operational stats from factory floor
+    totalMetersProduced: 0.0, // TODO: Real operational stats from factory floor
+  ),
+  MachineModel(
+    id: 'AWA01',
+    code: 'AWA01',
+    name: 'Aluminum Wire Armouring Line 01',
+    department: DepartmentType.armouring,
+    status: MachineStatus.running,
+    subCategory: 'Aluminum Wire Armouring (AWA)',
+    currentSpeedMpm: 0.0, // TODO: Real operational stats from factory floor
+    totalMetersProduced: 0.0, // TODO: Real operational stats from factory floor
   ),
 ];

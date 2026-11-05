@@ -145,6 +145,7 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
           'p_machine_id': p['machine_id'],
           'p_type': p['type'] ?? 'breakdown',
           'p_priority': p['priority'] ?? 'medium',
+          'p_voice_note_url': p['p_voice_note_url'] ?? p['voice_note_url'],
           'p_occurred_at': occurredIso,
         };
       case 'assign_work_order':
@@ -180,6 +181,8 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
           'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
           'p_root_cause': p['root_cause'] ?? '',
           'p_actions_taken': p['actions_taken'] ?? '',
+          'p_repair_steps': p['p_repair_steps'] ?? p['repair_steps'] ?? [],
+          'p_repair_voice_url': p['p_repair_voice_url'] ?? p['repair_voice_url'],
           'p_occurred_at': occurredIso,
         };
       case 'confirm_test_run':
@@ -187,6 +190,9 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
           'p_command_id': cmd.commandId,
           'p_wo_id': cmd.aggregateId,
           'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
+          'p_outcome': p['outcome'] ?? 'fixed',
+          'p_comments': p['comments'],
+          'p_confirmed_downtime_minutes': p['confirmed_downtime_minutes'],
           'p_occurred_at': occurredIso,
         };
       case 'close_work_order':

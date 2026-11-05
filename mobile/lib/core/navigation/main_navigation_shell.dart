@@ -6,6 +6,7 @@ import '../../features/auth/domain/enums/user_role.dart';
 import '../../features/work_orders/presentation/cubit/work_order_cubit.dart';
 import '../../features/work_orders/presentation/cubit/work_order_state.dart';
 import '../../features/work_orders/domain/enums/work_order_status.dart';
+import '../../features/work_orders/presentation/widgets/global_open_forms_strip.dart';
 import '../localization/locale_cubit.dart';
 import 'role_nav_config.dart';
 import 'widgets/desktop_sidebar.dart';
@@ -116,6 +117,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                 DesktopTopbar(
                   currentPageLabel: config.sidebarItems[safeIndex].label,
                 ),
+                const GlobalOpenFormsStrip(),
                 Expanded(
                   child: IndexedStack(
                     index: safeIndex,
@@ -132,7 +134,19 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   Widget _buildMobileLayout(RoleNavConfig config, int safeIndex) {
     return Scaffold(
-      body: IndexedStack(index: safeIndex, children: config.screens),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const GlobalOpenFormsStrip(),
+            Expanded(
+              child: IndexedStack(
+                index: safeIndex,
+                children: config.screens,
+              ),
+            ),
+          ],
+        ),
+      ),
       bottomNavigationBar: AnimatedBottomNavBar(
         tabs: config.tabs,
         selectedIndex: safeIndex,

@@ -1,3 +1,5 @@
+import '../widgets/voice_note_recorder_widget.dart';
+import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -55,10 +57,13 @@ class _CreateRepairRequestScreenState extends State<CreateRepairRequestScreen> {
   ];
 
   bool _isSubmitting = false;
+  String? _voiceNoteUrl;
+  late final String _draftWorkOrderId;
 
   @override
   void initState() {
     super.initState();
+    _draftWorkOrderId = const Uuid().v4();
     _selectedMachineId = widget.initialMachine?.id;
   }
 
@@ -82,6 +87,8 @@ class _CreateRepairRequestScreenState extends State<CreateRepairRequestScreen> {
         descriptionController: _descriptionController,
         selectedType: _selectedType,
         selectedPriority: _selectedPriority,
+        voiceNoteUrl: _voiceNoteUrl,
+        workOrderId: _draftWorkOrderId,
       );
     } finally {
       if (mounted) {
@@ -202,6 +209,14 @@ class _CreateRepairRequestScreenState extends State<CreateRepairRequestScreen> {
                   CreateRequestDetailsFields(
                     titleController: _titleController,
                     descriptionController: _descriptionController,
+                  ),
+                  const SizedBox(height: 16),
+                  VoiceNoteRecorderWidget(
+                    label: 'Fault Voice Note (Optional)',
+                    workOrderId: _draftWorkOrderId,
+                    initialAudioUrl: _voiceNoteUrl,
+                    isEditable: !_isSubmitting,
+                    onAudioUrlChanged: (url) => setState(() => _voiceNoteUrl = url),
                   ),
                   const SizedBox(height: 28),
                   CreateRequestSubmitButton(

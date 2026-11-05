@@ -1,71 +1,39 @@
 import 'package:equatable/equatable.dart';
 import 'package:hive/hive.dart';
 import '../../../../core/chronology/event_chronology.dart';
-import '../../../../core/chronology/plant_shift.dart';
 import '../enums/work_order_type.dart';
 import '../enums/work_order_status.dart';
 import '../enums/priority.dart';
 import 'spare_part_model.dart';
 import 'work_order_activity_log.dart';
+import 'repair_step_model.dart';
+export 'work_order_chronology_extension.dart';
 
 @HiveType(typeId: 12)
 class WorkOrderModel extends Equatable {
-  @HiveField(0)
-  final String id;
-
-  @HiveField(1)
-  final String title;
-
-  @HiveField(2)
-  final String description;
-
-  @HiveField(3)
-  final String machineId;
-
-  @HiveField(4)
-  final String? downtimeLogId;
-
-  @HiveField(5)
-  final WorkOrderType type;
-
-  @HiveField(6)
-  final WorkOrderStatus status;
-
-  @HiveField(7)
-  final Priority priority;
-
-  @HiveField(8)
-  final String? assignedToTechnicianId;
-
-  @HiveField(9)
-  final String? assignedBySupervisorId;
-
-  @HiveField(10)
-  final DateTime createdAt;
-
-  @HiveField(11)
-  final DateTime? startedAt;
-
-  @HiveField(12)
-  final DateTime? completedAt;
-
-  @HiveField(13)
-  final String? rootCause;
-
-  @HiveField(14)
-  final String? actionsTaken;
-
-  @HiveField(15)
-  final List<SparePartModel> spareParts;
-
-  @HiveField(16)
-  final List<WorkOrderActivityLog> activityLogs;
-
-  @HiveField(17)
-  final EventChronology? chronology;
-
-  @HiveField(18)
-  final int version;
+  @HiveField(0) final String id;
+  @HiveField(1) final String title;
+  @HiveField(2) final String description;
+  @HiveField(3) final String machineId;
+  @HiveField(4) final String? downtimeLogId;
+  @HiveField(5) final WorkOrderType type;
+  @HiveField(6) final WorkOrderStatus status;
+  @HiveField(7) final Priority priority;
+  @HiveField(8) final String? assignedToTechnicianId;
+  @HiveField(9) final String? assignedBySupervisorId;
+  @HiveField(10) final DateTime createdAt;
+  @HiveField(11) final DateTime? startedAt;
+  @HiveField(12) final DateTime? completedAt;
+  @HiveField(13) final String? rootCause;
+  @HiveField(14) final String? actionsTaken;
+  @HiveField(15) final List<SparePartModel> spareParts;
+  @HiveField(16) final List<WorkOrderActivityLog> activityLogs;
+  @HiveField(17) final EventChronology? chronology;
+  @HiveField(18) final int version;
+  @HiveField(19) final List<Map<String, dynamic>> checks;
+  @HiveField(20) final List<RepairStepModel> repairSteps;
+  @HiveField(21) final String? voiceNoteUrl;
+  @HiveField(22) final String? repairVoiceUrl;
 
   const WorkOrderModel({
     required this.id,
@@ -87,33 +55,32 @@ class WorkOrderModel extends Equatable {
     this.activityLogs = const [],
     this.chronology,
     this.version = 1,
+    this.checks = const [],
+    this.repairSteps = const [],
+    this.voiceNoteUrl,
+    this.repairVoiceUrl,
   });
 
-  EventChronology get effectiveChronology =>
-      chronology ?? EventChronology.fromDateTime(createdAt);
+  Map<String, dynamic>? get latestCheck =>
+      checks.isNotEmpty ? checks.last : null;
 
-  bool get isCrossShift {
-    final origin = effectiveChronology;
-    for (final log in activityLogs) {
-      if (log.effectiveChronology.isCrossShiftFrom(origin)) {
-        return true;
+  String? get latestRejectionNotes {
+    if (status != WorkOrderStatus.inProgress) return null;
+    for (final check in checks.reversed) {
+      final outcome = check['outcome'] as String?;
+      if (outcome == 'needs_followup' || outcome == 'not_fixed') {
+        final notes = check['notes'] as String?;
+        if (notes != null && notes.trim().isNotEmpty) return notes;
       }
     }
-    if (status != WorkOrderStatus.completed &&
-        status != WorkOrderStatus.verified &&
-        status != WorkOrderStatus.verifiedClosed) {
-      return EventChronology.now().isCrossShiftFrom(origin);
+    for (final log in activityLogs.reversed) {
+      if (log.stepName == 'TEST_RUN_REJECTED') {
+        final c = log.details?['comments'] as String?;
+        if (c != null && c.trim().isNotEmpty) return c;
+        return log.actionSummary;
+      }
     }
-    return false;
-  }
-
-  PlantShift get originShift => effectiveChronology.activeShift;
-
-  PlantShift get currentOrEndShift {
-    if (activityLogs.isNotEmpty) {
-      return activityLogs.last.effectiveChronology.activeShift;
-    }
-    return effectiveChronology.activeShift;
+    return null;
   }
 
   WorkOrderModel copyWith({
@@ -136,6 +103,10 @@ class WorkOrderModel extends Equatable {
     List<WorkOrderActivityLog>? activityLogs,
     EventChronology? chronology,
     int? version,
+    List<Map<String, dynamic>>? checks,
+    List<RepairStepModel>? repairSteps,
+    String? voiceNoteUrl,
+    String? repairVoiceUrl,
   }) {
     return WorkOrderModel(
       id: id ?? this.id,
@@ -146,10 +117,8 @@ class WorkOrderModel extends Equatable {
       type: type ?? this.type,
       status: status ?? this.status,
       priority: priority ?? this.priority,
-      assignedToTechnicianId:
-          assignedToTechnicianId ?? this.assignedToTechnicianId,
-      assignedBySupervisorId:
-          assignedBySupervisorId ?? this.assignedBySupervisorId,
+      assignedToTechnicianId: assignedToTechnicianId ?? this.assignedToTechnicianId,
+      assignedBySupervisorId: assignedBySupervisorId ?? this.assignedBySupervisorId,
       createdAt: createdAt ?? this.createdAt,
       startedAt: startedAt ?? this.startedAt,
       completedAt: completedAt ?? this.completedAt,
@@ -159,6 +128,10 @@ class WorkOrderModel extends Equatable {
       activityLogs: activityLogs ?? this.activityLogs,
       chronology: chronology ?? this.chronology,
       version: version ?? this.version,
+      checks: checks ?? this.checks,
+      repairSteps: repairSteps ?? this.repairSteps,
+      voiceNoteUrl: voiceNoteUrl ?? this.voiceNoteUrl,
+      repairVoiceUrl: repairVoiceUrl ?? this.repairVoiceUrl,
     );
   }
 
@@ -183,6 +156,10 @@ class WorkOrderModel extends Equatable {
       'activityLogs': activityLogs.map((e) => e.toJson()).toList(),
       'chronology': chronology?.toJson(),
       'version': version,
+      'checks': checks,
+      'repair_steps': repairSteps.map((e) => e.toJson()).toList(),
+      'voice_note_url': voiceNoteUrl,
+      'repair_voice_url': repairVoiceUrl,
     };
   }
 
@@ -208,28 +185,28 @@ class WorkOrderModel extends Equatable {
       assignedToTechnicianId: json['assignedToTechnicianId'] as String?,
       assignedBySupervisorId: json['assignedBySupervisorId'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
-      startedAt: json['startedAt'] != null
-          ? DateTime.parse(json['startedAt'] as String)
-          : null,
-      completedAt: json['completedAt'] != null
-          ? DateTime.parse(json['completedAt'] as String)
-          : null,
+      startedAt: json['startedAt'] != null ? DateTime.parse(json['startedAt'] as String) : null,
+      completedAt: json['completedAt'] != null ? DateTime.parse(json['completedAt'] as String) : null,
       rootCause: json['rootCause'] as String?,
       actionsTaken: json['actionsTaken'] as String?,
       spareParts: (json['spareParts'] as List<dynamic>?)
               ?.map((e) => SparePartModel.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+              .toList() ?? const [],
       activityLogs: (json['activityLogs'] as List<dynamic>?)
-              ?.map((e) =>
-                  WorkOrderActivityLog.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+              ?.map((e) => WorkOrderActivityLog.fromJson(e as Map<String, dynamic>))
+              .toList() ?? const [],
       chronology: json['chronology'] != null
-          ? EventChronology.fromJson(
-              json['chronology'] as Map<String, dynamic>)
+          ? EventChronology.fromJson(json['chronology'] as Map<String, dynamic>)
           : null,
       version: (json['version'] as num?)?.toInt() ?? 1,
+      checks: (json['checks'] as List<dynamic>?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ?? const [],
+      repairSteps: (json['repair_steps'] as List<dynamic>?)
+              ?.map((e) => RepairStepModel.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList() ?? const [],
+      voiceNoteUrl: json['voice_note_url'] as String?,
+      repairVoiceUrl: json['repair_voice_url'] as String?,
     );
   }
 
@@ -239,6 +216,6 @@ class WorkOrderModel extends Equatable {
         type, status, priority, assignedToTechnicianId,
         assignedBySupervisorId, createdAt, startedAt, completedAt,
         rootCause, actionsTaken, spareParts, activityLogs,
-        chronology, version,
+        chronology, version, checks, repairSteps, voiceNoteUrl, repairVoiceUrl,
       ];
 }

@@ -41,7 +41,7 @@ const Map<String, String> arWorkOrderStrings = {
   'dept_scope_label': 'نطاق القسم: {dept}',
   'dept_scope_sub': 'أنت مقيد برؤية ومتابعة تذاكر ماكينات قسمك فقط',
   'ticket_count': '{count} تذكرة',
-  'plant_mgr_scope': 'رؤية مدير المصنع: متابعة شاملة لجميع تذاكر الأقسام السبعة',
+  'plant_mgr_scope': 'رؤية مدير المصنع: متابعة شاملة لجميع تذاكر الأقسام الثمانية',
   'tech_scope_electrical': 'مهام الصيانة الكهربائية المسندة إليك',
   'tech_scope_mechanical': 'مهام الصيانة الميكانيكية المسندة إليك',
   'tech_scope_sub': 'أنت مقيد برؤية الأعطال الموزعة عليك من المشرف في كل المصنع',

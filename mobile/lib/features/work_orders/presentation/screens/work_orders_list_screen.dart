@@ -218,21 +218,13 @@ class _WorkOrdersListScreenState extends State<WorkOrdersListScreen> {
                     )
                   else
                     SliverPadding(
-                      padding: const EdgeInsets.only(
-                        top: 12,
-                        left: 16,
-                        right: 16,
-                        bottom: 32,
-                      ),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                       sliver: SliverList(
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final wo = filteredList[index];
-                            return WorkOrderListCard(
-                              workOrder: wo,
-                              machine: machineMap[wo.machineId],
-                            );
-                          },
+                          (context, index) => WorkOrderListCard(
+                            workOrder: filteredList[index],
+                            machine: machineMap[filteredList[index].machineId],
+                          ),
                           childCount: filteredList.length,
                         ),
                       ),

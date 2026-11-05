@@ -169,10 +169,7 @@ class _InteractiveWorkOrderActionCardState
         user: user,
         isProcessing: _isProcessing,
         onStartRepair: () => _handleAction(
-          () => controller.startRepair(
-            user,
-            onStarted: widget.onRepairStarted,
-          ),
+          () => controller.startRepair(user, onStarted: widget.onRepairStarted),
         ),
         onCompleteRepair: () => _handleAction(
           () => controller.completeRepair(
@@ -183,12 +180,17 @@ class _InteractiveWorkOrderActionCardState
       );
     }
 
-    // Step 4: Operator Confirms Test Run
-    if (status == WorkOrderStatus.completed && role == UserRole.operator) {
+    // Step 4: Operator or Production Supervisor Confirms Test Run
+    if (status == WorkOrderStatus.completed &&
+        (role == UserRole.operator || role == UserRole.productionSupervisor)) {
       return ActionCardOperatorTestRunSection(
         isProcessing: _isProcessing,
-        onConfirmTestRun: () => _handleAction(
-          () => controller.confirmTestRun(user),
+        onConfirmTestRun: (outcome, comments) => _handleAction(
+          () => controller.confirmTestRun(
+            user,
+            outcome: outcome,
+            comments: comments,
+          ),
         ),
       );
     }
@@ -199,9 +201,8 @@ class _InteractiveWorkOrderActionCardState
             role == UserRole.productionSupervisor)) {
       return ActionCardSupervisorCloseSection(
         isProcessing: _isProcessing,
-        onApproveAndClose: () => _handleAction(
-          () => controller.approveAndClose(user),
-        ),
+        onApproveAndClose: () =>
+            _handleAction(() => controller.approveAndClose(user)),
       );
     }
 

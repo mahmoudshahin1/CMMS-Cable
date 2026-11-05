@@ -41,7 +41,7 @@ const Map<String, String> enWorkOrderStrings = {
   'dept_scope_label': 'Dept. Scope: {dept}',
   'dept_scope_sub': 'You can only view and track tickets for machines in your department',
   'ticket_count': '{count} tickets',
-  'plant_mgr_scope': 'Plant Manager View: Full visibility across all 7 departments',
+  'plant_mgr_scope': 'Plant Manager View: Full visibility across all 8 departments',
   'tech_scope_electrical': 'Electrical maintenance tasks assigned to you',
   'tech_scope_mechanical': 'Mechanical maintenance tasks assigned to you',
   'tech_scope_sub': 'You can only see breakdowns distributed to you by the supervisor across the entire plant',

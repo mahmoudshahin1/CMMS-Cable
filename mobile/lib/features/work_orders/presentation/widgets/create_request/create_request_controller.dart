@@ -28,6 +28,8 @@ class CreateRequestController {
     required TextEditingController descriptionController,
     required WorkOrderType selectedType,
     required Priority selectedPriority,
+    String? voiceNoteUrl,
+    String? workOrderId,
   }) async {
     if (allMachines.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -73,9 +75,9 @@ class CreateRequestController {
 
     if (formKey.currentState?.validate() ?? false) {
       final chrono = EventChronology.now();
-      final workOrderId = const Uuid().v4();
+      final effectiveId = workOrderId ?? const Uuid().v4();
       final newWorkOrder = WorkOrderModel(
-        id: workOrderId,
+        id: effectiveId,
         title: titleController.text.trim(),
         description: descriptionController.text.trim().isEmpty
             ? context
@@ -88,6 +90,7 @@ class CreateRequestController {
         createdAt: chrono.recordedAtUtc,
         chronology: chrono,
         spareParts: const [],
+        voiceNoteUrl: voiceNoteUrl,
       );
 
       final messenger = ScaffoldMessenger.of(context);

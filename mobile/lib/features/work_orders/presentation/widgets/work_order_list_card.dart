@@ -8,6 +8,7 @@ import '../../domain/enums/work_order_status.dart';
 import '../../domain/enums/work_order_type.dart';
 import '../../domain/models/work_order_model.dart';
 import '../screens/work_order_detail_screen.dart';
+import 'live_downtime_counter_widget.dart';
 
 /// Card item for the work orders list screen.
 class WorkOrderListCard extends StatelessWidget {
@@ -161,6 +162,11 @@ class WorkOrderListCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (workOrder.status.isActive &&
+                    workOrder.status != WorkOrderStatus.completed &&
+                    workOrder.status != WorkOrderStatus.verified &&
+                    workOrder.status != WorkOrderStatus.verifiedClosed)
+                  LiveDowntimeCounterWidget.fromWorkOrder(workOrder),
                 if (workOrder.assignedToTechnicianId != null) ...[
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -183,7 +189,7 @@ class WorkOrderListCard extends StatelessWidget {
                           color: AppColors.subduedViolet,
                         ),
                         const SizedBox(width: 3),
-                         Text(
+                        Text(
                           UserDirectoryHelper.resolveName(workOrder.assignedToTechnicianId!) ??
                               (workOrder.assignedToTechnicianId!.length > 8
                                   ? workOrder.assignedToTechnicianId!.substring(0, 8)

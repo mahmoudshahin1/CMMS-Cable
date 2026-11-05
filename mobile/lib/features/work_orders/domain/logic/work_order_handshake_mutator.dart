@@ -1,8 +1,10 @@
 import '../../../../core/auth/user_directory_helper.dart';
 import '../../../../core/errors/security_exceptions.dart';
+import '../../../assets/domain/models/machine_model.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../models/work_order_model.dart';
 import '../models/spare_part_model.dart';
+import '../models/repair_step_model.dart';
 import '../enums/work_order_status.dart';
 import 'work_order_state_machine.dart';
 import 'work_order_activity_logger.dart';
@@ -118,6 +120,8 @@ class WorkOrderHandshakeMutator {
     WorkOrderModel wo, {
     required String rootCause,
     required String actionsTaken,
+    List<RepairStepModel>? repairSteps,
+    String? repairVoiceUrl,
     UserModel? caller,
   }) {
     WorkOrderSecurityGuard.validateComplete(caller, wo);
@@ -126,14 +130,22 @@ class WorkOrderHandshakeMutator {
       WorkOrderStatus.completed,
     );
 
+    final resolvedSteps = repairSteps ?? wo.repairSteps;
+    final derivedActions = actionsTaken.trim().isNotEmpty
+        ? actionsTaken
+        : (resolvedSteps.isNotEmpty
+            ? resolvedSteps.map((s) => s.description).join('; ')
+            : 'Field repair completed');
+
     final log = WorkOrderActivityLogger.createLog(
       stepName: 'REPAIR_COMPLETED',
       caller: caller,
       actionSummary: 'Maintenance repair completed & root cause logged',
       details: {
         'rootCause': rootCause,
-        'actionsTaken': actionsTaken,
+        'actionsTaken': derivedActions,
         'totalSparePartsUsed': wo.spareParts.length,
+        'stepsCount': resolvedSteps.length,
       },
       fallbackName: 'Technician',
       fallbackRole: 'MAINTENANCE_TECH',
@@ -143,34 +155,65 @@ class WorkOrderHandshakeMutator {
       status: WorkOrderStatus.completed,
       completedAt: DateTime.now(),
       rootCause: rootCause,
-      actionsTaken: actionsTaken,
+      actionsTaken: derivedActions,
+      repairSteps: resolvedSteps,
+      repairVoiceUrl: repairVoiceUrl ?? wo.repairVoiceUrl,
       activityLogs: [...wo.activityLogs, log],
     );
   }
 
   static WorkOrderModel applyConfirmTestRun(
     WorkOrderModel wo,
-    UserModel caller,
-  ) {
-    WorkOrderSecurityGuard.validateConfirmTestRun(caller);
+    UserModel caller, {
+    String outcome = 'fixed',
+    String? comments,
+    int? confirmedDowntimeMinutes,
+    MachineModel? machine,
+  }) {
+    if (outcome != 'fixed' && (comments == null || comments.trim().isEmpty)) {
+      throw ArgumentError(
+        'Rejection notes are required when outcome is "$outcome".',
+      );
+    }
+    WorkOrderSecurityGuard.validateConfirmTestRun(caller, machine);
+    final targetStatus = outcome == 'fixed'
+        ? WorkOrderStatus.verified
+        : WorkOrderStatus.inProgress;
     WorkOrderStateMachine.validateTransition(
       wo.status,
-      WorkOrderStatus.verified,
+      targetStatus,
     );
 
+    final isFixed = outcome == 'fixed';
     final log = WorkOrderActivityLogger.createLog(
-      stepName: 'TEST_RUN_PASSED',
+      stepName: isFixed ? 'TEST_RUN_PASSED' : 'TEST_RUN_REJECTED',
       caller: caller,
-      actionSummary: 'Operator executed field test run: Status PASSED',
+      actionSummary: isFixed
+          ? 'Operator executed field test run: Status PASSED'
+          : 'Test run bounced back ($outcome): ${comments ?? ''}',
       details: {
         'machineId': wo.machineId,
-        'testRunResult': 'PASSED',
+        'testRunResult': isFixed ? 'PASSED' : 'BOUNCED_BACK',
+        'outcome': outcome,
+        if (comments != null) 'comments': comments,
+        if (confirmedDowntimeMinutes != null)
+          'confirmedDowntimeMinutes': confirmedDowntimeMinutes,
       },
     );
 
+    final checkEntry = <String, dynamic>{
+      'at': DateTime.now().toIso8601String(),
+      'by': caller.id,
+      'outcome': outcome,
+      if (comments != null) 'notes': comments,
+      if (confirmedDowntimeMinutes != null)
+        'confirmed_downtime_minutes': confirmedDowntimeMinutes,
+    };
+
     return wo.copyWith(
-      status: WorkOrderStatus.verified,
+      status: targetStatus,
       activityLogs: [...wo.activityLogs, log],
+      checks: [...wo.checks, checkEntry],
     );
   }
 

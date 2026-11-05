@@ -1,0 +1,73 @@
+name: CI (Quality Gate)
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile-ci:
+    name: Mobile (Analyze & Test)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.4'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Mobile Dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Analyze Mobile Code
+        working-directory: mobile
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run Mobile Unit & Widget Tests
+        working-directory: mobile
+        run: flutter test
+
+  web-ci:
+    name: Web (Typecheck & Build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install Web Dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Type-Check & Build Web
+        working-directory: web
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://ptlzpwfrrxfqfprkvbuf.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_EejIRNDd-fW5B60sgLKtWA_n5VQWwKt

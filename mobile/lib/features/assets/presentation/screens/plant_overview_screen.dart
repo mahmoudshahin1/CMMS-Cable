@@ -35,7 +35,7 @@ class PlantOverviewScreen extends StatelessWidget {
 
   void _handleDowntimeAction(BuildContext context, MachineModel machine) {
     final currentUser = context.read<AuthCubit>().currentUser;
-    if (currentUser?.role == UserRole.operator) {
+    if (currentUser?.role == UserRole.operator || currentUser?.role == UserRole.productionSupervisor) {
       final userDept = currentUser?.department;
       if (userDept != null && machine.department != userDept) {
         ScaffoldMessenger.of(context).showSnackBar(

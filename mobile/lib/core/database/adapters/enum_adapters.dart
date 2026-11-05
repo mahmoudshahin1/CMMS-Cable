@@ -29,7 +29,11 @@ class DepartmentTypeAdapter extends TypeAdapter<DepartmentType> {
 
   @override
   DepartmentType read(BinaryReader reader) {
-    return DepartmentType.values[reader.readByte()];
+    final index = reader.readByte();
+    if (index >= 0 && index < DepartmentType.values.length) {
+      return DepartmentType.values[index];
+    }
+    return DepartmentType.drawing;
   }
 
   @override

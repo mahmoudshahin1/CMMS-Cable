@@ -12,6 +12,7 @@ import 'package:orning_and_evening_remembrances/features/work_orders/presentatio
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/repositories/work_order_repository.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/models/work_order_model.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/models/spare_part_model.dart';
+import 'package:orning_and_evening_remembrances/features/work_orders/domain/models/repair_step_model.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/enums/work_order_status.dart';
 import 'package:orning_and_evening_remembrances/features/assets/presentation/cubit/machine_cubit.dart';
 import 'package:orning_and_evening_remembrances/features/assets/domain/repositories/machine_repository.dart';
@@ -40,9 +41,22 @@ class _FakeWorkOrderRepository implements WorkOrderRepository {
   @override
   Future<void> addSparePart(String id, SparePartModel sp, {dynamic caller}) async {}
   @override
-  Future<void> completeWorkOrder(String id, {required String rootCause, required String actionsTaken, dynamic caller}) async {}
+  Future<void> completeWorkOrder(
+    String id, {
+    required String rootCause,
+    required String actionsTaken,
+    List<RepairStepModel>? repairSteps,
+    String? repairVoiceUrl,
+    dynamic caller,
+  }) async {}
   @override
-  Future<void> confirmTestRun(String id, {required dynamic caller}) async {}
+  Future<void> confirmTestRun(
+    String id, {
+    required dynamic caller,
+    String outcome = 'fixed',
+    String? comments,
+    int? confirmedDowntimeMinutes,
+  }) async {}
   @override
   Future<void> approveAndClose(String id, {required dynamic caller}) async {}
 }

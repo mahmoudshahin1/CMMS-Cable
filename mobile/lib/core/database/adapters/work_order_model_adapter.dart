@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 import '../../../features/work_orders/domain/models/work_order_model.dart';
 import '../../../features/work_orders/domain/models/spare_part_model.dart';
 import '../../../features/work_orders/domain/models/work_order_activity_log.dart';
+import '../../../features/work_orders/domain/models/repair_step_model.dart';
 import '../../../features/work_orders/domain/enums/work_order_type.dart';
 import '../../../features/work_orders/domain/enums/work_order_status.dart';
 import '../../../features/work_orders/domain/enums/priority.dart';
@@ -44,13 +45,25 @@ class WorkOrderModelAdapter extends TypeAdapter<WorkOrderModel> {
       chronology: fields[17] as EventChronology? ??
           EventChronology.fromDateTime(createdAt),
       version: (fields[18] as int?) ?? 1,
+      checks: fields[19] != null
+          ? (fields[19] as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList()
+          : const <Map<String, dynamic>>[],
+      repairSteps: fields[20] != null
+          ? (fields[20] as List)
+              .map((e) => RepairStepModel.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList()
+          : const <RepairStepModel>[],
+      voiceNoteUrl: fields[21] as String?,
+      repairVoiceUrl: fields[22] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, WorkOrderModel obj) {
     writer
-      ..writeByte(19)
+      ..writeByte(23)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -88,6 +101,14 @@ class WorkOrderModelAdapter extends TypeAdapter<WorkOrderModel> {
       ..writeByte(17)
       ..write(obj.chronology)
       ..writeByte(18)
-      ..write(obj.version);
+      ..write(obj.version)
+      ..writeByte(19)
+      ..write(obj.checks)
+      ..writeByte(20)
+      ..write(obj.repairSteps.map((e) => e.toJson()).toList())
+      ..writeByte(21)
+      ..write(obj.voiceNoteUrl)
+      ..writeByte(22)
+      ..write(obj.repairVoiceUrl);
   }
 }

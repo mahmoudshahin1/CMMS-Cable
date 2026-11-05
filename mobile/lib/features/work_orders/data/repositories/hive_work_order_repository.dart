@@ -1,6 +1,7 @@
 import '../../domain/repositories/work_order_repository.dart';
 import '../../domain/models/work_order_model.dart';
 import '../../domain/models/spare_part_model.dart';
+import '../../domain/models/repair_step_model.dart';
 import '../../domain/enums/work_order_status.dart';
 import '../../domain/logic/work_order_state_machine.dart';
 import '../../domain/logic/work_order_activity_logger.dart';
@@ -10,16 +11,13 @@ import '../../../auth/domain/models/user_model.dart';
 import '../../../auth/domain/enums/user_role.dart';
 import '../../../../core/chronology/event_chronology.dart';
 import '../../../../core/auth/user_directory_helper.dart';
+import '../../../../core/sync/outbox/outbox_command.dart';
+import '../../../../core/sync/outbox/outbox_sync_engine.dart';
 import '../datasources/work_order_local_data_source.dart';
 import '../datasources/hive_work_order_local_data_source.dart';
 import '../datasources/work_order_remote_data_source.dart';
-
-import '../../../../core/sync/outbox/outbox_command.dart';
-import '../../../../core/sync/outbox/outbox_sync_engine.dart';
-import 'package:hive/hive.dart';
-import '../../../../core/database/hive_boxes.dart';
-import '../../../assets/domain/models/machine_model.dart';
 import '../datasources/work_order_outbox_factory.dart';
+import 'work_order_repository_sync_helper.dart';
 
 /// Repository orchestrator for Work Orders.
 class HiveWorkOrderRepository implements WorkOrderRepository {
@@ -31,43 +29,34 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     WorkOrderLocalDataSource? localDataSource,
     WorkOrderRemoteDataSource? remoteDataSource,
     OutboxSyncEngine? syncEngine,
-  })  : _localDataSource =
-            localDataSource ?? HiveWorkOrderLocalDataSource(),
+  })  : _localDataSource = localDataSource ?? HiveWorkOrderLocalDataSource(),
         _remoteDataSource = remoteDataSource,
         _syncEngine = syncEngine;
 
-  Future<void> _persistAndSync(
-    WorkOrderModel updated, [
-    OutboxCommand? command,
-  ]) async {
-    await _localDataSource.cacheWorkOrder(updated);
-    _remoteDataSource?.syncWorkOrder(updated);
-    if (command != null) {
-      _syncEngine?.enqueueAndTrigger(command);
-    }
-  }
+  Future<void> _save(WorkOrderModel updated, [OutboxCommand? cmd]) =>
+      WorkOrderRepositorySyncHelper.persistAndSync(
+        updated: updated,
+        localDataSource: _localDataSource,
+        remoteDataSource: _remoteDataSource,
+        syncEngine: _syncEngine,
+        command: cmd,
+      );
 
   @override
-  Future<List<WorkOrderModel>> getAllWorkOrders() async {
-    return _localDataSource.getAllWorkOrders();
-  }
+  Future<List<WorkOrderModel>> getAllWorkOrders() =>
+      _localDataSource.getAllWorkOrders();
 
   @override
-  Future<WorkOrderModel?> getWorkOrderById(String id) async {
-    return _localDataSource.getWorkOrderById(id);
-  }
+  Future<WorkOrderModel?> getWorkOrderById(String id) =>
+      _localDataSource.getWorkOrderById(id);
 
   @override
-  Future<List<WorkOrderModel>> getWorkOrdersByStatus(
-      WorkOrderStatus status) async {
-    return _localDataSource.getWorkOrdersByStatus(status);
-  }
+  Future<List<WorkOrderModel>> getWorkOrdersByStatus(WorkOrderStatus status) =>
+      _localDataSource.getWorkOrdersByStatus(status);
 
   @override
-  Future<List<WorkOrderModel>> getWorkOrdersForTechnician(
-      String technicianId) async {
-    return _localDataSource.getWorkOrdersForTechnician(technicianId);
-  }
+  Future<List<WorkOrderModel>> getWorkOrdersForTechnician(String techId) =>
+      _localDataSource.getWorkOrdersForTechnician(techId);
 
   @override
   Future<WorkOrderModel> createWorkOrder(
@@ -75,19 +64,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     UserModel? caller,
   }) async {
     final effectiveCaller = caller ?? UserDirectoryHelper.currentUser;
-    MachineModel? machine;
-    try {
-      if (Hive.isBoxOpen(HiveBoxes.machinesBox)) {
-        final box = Hive.box<MachineModel>(HiveBoxes.machinesBox);
-        machine = box.get(workOrder.machineId) ??
-            box.values.cast<MachineModel?>().firstWhere(
-                  (m) =>
-                      m?.id.toLowerCase() == workOrder.machineId.toLowerCase() ||
-                      m?.code.toLowerCase() == workOrder.machineId.toLowerCase(),
-                  orElse: () => null,
-                );
-      }
-    } catch (_) {}
+    final machine = WorkOrderRepositorySyncHelper.findMachine(workOrder.machineId);
     WorkOrderSecurityGuard.validateCreate(effectiveCaller, machine);
 
     final chrono = workOrder.chronology ?? EventChronology.now();
@@ -110,7 +87,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       activityLogs: [...workOrder.activityLogs, initialLog],
     );
 
-    await _persistAndSync(updated, WorkOrderOutboxFactory.create(updated));
+    await _save(updated, WorkOrderOutboxFactory.create(updated));
     return updated;
   }
 
@@ -128,25 +105,17 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     final log = WorkOrderActivityLogger.createLog(
       stepName: 'STATUS_CHANGED',
       caller: caller,
-      actionSummary:
-          'Work order transitioned from ${wo.status.name} to ${status.name}',
-      details: {
-        'fromStatus': wo.status.name,
-        'toStatus': status.name,
-      },
+      actionSummary: 'Work order transitioned from ${wo.status.name} to ${status.name}',
+      details: {'fromStatus': wo.status.name, 'toStatus': status.name},
     );
 
     final updated = wo.copyWith(
       status: status,
-      startedAt: status == WorkOrderStatus.inProgress && wo.startedAt == null
-          ? DateTime.now()
-          : wo.startedAt,
-      completedAt: status == WorkOrderStatus.completed && wo.completedAt == null
-          ? DateTime.now()
-          : wo.completedAt,
+      startedAt: status == WorkOrderStatus.inProgress && wo.startedAt == null ? DateTime.now() : wo.startedAt,
+      completedAt: status == WorkOrderStatus.completed && wo.completedAt == null ? DateTime.now() : wo.completedAt,
       activityLogs: [...wo.activityLogs, log],
     );
-    await _persistAndSync(updated);
+    await _save(updated);
   }
 
   @override
@@ -167,10 +136,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       caller,
       technicianName: technicianName,
     );
-    await _persistAndSync(
-      updated,
-      WorkOrderOutboxFactory.assign(updated, technicianId),
-    );
+    await _save(updated, WorkOrderOutboxFactory.assign(updated, technicianId));
   }
 
   @override
@@ -182,7 +148,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     if (wo == null) return;
 
     final updated = WorkOrderHandshakeMutator.applyStartRepair(wo, caller);
-    await _persistAndSync(updated, WorkOrderOutboxFactory.start(updated));
+    await _save(updated, WorkOrderOutboxFactory.start(updated));
   }
 
   @override
@@ -194,15 +160,8 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    final updated = WorkOrderHandshakeMutator.applyAddSparePart(
-      wo,
-      sparePart,
-      caller,
-    );
-    await _persistAndSync(
-      updated,
-      WorkOrderOutboxFactory.addPart(updated, sparePart),
-    );
+    final updated = WorkOrderHandshakeMutator.applyAddSparePart(wo, sparePart, caller);
+    await _save(updated, WorkOrderOutboxFactory.addPart(updated, sparePart));
   }
 
   @override
@@ -210,6 +169,8 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     String workOrderId, {
     required String rootCause,
     required String actionsTaken,
+    List<RepairStepModel>? repairSteps,
+    String? repairVoiceUrl,
     UserModel? caller,
   }) async {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
@@ -219,14 +180,18 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
       wo,
       rootCause: rootCause,
       actionsTaken: actionsTaken,
+      repairSteps: repairSteps,
+      repairVoiceUrl: repairVoiceUrl,
       caller: caller,
     );
-    await _persistAndSync(
+    await _save(
       updated,
       WorkOrderOutboxFactory.complete(
         updated,
         rootCause: rootCause,
         actionsTaken: actionsTaken,
+        repairSteps: repairSteps,
+        repairVoiceUrl: repairVoiceUrl,
       ),
     );
   }
@@ -235,14 +200,30 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
   Future<void> confirmTestRun(
     String workOrderId, {
     required UserModel caller,
+    String outcome = 'fixed',
+    String? comments,
+    int? confirmedDowntimeMinutes,
   }) async {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    final updated = WorkOrderHandshakeMutator.applyConfirmTestRun(wo, caller);
-    await _persistAndSync(
+    final machine = WorkOrderRepositorySyncHelper.findMachine(wo.machineId);
+    final updated = WorkOrderHandshakeMutator.applyConfirmTestRun(
+      wo,
+      caller,
+      outcome: outcome,
+      comments: comments,
+      confirmedDowntimeMinutes: confirmedDowntimeMinutes,
+      machine: machine,
+    );
+    await _save(
       updated,
-      WorkOrderOutboxFactory.confirmTestRun(updated),
+      WorkOrderOutboxFactory.confirmTestRun(
+        updated,
+        outcome: outcome,
+        comments: comments,
+        confirmedDowntimeMinutes: confirmedDowntimeMinutes,
+      ),
     );
   }
 
@@ -255,6 +236,6 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     if (wo == null) return;
 
     final updated = WorkOrderHandshakeMutator.applyApproveAndClose(wo, caller);
-    await _persistAndSync(updated, WorkOrderOutboxFactory.close(updated));
+    await _save(updated, WorkOrderOutboxFactory.close(updated));
   }
 }

@@ -49,7 +49,7 @@ const Map<String, String> arNavStrings = {
   // Switch Persona Bottom Sheet
   'switch_persona_title': 'تبديل الحساب النشط (RBAC)',
   'switch_persona_sub': 'اختبار عرض الشاشات وصلاحيات الأزرار',
-  'dept_users_header': 'مسؤولو الأقسام (7 أقسام)',
+  'dept_users_header': 'مسؤولو الأقسام (8 أقسام)',
   'plant_wide_header': 'الإدارة العامة والفنيون',
   'switched_to_user': 'تم التحويل إلى {name} ({detail})',
   'open_settings_btn': 'فتح الإعدادات وتخصيص الألوان والثيم',

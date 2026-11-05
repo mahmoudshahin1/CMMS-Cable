@@ -3,7 +3,7 @@ import '../domain/enums/user_role.dart';
 import '../../assets/domain/enums/department_type.dart';
 
 class MockUsers {
-  // --- 7 Department-Dedicated Users ---
+  // --- 8 Department-Dedicated Users ---
   static const UserModel drawingLead = UserModel(
     id: 'usr-dept-drawing',
     name: 'Eng. Ahmed Saeed (Drawing Lead)',
@@ -52,15 +52,24 @@ class MockUsers {
     department: DepartmentType.screening,
   );
 
-  static const UserModel tapeArmourLead = UserModel(
+  static const UserModel armouringLead = UserModel(
     id: 'usr-dept-tape',
-    name: 'Eng. Tamer Nabil (Tape Armour Lead)',
-    email: 'tape.lead@cableops.com',
+    name: 'Eng. Tamer Nabil (Armouring Lead)',
+    email: 'armouring.lead@cableops.com',
     role: UserRole.operator,
-    department: DepartmentType.tapeArmour,
+    department: DepartmentType.armouring,
+  );
+
+  static const UserModel rewindingLead = UserModel(
+    id: 'usr-dept-rewind',
+    name: 'Eng. Adel Mahmoud (Rewinding Lead)',
+    email: 'rewinding.lead@cableops.com',
+    role: UserRole.operator,
+    department: DepartmentType.rewinding,
   );
 
   // Backward-compatible alias
+  static const UserModel tapeArmourLead = armouringLead;
   static const UserModel operatorUser = extrusionLead;
 
   // --- Field Technicians (Plant-Wide) ---
@@ -109,7 +118,8 @@ class MockUsers {
     extrusionLead,
     assemblyLead,
     screeningLead,
-    tapeArmourLead,
+    armouringLead,
+    rewindingLead,
   ];
 
   static const List<UserModel> plantWideUsers = [

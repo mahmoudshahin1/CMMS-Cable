@@ -10,11 +10,18 @@ class AttachmentValidationException implements Exception {
   String toString() => 'AttachmentValidationException: $message';
 }
 
-/// Service managing work order fault photo uploads, signed URLs, and storage isolation.
+/// Service managing work order fault photos & voice note uploads and signed URLs.
 class AttachmentService {
   static const String bucketName = 'work-order-attachments';
   static const int maxFileSizeBytes = 10 * 1024 * 1024; // 10MB limit
   static const Set<String> allowedExtensions = {'.jpg', '.jpeg', '.png', '.webp'};
+  static const Set<String> allowedVoiceExtensions = {
+    '.m4a',
+    '.mp3',
+    '.aac',
+    '.wav',
+    '.ogg',
+  };
   static const _uuid = Uuid();
 
   final SupabaseClient? _client;
@@ -23,7 +30,7 @@ class AttachmentService {
 
   SupabaseClient get _effectiveClient => _client ?? Supabase.instance.client;
 
-  /// Validates file size and format against strict industrial CMMS constraints.
+  /// Validates photo attachment file size and format.
   void validateAttachment({
     required int sizeBytes,
     required String fileName,
@@ -45,8 +52,29 @@ class AttachmentService {
     }
   }
 
+  /// Validates voice note file size and format.
+  void validateVoiceNote({
+    required int sizeBytes,
+    required String fileName,
+  }) {
+    if (sizeBytes <= 0) {
+      throw const AttachmentValidationException('Voice note file cannot be empty.');
+    }
+    if (sizeBytes > maxFileSizeBytes) {
+      throw AttachmentValidationException(
+        'Voice note exceeds maximum 10MB limit (${(sizeBytes / (1024 * 1024)).toStringAsFixed(2)}MB).',
+      );
+    }
+
+    final ext = _extractExtension(fileName);
+    if (!allowedVoiceExtensions.contains(ext)) {
+      throw AttachmentValidationException(
+        'Disallowed voice format "$ext". Permitted: ${allowedVoiceExtensions.join(", ")}',
+      );
+    }
+  }
+
   /// Uploads binary photo to dedicated Supabase Storage bucket.
-  /// Returns the relative storage path: `<workOrderId>/<uuid>.<ext>`.
   Future<String> uploadAttachment({
     required String workOrderId,
     required Uint8List bytes,
@@ -79,10 +107,43 @@ class AttachmentService {
     return storagePath;
   }
 
-  /// Generates a short-lived signed URL for secure private viewing.
+  /// Uploads binary audio voice note to existing 'work-order-attachments' bucket with prefix.
+  Future<String> uploadVoiceNote({
+    required String workOrderId,
+    required Uint8List bytes,
+    required String fileName,
+    String? mimeType,
+  }) async {
+    if (workOrderId.trim().isEmpty) {
+      throw const AttachmentValidationException('Work order ID cannot be empty.');
+    }
+
+    validateVoiceNote(sizeBytes: bytes.length, fileName: fileName);
+
+    final ext = _extractExtension(fileName);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final storagePath = 'voice-notes/$workOrderId/$timestamp$ext';
+    final resolvedMime = mimeType ?? _inferAudioMimeType(ext);
+
+    debugPrint('📤 AttachmentService: uploading voice ${bytes.length} bytes to $bucketName/$storagePath');
+
+    await _effectiveClient.storage.from(bucketName).uploadBinary(
+          storagePath,
+          bytes,
+          fileOptions: FileOptions(
+            contentType: resolvedMime,
+            upsert: false,
+          ),
+        );
+
+    debugPrint('✅ AttachmentService: successfully uploaded voice note $storagePath');
+    return storagePath;
+  }
+
+  /// Generates a short-lived signed URL for secure private viewing or listening.
   Future<String> getSignedUrl(
     String storagePath, {
-    int expiresInSeconds = 3600, // 1 hour default
+    int expiresInSeconds = 3600,
   }) async {
     return _effectiveClient.storage
         .from(bucketName)
@@ -110,6 +171,21 @@ class AttachmentService {
       case '.jpeg':
       default:
         return 'image/jpeg';
+    }
+  }
+
+  String _inferAudioMimeType(String ext) {
+    switch (ext) {
+      case '.mp3':
+        return 'audio/mpeg';
+      case '.wav':
+        return 'audio/wav';
+      case '.ogg':
+        return 'audio/ogg';
+      case '.m4a':
+      case '.aac':
+      default:
+        return 'audio/mp4';
     }
   }
 }

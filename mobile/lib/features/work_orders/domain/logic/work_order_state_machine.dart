@@ -3,9 +3,9 @@ import '../enums/work_order_status.dart';
 
 /// Industrial 5-Step Handshake State Machine for Work Orders.
 ///
-/// Enforces linear and deterministic state transitions across
-/// the maintenance lifecycle:
+/// Enforces deterministic state transitions across the maintenance lifecycle:
 /// Open -> Assigned -> InProgress <-> PendingParts -> Completed -> Verified -> VerifiedClosed.
+/// Also supports the Check-phase Bounce-Back: Completed -> InProgress (test run rejected).
 class WorkOrderStateMachine {
   const WorkOrderStateMachine._();
 
@@ -39,7 +39,8 @@ class WorkOrderStateMachine {
       case WorkOrderStatus.pendingParts:
         return next == WorkOrderStatus.inProgress;
       case WorkOrderStatus.completed:
-        return next == WorkOrderStatus.verified;
+        return next == WorkOrderStatus.verified ||
+            next == WorkOrderStatus.inProgress;
       case WorkOrderStatus.verified:
         return next == WorkOrderStatus.verifiedClosed;
       case WorkOrderStatus.verifiedClosed:
@@ -62,7 +63,10 @@ class WorkOrderStateMachine {
       case WorkOrderStatus.pendingParts:
         return const [WorkOrderStatus.inProgress];
       case WorkOrderStatus.completed:
-        return const [WorkOrderStatus.verified];
+        return const [
+          WorkOrderStatus.verified,
+          WorkOrderStatus.inProgress,
+        ];
       case WorkOrderStatus.verified:
         return const [WorkOrderStatus.verifiedClosed];
       case WorkOrderStatus.verifiedClosed:

@@ -49,7 +49,7 @@ const Map<String, String> enNavStrings = {
   // Switch Persona Bottom Sheet
   'switch_persona_title': 'Switch Active Persona (RBAC)',
   'switch_persona_sub': 'Test screen rendering & button-level access gates',
-  'dept_users_header': 'Department Leads (7 Departments)',
+  'dept_users_header': 'Department Leads (8 Departments)',
   'plant_wide_header': 'Plant Management & Field Technicians',
   'switched_to_user': 'Switched to {name} ({detail})',
   'open_settings_btn': 'Open Settings & Customize Theme',

@@ -19,6 +19,7 @@ import '../../../domain/enums/machine_status.dart';
 import '../../../domain/models/machine_model.dart';
 import '../../cubit/machine_cubit.dart';
 import '../../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../../downtime/domain/logic/downtime_security_guard.dart';
 
 /// Controller handling async submission, work order creation, and navigation for downtime logging.
 class DowntimeSheetController {
@@ -29,6 +30,9 @@ class DowntimeSheetController {
     required String reasonText,
     required bool isMaintenanceRequested,
   }) async {
+    final currentUser = context.read<AuthCubit>().currentUser;
+    DowntimeSecurityGuard.validateCreate(currentUser, machine);
+
     final reason =
         reasonText.trim().isEmpty ? category.displayName : reasonText.trim();
 
@@ -36,7 +40,7 @@ class DowntimeSheetController {
     final newLog = DowntimeLogModel(
       id: const Uuid().v4(),
       machineId: machine.id,
-      reportedById: 'OP-104',
+      reportedById: currentUser?.id ?? 'OP-104',
       startTime: chrono.recordedAtUtc,
       category: category,
       reason: reason,
@@ -62,7 +66,6 @@ class DowntimeSheetController {
     final downtimeCubit = context.read<DowntimeCubit>();
     final workOrderCubit = context.read<WorkOrderCubit>();
     final machineCubit = context.read<MachineCubit>();
-    final currentUser = context.read<AuthCubit>().currentUser;
 
     // 1. Log Downtime
     await downtimeCubit.reportDowntime(newLog);

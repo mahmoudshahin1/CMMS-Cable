@@ -9,16 +9,17 @@ import '../../../auth/domain/enums/user_role.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/widgets/persona_indicator_chip.dart';
 import '../../domain/enums/work_order_status.dart';
+import '../../domain/models/repair_step_model.dart';
 import '../../domain/models/spare_part_model.dart';
 import '../../domain/models/work_order_model.dart';
 import '../cubit/work_order_cubit.dart';
 import '../cubit/work_order_state.dart';
 import '../widgets/interactive_work_order_action_card.dart';
 import '../widgets/live_mttr_timer_card.dart';
-import '../widgets/root_cause_maintenance_section.dart';
-import '../widgets/spare_parts_consumption_section.dart';
+import '../widgets/live_downtime_counter_widget.dart';
 import '../widgets/work_order_activity_timeline_widget.dart';
 import '../widgets/work_order_priority_header_card.dart';
+import '../widgets/work_order_repair_form_section.dart';
 import '../widgets/work_order_status_timeline_bar.dart';
 
 /// Screen detailing a specific Work Order with industrial 5-step lifecycle actions.
@@ -39,12 +40,16 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
   final TextEditingController _partNameController = TextEditingController();
   final TextEditingController _partQtyController =
       TextEditingController(text: '1');
+  List<RepairStepModel> _repairSteps = const [];
+  String? _repairVoiceUrl;
 
   @override
   void initState() {
     super.initState();
     _rootCauseController.text = widget.workOrder.rootCause ?? '';
     _actionsTakenController.text = widget.workOrder.actionsTaken ?? '';
+    _repairSteps = widget.workOrder.repairSteps;
+    _repairVoiceUrl = widget.workOrder.repairVoiceUrl;
 
     if (widget.workOrder.status == WorkOrderStatus.inProgress &&
         widget.workOrder.startedAt != null) {
@@ -57,11 +62,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        setState(() {
-          _elapsedSeconds++;
-        });
-      }
+      if (mounted) setState(() => _elapsedSeconds++);
     });
   }
 
@@ -116,6 +117,8 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
           actionsTaken: _actionsTakenController.text.trim().isNotEmpty
               ? _actionsTakenController.text.trim()
               : 'Machine components repaired & restored',
+          repairSteps: _repairSteps,
+          repairVoiceUrl: _repairVoiceUrl,
           caller: currentUser,
         );
     ScaffoldMessenger.of(context).showSnackBar(
@@ -140,6 +143,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
             orElse: () => widget.workOrder,
           );
         }
+
         final isCompleted = wo.status == WorkOrderStatus.completed ||
             wo.status == WorkOrderStatus.verified ||
             wo.status == WorkOrderStatus.verifiedClosed;
@@ -164,12 +168,19 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 WorkOrderPriorityHeaderCard(workOrder: wo),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 WorkOrderStatusTimelineBar(currentStatus: wo.status),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+                if (!isCompleted) ...[
+                  LiveDowntimeCounterWidget.fromWorkOrder(
+                    wo,
+                    style: LiveDowntimeStyle.banner,
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 if (wo.status == WorkOrderStatus.inProgress) ...[
                   LiveMttrTimerCard(formattedTimer: _formattedTimer),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                 ],
                 InteractiveWorkOrderActionCard(
                   workOrder: wo,
@@ -177,24 +188,23 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                   onCompleteRepairRequested: () =>
                       _onCompleteRepairRequested(wo),
                 ),
-                const SizedBox(height: 20),
-                SparePartsConsumptionSection(
+                const SizedBox(height: 16),
+                WorkOrderRepairFormSection(
                   workOrder: wo,
                   isCompleted: isCompleted,
-                  canAddParts: isTech,
+                  isTech: isTech,
+                  rootCauseController: _rootCauseController,
+                  actionsTakenController: _actionsTakenController,
                   partNameController: _partNameController,
                   partQtyController: _partQtyController,
                   onAddSparePart: _addSparePart,
+                  repairSteps: _repairSteps,
+                  onStepsChanged: (steps) => setState(() => _repairSteps = steps),
+                  repairVoiceUrl: _repairVoiceUrl,
+                  onRepairVoiceUrlChanged: (url) =>
+                      setState(() => _repairVoiceUrl = url),
                 ),
                 const SizedBox(height: 20),
-                RootCauseMaintenanceSection(
-                  rootCauseController: _rootCauseController,
-                  actionsTakenController: _actionsTakenController,
-                  isEnabled: !isCompleted &&
-                      wo.status == WorkOrderStatus.inProgress &&
-                      isTech,
-                ),
-                const SizedBox(height: 24),
                 WorkOrderActivityTimelineWidget(
                   activityLogs: wo.activityLogs,
                   workOrder: wo,
@@ -202,30 +212,28 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                 const SizedBox(height: 24),
                 if (!isCompleted &&
                     wo.status == WorkOrderStatus.inProgress &&
-                    isTech) ...[
+                    isTech)
                   SwipeActionButton(
                     label: 'Swipe to Complete Field Repair',
                     backgroundColor: AppColors.runningEmerald,
                     icon: Icons.check_circle_rounded,
                     onSwipeCompleted: () {
-                      final currentUser =
-                          context.read<AuthCubit>().currentUser;
+                      final u = context.read<AuthCubit>().currentUser;
                       context.read<WorkOrderCubit>().completeWorkOrder(
                             wo.id,
-                            rootCause:
-                                _rootCauseController.text.trim().isNotEmpty
-                                    ? _rootCauseController.text.trim()
-                                    : 'Maintenance fix completed',
-                            actionsTaken:
-                                _actionsTakenController.text.trim().isNotEmpty
-                                    ? _actionsTakenController.text.trim()
-                                    : 'Field repair completed',
-                            caller: currentUser,
+                            rootCause: _rootCauseController.text.trim().isNotEmpty
+                                ? _rootCauseController.text.trim()
+                                : 'Maintenance fix completed',
+                            actionsTaken: _actionsTakenController.text.trim().isNotEmpty
+                                ? _actionsTakenController.text.trim()
+                                : 'Field repair completed',
+                            repairSteps: _repairSteps,
+                            repairVoiceUrl: _repairVoiceUrl,
+                            caller: u,
                           );
                       Navigator.of(context).pop();
                     },
                   ),
-                ],
               ],
             ),
           ),

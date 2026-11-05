@@ -26,8 +26,35 @@ const form = ref({ machineId: String(route.query.machine ?? ''), category: 'proc
 const role = computed(() => auth.role.toUpperCase())
 const canCreate = computed(() => (SUPERVISOR_ROLES as readonly string[]).includes(role.value))
 const canClose = computed(() => (SUPERVISOR_ROLES as readonly string[]).includes(role.value))
-const visibleMachines = computed(() => machines.value)
+const visibleMachines = computed(() => {
+  if (role.value === 'PRODUCTION_SUPERVISOR' && auth.department) {
+    return machines.value.filter((m) => m.department === auth.department)
+  }
+  return machines.value
+})
 const sortedLogs = computed(() => [...logs.value].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()))
+
+function canCloseLog(log: Downtime): boolean {
+  if (!canClose.value) return false
+  if (role.value === 'PRODUCTION_SUPERVISOR') {
+    if (!auth.department) return false
+    const machine = machines.value.find((m) => m.id === log.machine_id)
+    return machine ? machine.department === auth.department : false
+  }
+  return true
+}
+
+function formatRpcError(cause: unknown, fallbackKey: string): string {
+  if (!cause) return t(fallbackKey)
+  const err = cause as { code?: string; message?: string }
+  if (err.code === '42501' || (typeof err.message === 'string' && (err.message.includes('42501') || err.message.toUpperCase().includes('FORBIDDEN') || err.message.toUpperCase().includes('UNAUTHORIZED')))) {
+    return t('downtime.permissionDenied')
+  }
+  if (typeof err.message === 'string' && err.message.trim()) {
+    return err.message
+  }
+  return t(fallbackKey)
+}
 let channel: RealtimeChannel | null = null
 let timer: ReturnType<typeof setInterval> | null = null
 
@@ -42,7 +69,7 @@ async function refresh() {
   if (machineResult.error) error.value ||= machineResult.error.message
   else {
     machines.value = (machineResult.data ?? []) as Machine[]
-    if (!form.value.machineId && visibleMachines.value.length) form.value.machineId = visibleMachines.value[0].id
+    if (visibleMachines.value.length && (!form.value.machineId || !visibleMachines.value.some((m) => m.id === form.value.machineId))) form.value.machineId = visibleMachines.value[0].id
   }
   loading.value = false
 }
@@ -61,12 +88,12 @@ async function createDowntime() {
     notice.value = t('downtime.saved')
     form.value.reason = ''; form.value.comments = ''; form.value.maintenanceRequested = false
     await refresh()
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : t('downtime.saveError') }
+  } catch (cause) { error.value = formatRpcError(cause, 'downtime.saveError') }
   finally { saving.value = false }
 }
 
 async function closeDowntime(log: Downtime) {
-  if (!supabase || !canClose.value || log.ended_at) return
+  if (!supabase || !canCloseLog(log) || log.ended_at) return
   saving.value = true; error.value = ''; notice.value = ''
   const endedAt = new Date()
   try {
@@ -76,7 +103,7 @@ async function closeDowntime(log: Downtime) {
     if (rpcError) throw rpcError
     notice.value = t('downtime.closedSuccess')
     await refresh()
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : t('downtime.closeError') }
+  } catch (cause) { error.value = formatRpcError(cause, 'downtime.closeError') }
   finally { saving.value = false }
 }
 
@@ -124,6 +151,6 @@ onUnmounted(() => { if (timer) clearInterval(timer); if (supabase && channel) vo
     <h2 class="mb-3 flex items-center gap-2 text-lg font-extrabold text-brand-navy"><Clock3 :size="18" class="text-brand-dark" />{{ t('downtime.history') }}</h2>
     <div v-if="loading" class="text-slate-500" role="status">{{ locale.locale === 'ar' ? 'جارٍ تحميل سجل التوقفات…' : 'Loading downtime records…' }}</div>
     <div v-else-if="!sortedLogs.length" class="rounded-xl border border-dashed bg-white p-10 text-center text-slate-500">{{ t('downtime.noLogs') }}</div>
-    <div v-else class="overflow-x-auto rounded-xl border bg-white shadow-sm"><table class="w-full min-w-[850px] text-sm" :class="locale.direction === 'rtl' ? 'text-right' : 'text-left'"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">{{ t('downtime.machineDepartment') }}</th><th class="p-3">{{ t('downtime.cause') }}</th><th class="p-3">{{ t('downtime.start') }}</th><th class="p-3">{{ t('downtime.duration') }}</th><th class="p-3">{{ t('downtime.status') }}</th><th class="p-3">{{ t('downtime.action') }}</th></tr></thead><tbody><tr v-for="log in sortedLogs" :key="log.id" class="border-t"><td class="p-3 font-semibold">{{ machineInfo(log.machine_id) }}</td><td class="max-w-xs p-3"><p>{{ categoryName(log.category) }}</p><p class="mt-1 text-xs text-slate-500">{{ log.reason || '—' }}</p><p v-if="log.is_maintenance_requested" class="mt-1 text-xs text-amber-700">{{ t('downtime.maintenanceNeeded') }}</p></td><td class="p-3">{{ formatCairoDate(log.started_at) }}</td><td class="p-3">{{ duration(log.started_at, log.ended_at) }}</td><td class="p-3"><span class="rounded-full px-3 py-1 text-xs font-semibold" :class="log.ended_at ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-800'">{{ log.ended_at ? t('downtime.closed') : t('downtime.active') }}</span></td><td class="p-3"><button v-if="!log.ended_at && canClose" :disabled="saving" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" @click="closeDowntime(log)">{{ t('downtime.close') }}</button><span v-else-if="!log.ended_at" class="text-xs text-slate-400">{{ t('downtime.noPermissionClose') }}</span><span v-else class="text-xs text-slate-400">—</span></td></tr></tbody></table></div>
+    <div v-else class="overflow-x-auto rounded-xl border bg-white shadow-sm"><table class="w-full min-w-[850px] text-sm" :class="locale.direction === 'rtl' ? 'text-right' : 'text-left'"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">{{ t('downtime.machineDepartment') }}</th><th class="p-3">{{ t('downtime.cause') }}</th><th class="p-3">{{ t('downtime.start') }}</th><th class="p-3">{{ t('downtime.duration') }}</th><th class="p-3">{{ t('downtime.status') }}</th><th class="p-3">{{ t('downtime.action') }}</th></tr></thead><tbody><tr v-for="log in sortedLogs" :key="log.id" class="border-t"><td class="p-3 font-semibold">{{ machineInfo(log.machine_id) }}</td><td class="max-w-xs p-3"><p>{{ categoryName(log.category) }}</p><p class="mt-1 text-xs text-slate-500">{{ log.reason || '—' }}</p><p v-if="log.is_maintenance_requested" class="mt-1 text-xs text-amber-700">{{ t('downtime.maintenanceNeeded') }}</p></td><td class="p-3">{{ formatCairoDate(log.started_at) }}</td><td class="p-3">{{ duration(log.started_at, log.ended_at) }}</td><td class="p-3"><span class="rounded-full px-3 py-1 text-xs font-semibold" :class="log.ended_at ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-800'">{{ log.ended_at ? t('downtime.closed') : t('downtime.active') }}</span></td><td class="p-3"><button v-if="!log.ended_at && canCloseLog(log)" :disabled="saving" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" @click="closeDowntime(log)">{{ t('downtime.close') }}</button><span v-else-if="!log.ended_at" class="text-xs text-slate-400">{{ t('downtime.noPermissionClose') }}</span><span v-else class="text-xs text-slate-400">—</span></td></tr></tbody></table></div>
   </div>
 </template>

@@ -133,7 +133,7 @@ final List<UserModel> provisionedUsers = [
   ),
   const UserModel(
     id: 'd4444444-4444-4444-8444-444444444444',
-    name: 'مصطفى إبراهيم - مشغل التجميع والتسليح',
+    name: 'مصطفى إبراهيم - مشغل قسم التجميع',
     email: 'assembly.op@cableops.local',
     role: UserRole.operator,
     department: DepartmentType.assembly,
@@ -147,9 +147,9 @@ final List<UserModel> provisionedUsers = [
   ),
   const UserModel(
     id: 'f6666666-6666-4666-8666-666666666666',
-    name: 'تامر نبيل - مشغل تدريع الأشرطة',
+    name: 'تامر نبيل - مشغل قسم التسليح والتدريع',
     email: 'tape.op@cableops.local',
     role: UserRole.operator,
-    department: DepartmentType.tapeArmour,
+    department: DepartmentType.armouring,
   ),
 ];

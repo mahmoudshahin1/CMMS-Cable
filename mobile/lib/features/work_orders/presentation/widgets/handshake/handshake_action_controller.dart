@@ -78,46 +78,76 @@ class HandshakeActionController {
     );
   }
 
-  Future<void> confirmTestRun(UserModel user) async {
+  Future<void> confirmTestRun(
+    UserModel user, {
+    String outcome = 'fixed',
+    String? comments,
+    int? confirmedDowntimeMinutes,
+  }) async {
     final messenger = ScaffoldMessenger.of(context);
     final workOrderCubit = context.read<WorkOrderCubit>();
     final machineCubit = context.read<MachineCubit>();
     final isDark = context.isDarkMode;
 
-    await workOrderCubit.confirmTestRun(workOrder.id, caller: user);
-
-    final currentState = workOrderCubit.state;
-    final allList = currentState is WorkOrderLoaded
-        ? currentState.allWorkOrders
-        : <WorkOrderModel>[];
-
-    final hasOtherActiveBreakdown = allList.any(
-      (w) =>
-          w.machineId == workOrder.machineId &&
-          w.id != workOrder.id &&
-          w.type == WorkOrderType.breakdown &&
-          w.status != WorkOrderStatus.verifiedClosed,
+    await workOrderCubit.confirmTestRun(
+      workOrder.id,
+      caller: user,
+      outcome: outcome,
+      comments: comments,
+      confirmedDowntimeMinutes: confirmedDowntimeMinutes,
     );
 
-    if (!hasOtherActiveBreakdown) {
+    if (outcome == 'fixed') {
+      final currentState = workOrderCubit.state;
+      final allList = currentState is WorkOrderLoaded
+          ? currentState.allWorkOrders
+          : <WorkOrderModel>[];
+
+      final hasOtherActiveBreakdown = allList.any(
+        (w) =>
+            w.machineId == workOrder.machineId &&
+            w.id != workOrder.id &&
+            w.type == WorkOrderType.breakdown &&
+            w.status != WorkOrderStatus.verifiedClosed,
+      );
+
+      if (!hasOtherActiveBreakdown) {
+        await machineCubit.updateMachineStatus(
+          workOrder.machineId,
+          MachineStatus.running,
+        );
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            !hasOtherActiveBreakdown
+                ? 'Test run confirmed! Machine is now RUNNING. Ticket forwarded for Supervisor sign-off.'
+                : 'Test run confirmed! Machine remains under maintenance due to concurrent active ticket.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor:
+              isDark ? AppColors.slateCard : AppColors.energyaDeepNavy,
+        ),
+      );
+    } else {
       await machineCubit.updateMachineStatus(
         workOrder.machineId,
-        MachineStatus.running,
+        MachineStatus.underRepair,
+      );
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            outcome == 'needs_followup'
+                ? 'Ticket bounced back to technician for follow-up repairs.'
+                : 'Test run failed. Ticket returned to technician as not fixed.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor:
+              isDark ? AppColors.slateCard : AppColors.energyaDeepNavy,
+        ),
       );
     }
-
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          !hasOtherActiveBreakdown
-              ? 'Test run confirmed! Machine is now RUNNING. Ticket forwarded for Supervisor sign-off.'
-              : 'Test run confirmed! Machine remains under maintenance due to concurrent active ticket.',
-        ),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor:
-            isDark ? AppColors.slateCard : AppColors.energyaDeepNavy,
-      ),
-    );
   }
 
   Future<void> approveAndClose(UserModel user) async {

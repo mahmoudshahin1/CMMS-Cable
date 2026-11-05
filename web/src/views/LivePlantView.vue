@@ -7,7 +7,7 @@ import { useLocaleStore } from '../stores/locale'
 const live = useLiveMonitoringStore()
 const locale = useLocaleStore()
 const t = locale.t
-const departments = computed<Record<string, string>>(() => ({ drawing: t('downtime.departments.drawing'), ccv: t('downtime.departments.ccv'), stranding: t('downtime.departments.stranding'), tapeArmour: t('downtime.departments.tapeArmour'), extrusion: t('downtime.departments.extrusion'), assembly: t('downtime.departments.assembly'), screening: t('downtime.departments.screening') }))
+const departments = computed<Record<string, string>>(() => ({ drawing: t('downtime.departments.drawing'), ccv: t('downtime.departments.ccv'), stranding: t('downtime.departments.stranding'), armouring: t('downtime.departments.armouring'), extrusion: t('downtime.departments.extrusion'), assembly: t('downtime.departments.assembly'), screening: t('downtime.departments.screening'), rewinding: t('downtime.departments.rewinding') }))
 const now = ref(Date.now())
 const grouped = computed(() => Object.entries(departments.value).map(([key, name]) => ({ key, name, machines: live.machines.filter((m) => m.department === key) })))
 const cardColors: Record<string, string> = { running: 'border-emerald-200 bg-emerald-50', idle: 'border-slate-200 bg-slate-100', downtimeProcess: 'border-red-200 bg-red-50', downtimeMaintenance: 'border-red-200 bg-red-50', underRepair: 'border-red-200 bg-red-50', preventiveMaintenance: 'border-amber-200 bg-amber-50', offline: 'border-slate-500 bg-slate-600 text-white' }
