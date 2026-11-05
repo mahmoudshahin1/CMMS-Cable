@@ -18,7 +18,7 @@ async function logout() {
 
 <template>
   <main :dir="locale.direction" class="relative grid min-h-screen place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_top_left,_#dff7ff_0%,_transparent_44%),linear-gradient(145deg,#eef4f9,#f8fbfd)] p-4 md:p-8">
-    <div class="pointer-events-none absolute -right-28 top-20 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl"></div>
+    <div class="pointer-events-none absolute -right-28 top-20 h-72 w-72 rounded-full bg-accent-light/20 blur-3xl"></div>
     <div class="pointer-events-none absolute -bottom-36 left-10 h-96 w-96 rounded-full bg-blue-300/20 blur-3xl"></div>
 
     <section class="relative w-full max-w-xl rounded-[30px] border border-white/80 bg-white/90 p-7 text-center shadow-[0_32px_90px_-35px_rgba(10,37,64,.28)] backdrop-blur-xl md:p-12">
@@ -43,7 +43,7 @@ async function logout() {
       <div class="mt-7 flex flex-col items-center gap-3">
         <div class="mb-3 flex justify-center"><button class="rounded-lg border px-3 py-2 text-xs font-bold" @click="locale.setLocale(locale.locale === 'ar' ? 'en' : 'ar')">{{ locale.locale === 'ar' ? 'EN' : 'عربي' }}</button></div>
         <span class="inline-flex items-center gap-2 text-xs font-semibold text-slate-500"><Smartphone :size="15" /> {{ t('noAccess.app') }}</span>
-        <button class="group inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-cyan-900/15 transition hover:-translate-y-0.5 hover:bg-brand-dark" @click="logout">
+        <button class="group inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-brand-navy/15 transition hover:-translate-y-0.5 hover:bg-brand-dark" @click="logout">
           <LogOut :size="16" class="transition-transform group-hover:-translate-x-0.5" />
           {{ t('noAccess.logout') }}
         </button>

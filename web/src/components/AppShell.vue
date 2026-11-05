@@ -26,31 +26,44 @@ async function logout() { await auth.signOut(); await router.replace('/login') }
 
 <template>
   <div class="min-h-screen lg:flex" :dir="locale.direction" :lang="locale.locale">
-    <aside class="relative z-20 w-full shrink-0 bg-brand-navy text-white lg:sticky lg:top-0 lg:h-screen lg:w-[272px] lg:overflow-y-auto">
-      <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 lg:block lg:px-5 lg:pb-6 lg:pt-6">
-        <RouterLink to="/plant-floor" class="block rounded-2xl bg-white px-4 py-3 shadow-lg shadow-black/10 transition duration-300 hover:-translate-y-0.5 hover:shadow-xl" aria-label="Energya Cables — الصفحة الرئيسية">
+    <aside class="relative z-20 w-full shrink-0 overflow-hidden bg-brand-navy text-white lg:sticky lg:top-0 lg:h-screen lg:w-[272px] lg:overflow-y-auto">
+      <div class="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-brand/40 blur-3xl float-blob"></div>
+      <div class="pointer-events-none absolute -left-16 bottom-24 h-56 w-56 rounded-full bg-accent/25 blur-3xl float-blob" style="animation-delay:-4s"></div>
+      <div class="pointer-events-none absolute inset-x-0 top-0 h-[2px] cable-flow opacity-70"></div>
+
+      <div class="relative flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 lg:block lg:px-5 lg:pb-6 lg:pt-6">
+        <RouterLink to="/plant-floor" class="block rounded-2xl bg-white px-4 py-3 shadow-brand transition duration-300 hover:-translate-y-0.5 hover:shadow-xl" aria-label="Energya Cables — الصفحة الرئيسية">
           <img :src="logoUrl" alt="Energya Cables" class="mx-auto h-12 w-full max-w-[205px] object-contain" />
         </RouterLink>
-        <div class="hidden pt-4 lg:block"><p class="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Cable Ops</p><h1 class="mt-1 text-lg font-bold">{{ t('nav.operations') }}</h1><p class="mt-1 text-xs text-white/50">{{ locale.locale === 'ar' ? 'متابعة المصنع والصيانة' : 'Factory and maintenance overview' }}</p></div>
+        <div class="hidden pt-4 lg:block">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-accent-light">Cable Ops</p>
+          <h1 class="mt-1 text-lg font-bold">{{ t('nav.operations') }}</h1>
+          <p class="mt-1 text-xs text-white/50">{{ locale.locale === 'ar' ? 'متابعة المصنع والصيانة' : 'Factory and maintenance overview' }}</p>
+        </div>
         <span class="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[11px] text-emerald-100 lg:hidden"><i class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300"></i> {{ t('nav.live') }}</span>
       </div>
 
-      <div class="px-3 pb-3 pt-3 lg:px-4 lg:pt-6">
+      <div class="relative px-3 pb-3 pt-3 lg:px-4 lg:pt-6">
         <p class="mb-2 hidden px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 lg:block">{{ t('nav.workspace') }}</p>
         <nav class="flex gap-1.5 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible" :aria-label="locale.locale === 'ar' ? 'التنقل الرئيسي' : 'Main navigation'">
-          <RouterLink v-for="link in links" :key="link.to" :to="link.to" class="group relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/65 transition duration-200 hover:bg-white/[0.08] hover:text-white lg:w-full" active-class="!bg-cyan-400 !text-brand-navy shadow-lg shadow-cyan-950/25">
+          <RouterLink
+            v-for="link in links" :key="link.to" :to="link.to"
+            class="group relative flex shrink-0 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm text-white/65 transition duration-200 hover:bg-white/[0.08] hover:text-white lg:w-full"
+            active-class="!text-white"
+          >
+            <span v-if="route.path === link.to || (link.to !== '/plant-floor' && route.path.startsWith(`${link.to}/`))" class="absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-accent to-accent-dark shadow-accent"></span>
             <component :is="link.icon" :size="18" :stroke-width="1.8" class="shrink-0 transition-transform duration-200 group-hover:scale-110" />
             <span class="whitespace-nowrap font-semibold">{{ link.label }}</span>
-            <span v-if="route.path === link.to || (link.to !== '/plant-floor' && route.path.startsWith(`${link.to}/`))" class="ms-auto hidden h-1.5 w-1.5 rounded-full bg-current lg:block"></span>
+            <span v-if="route.path === link.to || (link.to !== '/plant-floor' && route.path.startsWith(`${link.to}/`))" class="ms-auto hidden h-1.5 w-1.5 animate-pulse rounded-full bg-white lg:block"></span>
           </RouterLink>
         </nav>
       </div>
 
-      <div class="hidden px-5 pb-5 lg:absolute lg:inset-x-0 lg:bottom-0 lg:block">
+      <div class="relative hidden px-5 pb-5 lg:absolute lg:inset-x-0 lg:bottom-0 lg:block">
         <div class="mb-4 flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3">
           <span class="relative flex h-2.5 w-2.5"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-40"></span><span class="relative h-2.5 w-2.5 rounded-full bg-emerald-400"></span></span>
           <div><p class="text-xs font-semibold text-white/90">{{ t('nav.factoryConnected') }}</p><p class="mt-0.5 text-[10px] text-white/45">{{ t('nav.realtime') }}</p></div>
-          <Activity :size="16" class="ms-auto text-cyan-300" />
+          <Activity :size="16" class="ms-auto text-accent-light" />
         </div>
         <p class="px-1 text-[10px] text-white/35">Energya Cables · CMMS</p>
       </div>
@@ -58,15 +71,15 @@ async function logout() { await auth.signOut(); await router.replace('/login') }
 
     <div class="min-w-0 flex-1">
       <header class="sticky top-0 z-10 flex min-h-[76px] items-center justify-between gap-4 border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl md:px-8">
-        <div class="min-w-0"><div class="flex items-center gap-2 text-xs text-slate-400"><Gauge :size="14" class="text-brand-dark" /><span>{{ t('nav.operations') }}</span><span>/</span><span class="truncate font-semibold text-slate-600">{{ activePage }}</span></div><p class="mt-1 hidden text-[11px] text-slate-400 sm:block">{{ today }}</p></div>
+        <div class="min-w-0"><div class="flex items-center gap-2 text-xs text-slate-400"><Gauge :size="14" class="text-brand" /><span>{{ t('nav.operations') }}</span><span>/</span><span class="truncate font-semibold text-slate-600">{{ activePage }}</span></div><p class="mt-1 hidden text-[11px] text-slate-400 sm:block">{{ today }}</p></div>
         <div class="flex shrink-0 items-center gap-2.5 md:gap-4">
           <div class="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 sm:flex"><i class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></i> {{ t('nav.connection') }}</div>
-          <button class="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 px-2.5 text-xs font-bold text-slate-700 transition hover:border-brand hover:bg-cyan-50" :aria-label="locale.locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'" @click="locale.setLocale(locale.locale === 'ar' ? 'en' : 'ar')"><Languages :size="15"/><span>{{ locale.locale === 'ar' ? 'EN' : 'عربي' }}</span></button>
+          <button class="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 px-2.5 text-xs font-bold text-slate-700 transition hover:border-brand hover:bg-brand-50" :aria-label="locale.locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'" @click="locale.setLocale(locale.locale === 'ar' ? 'en' : 'ar')"><Languages :size="15"/><span>{{ locale.locale === 'ar' ? 'EN' : 'عربي' }}</span></button>
           <div class="flex items-center gap-2.5 border-s border-slate-200 ps-2.5 md:ps-4">
             <div class="hidden text-start sm:block"><p class="max-w-36 truncate text-xs font-bold text-slate-800">{{ auth.fullName || t('nav.user') }}</p><p class="mt-0.5 text-[10px] text-slate-500">{{ auth.roleLabel || auth.role || t('nav.noRole') }}</p></div>
-            <span class="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand-dark text-xs font-extrabold text-white shadow-md shadow-cyan-900/15">{{ initials }}</span>
+            <span class="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-accent text-xs font-extrabold text-white shadow-brand">{{ initials }}</span>
           </div>
-          <button class="group inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700" @click="logout"><LogOut :size="15" class="transition-transform group-hover:-translate-x-0.5" /><span class="hidden sm:inline">{{ t('nav.logout') }}</span></button>
+          <button class="group inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600 transition hover:border-accent/40 hover:bg-accent-50 hover:text-accent-dark" @click="logout"><LogOut :size="15" class="transition-transform group-hover:-translate-x-0.5" /><span class="hidden sm:inline">{{ t('nav.logout') }}</span></button>
         </div>
       </header>
       <main class="mx-auto w-full max-w-[1680px] p-4 md:p-7 xl:p-9">
