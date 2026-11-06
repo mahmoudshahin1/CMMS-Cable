@@ -8,7 +8,8 @@ import type { Machine } from '../stores/liveMonitoring'
 import { buildChronology, calculateShiftMinutes, downtimeCategories, downtimeCategoryLabel, formatCairoDate } from '../lib/downtime'
 import { SUPERVISOR_ROLES } from '../lib/roles'
 import { useLocaleStore } from '../stores/locale'
-import { ClipboardList, Clock3, Factory, FileText, Wrench } from 'lucide-vue-next'
+import { ClipboardList, Clock3, Factory, FileText, Hourglass, Search, Siren, Wrench } from 'lucide-vue-next'
+import StatTile from '../components/StatTile.vue'
 import { createLiveRefresh } from '../lib/liveRefresh'
 
 type Downtime = { id: string; machine_id: string; category: string | null; reason: string; is_maintenance_requested: boolean; comments: string | null; started_at: string; ended_at: string | null; work_order_id: string | null }
@@ -34,6 +35,43 @@ const visibleMachines = computed(() => {
   return machines.value
 })
 const sortedLogs = computed(() => [...logs.value].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()))
+
+type HistoryFilter = 'all' | 'active' | 'closed'
+const historyFilter = ref<HistoryFilter>('all')
+const search = ref('')
+// "Today" follows the browser clock; `now` ticks every 30s so it also rolls over at midnight.
+const summary = computed(() => {
+  const nowMs = now.value
+  const day = new Date(nowMs); day.setHours(0, 0, 0, 0)
+  const since = day.getTime()
+  let active = 0; let awaiting = 0; let started = 0; let minutes = 0
+  for (const log of logs.value) {
+    const start = new Date(log.started_at).getTime()
+    const end = log.ended_at ? new Date(log.ended_at).getTime() : nowMs
+    if (!log.ended_at) { active += 1; if (log.is_maintenance_requested) awaiting += 1 }
+    if (start >= since) started += 1
+    const overlap = Math.min(end, nowMs) - Math.max(start, since)
+    if (overlap > 0) minutes += overlap / 60000
+  }
+  return { active, awaiting, started, minutes: Math.round(minutes) }
+})
+const tiles = computed(() => [
+  { key: 'active', label: t('downtime.tileActive'), value: summary.value.active, tone: 'red', icon: Siren, hint: '' },
+  { key: 'today', label: t('downtime.tileToday'), value: summary.value.started, tone: 'brand', icon: ClipboardList, hint: '' },
+  { key: 'minutes', label: t('downtime.tileMinutes'), value: minutesLabel(summary.value.minutes), tone: 'amber', icon: Hourglass, hint: t('downtime.tileMinutesHint') },
+  { key: 'maintenance', label: t('downtime.tileMaintenance'), value: summary.value.awaiting, tone: 'violet', icon: Wrench, hint: '' },
+] as const)
+const historyChips = computed(() => [
+  { key: 'all' as const, label: t('downtime.filterAll'), count: logs.value.length },
+  { key: 'active' as const, label: t('downtime.active'), count: summary.value.active },
+  { key: 'closed' as const, label: t('downtime.closed'), count: logs.value.length - summary.value.active },
+])
+const visibleLogs = computed(() => {
+  const query = search.value.trim().toLowerCase()
+  return sortedLogs.value.filter((log) =>
+    (historyFilter.value === 'all' || (historyFilter.value === 'active' ? !log.ended_at : Boolean(log.ended_at)))
+    && (!query || `${machineInfo(log.machine_id)} ${log.reason} ${categoryName(log.category)}`.toLowerCase().includes(query)))
+})
 
 function canCloseLog(log: Downtime): boolean {
   if (!canClose.value) return false
@@ -113,11 +151,16 @@ function machineInfo(id: string) {
   const machine = machines.value.find((item) => item.id === id)
   return machine ? `${machine.code} · ${machine.name} · ${t(`downtime.departments.${machine.department}`)}` : id
 }
+function minutesLabel(total: number) {
+  const hours = Math.floor(total / 60)
+  const days = Math.floor(hours / 24)
+  if (days) return `${days} ${t('downtime.day')} ${t('downtime.and')} ${hours % 24} ${t('downtime.hour')}`
+  if (hours) return `${hours} ${t('downtime.hour')} ${t('downtime.and')} ${total % 60} ${t('downtime.min')}`
+  return `${total} ${t('downtime.min')}`
+}
 function duration(startedAt: string, endedAt: string | null) {
-  const minutes = Math.max(0, Math.floor(((endedAt ? new Date(endedAt).getTime() : now.value) - new Date(startedAt).getTime()) / 60000))
-  const hours = Math.floor(minutes / 60); const days = Math.floor(hours / 24)
-  if (locale.locale === 'en') return days ? `${days} ${t('downtime.day')} ${t('downtime.and')} ${hours % 24} ${t('downtime.hour')}` : hours ? `${hours} ${t('downtime.hour')} ${t('downtime.and')} ${minutes % 60} ${t('downtime.min')}` : `${minutes} ${t('downtime.min')}`
-  return days ? `${days} يوم و${hours % 24} ساعة` : hours ? `${hours} ساعة و${minutes % 60} دقيقة` : `${minutes} دقيقة`
+  const end = endedAt ? new Date(endedAt).getTime() : now.value
+  return minutesLabel(Math.max(0, Math.floor((end - new Date(startedAt).getTime()) / 60000)))
 }
 
 function categoryName(value: string | null) { return downtimeCategoryLabel(value, locale.locale) }
@@ -136,7 +179,10 @@ onUnmounted(() => { liveRefresh.dispose(); if (timer) clearInterval(timer); if (
 <template>
   <div :dir="locale.direction" :lang="locale.locale">
     <div class="page-hero enter"><div><h1 class="text-2xl font-extrabold md:text-3xl">{{ t('downtime.title') }}</h1><p class="mt-1 text-sm text-white/60">{{ t('downtime.subtitle') }}</p></div></div>
-    <p v-if="error" class="mb-4 rounded-lg bg-red-50 p-4 text-red-700" role="alert">{{ error }}</p>
+    <div v-if="!loading" class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+<StatTile v-for="(tile, i) in tiles" :key="tile.key" :label="tile.label" :value="tile.value" :tone="tile.tone" :icon="tile.icon" :hint="tile.hint || undefined" :style="{ '--d': `${i * 60}ms` }" />
+</div>
+<p v-if="error" class="mb-4 rounded-lg bg-red-50 p-4 text-red-700" role="alert">{{ error }}</p>
     <p v-if="notice" class="mb-4 rounded-lg bg-emerald-50 p-4 text-emerald-800" role="status">{{ notice }}</p>
     <form v-if="canCreate" class="surface-card mb-7 overflow-hidden p-0" @submit.prevent="createDowntime">
       <div class="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-l from-accent-50/80 to-white px-5 py-4 md:px-7"><span class="grid h-11 w-11 place-items-center rounded-xl bg-brand text-white shadow-lg shadow-brand-navy/15"><ClipboardList :size="21" /></span><div><h2 class="text-lg font-extrabold text-brand-navy">{{ t('downtime.formTitle') }}</h2><p class="mt-0.5 text-xs text-slate-500">{{ t('downtime.subtitle') }}</p></div></div>
@@ -150,9 +196,16 @@ onUnmounted(() => { liveRefresh.dispose(); if (timer) clearInterval(timer); if (
       </div>
     </form>
     <p v-else class="mb-7 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">{{ t('downtime.noPermission') }}</p>
-    <h2 class="mb-3 flex items-center gap-2 text-lg font-extrabold text-brand-navy"><Clock3 :size="18" class="text-brand-dark" />{{ t('downtime.history') }}</h2>
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+<h2 class="flex items-center gap-2 text-lg font-extrabold text-brand-navy"><Clock3 :size="18" class="text-brand-dark" />{{ t('downtime.history') }}</h2>
+<div class="flex flex-wrap items-center gap-2">
+<button v-for="chip in historyChips" :key="chip.key" type="button" class="chip" :class="{ 'is-on': historyFilter === chip.key }" :aria-pressed="historyFilter === chip.key" @click="historyFilter = chip.key">{{ chip.label }}<b>{{ chip.count }}</b></button>
+<label class="relative block w-full sm:w-56"><Search :size="15" class="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" /><input v-model="search" type="search" class="form-control !min-h-10 !ps-9 !text-sm" :placeholder="t('downtime.searchPlaceholder')" :aria-label="t('downtime.searchPlaceholder')" /></label>
+</div>
+</div>
     <div v-if="loading" class="text-slate-500" role="status">{{ locale.locale === 'ar' ? 'جارٍ تحميل سجل التوقفات…' : 'Loading downtime records…' }}</div>
     <div v-else-if="!sortedLogs.length" class="rounded-xl border border-dashed bg-white p-10 text-center text-slate-500">{{ t('downtime.noLogs') }}</div>
-    <div v-else class="overflow-x-auto panel shadow-sm"><table class="w-full min-w-[850px] text-sm" :class="locale.direction === 'rtl' ? 'text-right' : 'text-left'"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">{{ t('downtime.machineDepartment') }}</th><th class="p-3">{{ t('downtime.cause') }}</th><th class="p-3">{{ t('downtime.start') }}</th><th class="p-3">{{ t('downtime.duration') }}</th><th class="p-3">{{ t('downtime.status') }}</th><th class="p-3">{{ t('downtime.action') }}</th></tr></thead><tbody><tr v-for="log in sortedLogs" :key="log.id" class="border-t"><td class="p-3 font-semibold">{{ machineInfo(log.machine_id) }}</td><td class="max-w-xs p-3"><p>{{ categoryName(log.category) }}</p><p class="mt-1 text-xs text-slate-500">{{ log.reason || '—' }}</p><p v-if="log.is_maintenance_requested" class="mt-1 text-xs text-amber-700">{{ t('downtime.maintenanceNeeded') }}</p></td><td class="p-3">{{ formatCairoDate(log.started_at, locale.locale) }}</td><td class="p-3">{{ duration(log.started_at, log.ended_at) }}</td><td class="p-3"><span class="rounded-full px-3 py-1 text-xs font-semibold" :class="log.ended_at ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-800'">{{ log.ended_at ? t('downtime.closed') : t('downtime.active') }}</span></td><td class="p-3"><button v-if="!log.ended_at && canCloseLog(log)" :disabled="saving" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" @click="closeDowntime(log)">{{ t('downtime.close') }}</button><span v-else-if="!log.ended_at" class="text-xs text-slate-400">{{ t('downtime.noPermissionClose') }}</span><span v-else class="text-xs text-slate-400">—</span></td></tr></tbody></table></div>
+    <div v-else-if="!visibleLogs.length" class="rounded-xl border border-dashed bg-white p-10 text-center text-slate-500">{{ t('downtime.noMatch') }}</div>
+<div v-else class="overflow-x-auto panel shadow-sm"><table class="w-full min-w-[850px] text-sm" :class="locale.direction === 'rtl' ? 'text-right' : 'text-left'"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">{{ t('downtime.machineDepartment') }}</th><th class="p-3">{{ t('downtime.cause') }}</th><th class="p-3">{{ t('downtime.start') }}</th><th class="p-3">{{ t('downtime.duration') }}</th><th class="p-3">{{ t('downtime.status') }}</th><th class="p-3">{{ t('downtime.action') }}</th></tr></thead><tbody><tr v-for="log in visibleLogs" :key="log.id" class="border-t" :class="log.ended_at ? '' : 'bg-red-50/50'"><td class="p-3 font-semibold">{{ machineInfo(log.machine_id) }}</td><td class="max-w-xs p-3"><p>{{ categoryName(log.category) }}</p><p class="mt-1 text-xs text-slate-500">{{ log.reason || '—' }}</p><p v-if="log.is_maintenance_requested" class="mt-1 text-xs text-amber-700">{{ t('downtime.maintenanceNeeded') }}</p></td><td class="p-3">{{ formatCairoDate(log.started_at, locale.locale) }}</td><td class="p-3 tabular-nums" :class="log.ended_at ? '' : 'font-bold text-red-700'">{{ duration(log.started_at, log.ended_at) }}</td><td class="p-3"><span class="rounded-full px-3 py-1 text-xs font-semibold" :class="log.ended_at ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-800'">{{ log.ended_at ? t('downtime.closed') : t('downtime.active') }}</span></td><td class="p-3"><button v-if="!log.ended_at && canCloseLog(log)" :disabled="saving" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" @click="closeDowntime(log)">{{ t('downtime.close') }}</button><span v-else-if="!log.ended_at" class="text-xs text-slate-400">{{ t('downtime.noPermissionClose') }}</span><span v-else class="text-xs text-slate-400">—</span></td></tr></tbody></table></div>
   </div>
 </template>

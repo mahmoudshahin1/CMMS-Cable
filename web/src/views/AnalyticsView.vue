@@ -24,7 +24,7 @@ type BadActor = { id: string; code: string; name: string; department: string; br
 type Funnel = { status: string; count: number }
 type ShiftSplit = { production_date: string; department: string; shift1_morning_minutes: number; shift2_evening_minutes: number; shift3_night_minutes: number }
 
-const colors = ['#00AEEF', '#123B66', '#24B47E', '#F3A63B', '#7C6CE7', '#F06464', '#5AA6B9']
+const colors = ['#0C4595', '#F04E37', '#24B47E', '#F3A63B', '#7C6CE7', '#082957', '#5AA6B9']
 const router = useRouter()
 const locale = useLocaleStore()
 const t = (key: string) => locale.t(`analytics.${key}`)
@@ -109,23 +109,23 @@ const availabilityTrendOption = computed<Record<string, unknown>>(() => {
   }
 })
 const causesOption = computed<Record<string, unknown>>(() => ({
-  color: ['#0A2540', '#00AEEF', '#24B47E', '#F3A63B', '#7C6CE7', '#F06464', '#5AA6B9', '#94A3B8'],
+  color: ['#082957', '#0C4595', '#F04E37', '#24B47E', '#F3A63B', '#7C6CE7', '#F06464', '#5AA6B9', '#94A3B8'],
   tooltip: { trigger: 'item', formatter: (params: { name: string; value: number; percent: number }) => `${downtimeCategoryLabel(params.name, locale.locale)}<br/><b>${number(params.value)} ${t('minuteUnit')}</b> · ${params.percent}%` },
   series: [{ type: 'pie', radius: ['56%', '78%'], center: ['50%', '48%'], avoidLabelOverlap: true, itemStyle: { borderColor: '#fff', borderWidth: 4, borderRadius: 7 }, label: { show: false }, emphasis: { scale: true, scaleSize: 8 }, data: downtimeByCause.value.map((row) => ({ name: row.category, value: Math.round(row.minutes) })) }],
 }))
 const departmentOption = computed<Record<string, unknown>>(() => ({
-  color: ['#00AEEF'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${number(value, 1)}%` },
+  color: ['#0C4595'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${number(value, 1)}%` },
   grid: { top: 12, left: 8, right: 20, bottom: 4, containLabel: true }, xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%', color: '#94a3b8' }, splitLine: { lineStyle: { color: '#edf2f7' } } },
   yAxis: { type: 'category', data: departmentAvailability.value.map((row) => departmentName(row.department)).reverse(), axisLabel: { color: '#475569', fontFamily: locale.locale === 'ar' ? 'Cairo' : 'Inter' }, axisLine: { show: false }, axisTick: { show: false } },
   series: [{ type: 'bar', barWidth: 15, showBackground: true, backgroundStyle: { color: '#f1f5f9', borderRadius: 8 }, itemStyle: { borderRadius: [0, 8, 8, 0], color: (params: { value: number }) => params.value >= 90 ? '#24B47E' : params.value >= 75 ? '#F3A63B' : '#F06464' }, data: departmentAvailability.value.map((row) => Number(row.availability_pct)).reverse() }],
 }))
 const workOrderOption = computed<Record<string, unknown>>(() => ({
-  color: ['#00AEEF'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } }, grid: { top: 10, left: 8, right: 20, bottom: 4, containLabel: true },
+  color: ['#0C4595'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } }, grid: { top: 10, left: 8, right: 20, bottom: 4, containLabel: true },
   xAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#edf2f7' } }, axisLabel: { color: '#94a3b8' } }, yAxis: { type: 'category', data: workOrderStatus.value.map((row) => statusLabel(row.status, locale.locale)).reverse(), axisLabel: { color: '#475569', fontFamily: locale.locale === 'ar' ? 'Cairo' : 'Inter' }, axisLine: { show: false }, axisTick: { show: false } },
   series: [{ type: 'bar', barWidth: 17, itemStyle: { borderRadius: [0, 8, 8, 0], color: '#123B66' }, data: workOrderStatus.value.map((row) => Number(row.count)).reverse(), label: { show: true, position: 'insideRight', color: '#fff', fontWeight: 'bold' } }],
 }))
 const shiftOption = computed<Record<string, unknown>>(() => ({
-  color: ['#00AEEF', '#F3A63B', '#123B66'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${number(value)} ${t('minuteUnit')}` }, legend: { bottom: 0, textStyle: { fontFamily: locale.locale === 'ar' ? 'Cairo' : 'Inter', fontSize: 10 } },
+  color: ['#0C4595', '#F04E37', '#082957'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${number(value)} ${t('minuteUnit')}` }, legend: { bottom: 0, textStyle: { fontFamily: locale.locale === 'ar' ? 'Cairo' : 'Inter', fontSize: 10 } },
   grid: { top: 20, left: 8, right: 15, bottom: 45, containLabel: true }, xAxis: { type: 'category', data: shiftsByDate.value.map(([date]) => dateLabel(date)), axisLabel: { color: '#64748b', fontFamily: locale.locale === 'ar' ? 'Cairo' : 'Inter' } }, yAxis: { type: 'value', axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#edf2f7' } } },
   series: [
     { name: t('shifts.morning'), type: 'bar', stack: 'total', barMaxWidth: 25, itemStyle: { borderRadius: [0, 0, 4, 4] }, data: shiftsByDate.value.map(([, value]) => Math.round(value.morning)) },

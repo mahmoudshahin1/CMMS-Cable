@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ClipboardX, Filter, SlidersHorizontal, X } from 'lucide-vue-next'
+import { CircleCheck, ClipboardList, Download, Flame, Layers, Search, SlidersHorizontal, X } from 'lucide-vue-next'
+import StatTile from '../components/StatTile.vue'
 import { supabase } from '../api/supabase'
 import {
   departmentLabel,
@@ -72,15 +73,38 @@ const filteredRows = computed(() => rows.value.filter((row) => {
     && (!priorityFilter.value || row.priority === priorityFilter.value)
     && (!typeFilter.value || row.type === typeFilter.value)
     && (!technicianFilter.value || row.assigned_to_technician_id === technicianFilter.value)
+    && matchesQuick(row) && matchesSearch(row)
 }))
 
 const truncated = computed(() => rows.value.length >= ROW_LIMIT)
-const openCount = computed(() => rows.value.filter((r) => ['open', 'assigned', 'inProgress', 'pendingParts'].includes(r.status)).length)
-const criticalCount = computed(() => rows.value.filter((r) => r.priority === 'critical' && !['verified', 'verifiedClosed'].includes(r.status)).length)
-const completedTodayCount = computed(() => {
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  return rows.value.filter((r) => ['completed', 'verified', 'verifiedClosed'].includes(r.status) && new Date(r.updated_at) >= today).length
-})
+type Quick = 'all' | 'open' | 'critical' | 'closedToday'
+const quick = ref<Quick>('all')
+const search = ref('')
+const isOpen = (row: WorkOrder) => ['open', 'assigned', 'inProgress', 'pendingParts'].includes(row.status)
+const isCriticalOpen = (row: WorkOrder) => row.priority === 'critical' && !['verified', 'verifiedClosed'].includes(row.status)
+const isClosedToday = (row: WorkOrder, since: Date) => ['completed', 'verified', 'verifiedClosed'].includes(row.status) && new Date(row.updated_at) >= since
+function startOfToday() { const day = new Date(); day.setHours(0, 0, 0, 0); return day }
+const openCount = computed(() => rows.value.filter(isOpen).length)
+const criticalCount = computed(() => rows.value.filter(isCriticalOpen).length)
+const completedTodayCount = computed(() => { const since = startOfToday(); return rows.value.filter((row) => isClosedToday(row, since)).length })
+const tiles = computed(() => [
+  { key: 'all', label: t('workOrders.tileAll'), value: rows.value.length, tone: 'brand', icon: Layers },
+  { key: 'open', label: t('workOrders.openOrders'), value: openCount.value, tone: 'amber', icon: ClipboardList },
+  { key: 'critical', label: t('workOrders.criticalOpen'), value: criticalCount.value, tone: 'red', icon: Flame },
+  { key: 'closedToday', label: t('workOrders.closedToday'), value: completedTodayCount.value, tone: 'emerald', icon: CircleCheck },
+] as const)
+function matchesQuick(row: WorkOrder) {
+  if (quick.value === 'open') return isOpen(row)
+  if (quick.value === 'critical') return isCriticalOpen(row)
+  if (quick.value === 'closedToday') return isClosedToday(row, startOfToday())
+  return true
+}
+function matchesSearch(row: WorkOrder) {
+  const query = search.value.trim().toLowerCase()
+  if (!query) return true
+  const machine = machineOf(row)
+  return [row.title, row.id, machine?.code, machine?.name].some((value) => value?.toLowerCase().includes(query))
+}
 
 function machineOf(row: WorkOrder): Machine | null {
   if (Array.isArray(row.machine)) return row.machine[0] ?? null
@@ -136,7 +160,29 @@ async function refresh() {
   }
 }
 
+// Cells that start with = + - @ would be run as formulas by Excel, so they are prefixed with an apostrophe.
+function csvCell(value: string) {
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+  return `"${safe.replaceAll('"', '""')}"`
+}
+function exportCsv() {
+  const head = [t('workOrders.id'), t('workOrders.heading'), t('workOrders.machine'), t('workOrders.department'), t('workOrders.assignee'), t('workOrders.type'), t('workOrders.status'), t('workOrders.priority'), t('workOrders.created')]
+  const body = filteredRows.value.map((row) => {
+    const machine = machineOf(row)
+    return [shortId(row.id), row.title, machine?.code ?? shortId(row.machine_id), departmentLabel(machine?.department, locale.locale), technicianName(row.assigned_to_technician_id), typeLabel(row.type, locale.locale), statusLabel(row.status, locale.locale), priorityInfo(row.priority, locale.locale).label, formatDateTime(row.created_at, locale.locale)]
+  })
+  const text = '\uFEFF' + [head, ...body].map((line) => line.map((cell) => csvCell(String(cell))).join(',')).join('\r\n')
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `work-orders-${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 function clearFilters() {
+  quick.value = 'all'
+  search.value = ''
   departmentFilter.value = ''
   statusFilter.value = ''
   priorityFilter.value = ''
@@ -172,12 +218,18 @@ onUnmounted(() => { liveRefresh.dispose();
     <p v-if="loading" class="rounded-xl border bg-white p-6 text-slate-500" role="status">{{ t('workOrders.loading') }}</p>
     <p v-else-if="error && !rows.length" class="rounded-lg bg-accent-50 p-4 text-accent-dark" role="alert">{{ error }}</p>
     <template v-else>
-      <!-- quick-glance summary strip -->
-      <div class="mb-5 grid grid-cols-3 gap-3 rise-in">
-        <div class="surface-card flex items-center gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand"><ClipboardX :size="18" /></span><div><p class="text-xl font-extrabold text-brand-navy">{{ openCount }}</p><p class="text-[11px] text-slate-500">{{ t('workOrders.openOrders') }}</p></div></div>
-        <div class="surface-card flex items-center gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-50 text-accent-dark"><Filter :size="18" /></span><div><p class="text-xl font-extrabold text-accent-dark">{{ criticalCount }}</p><p class="text-[11px] text-slate-500">{{ t('workOrders.criticalOpen') }}</p></div></div>
-        <div class="surface-card flex items-center gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><SlidersHorizontal :size="18" /></span><div><p class="text-xl font-extrabold text-emerald-700">{{ completedTodayCount }}</p><p class="text-[11px] text-slate-500">{{ t('workOrders.closedToday') }}</p></div></div>
+      <!-- summary tiles double as quick filters -->
+      <div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile v-for="(tile, i) in tiles" :key="tile.key" interactive :active="quick === tile.key" :label="tile.label" :value="tile.value" :tone="tile.tone" :icon="tile.icon" :style="{ '--d': `${i * 60}ms` }" @select="quick = quick === tile.key ? 'all' : tile.key" />
       </div>
+      <div class="mb-5 flex flex-wrap items-center gap-3">
+        <label class="relative block min-w-0 flex-1 sm:max-w-sm">
+          <Search :size="15" class="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input v-model="search" type="search" class="form-control !min-h-10 !ps-9 !text-sm" :placeholder="t('workOrders.searchPlaceholder')" :aria-label="t('workOrders.searchPlaceholder')" />
+        </label>
+        <button type="button" class="chip ms-auto disabled:opacity-50" :disabled="!filteredRows.length" @click="exportCsv"><Download :size="14" />{{ t('workOrders.exportCsv') }}<b>{{ filteredRows.length }}</b></button>
+      </div>
+
 
       <!-- filter toolbar -->
       <div class="surface-card mb-5 overflow-hidden">

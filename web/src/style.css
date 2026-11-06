@@ -149,3 +149,17 @@ html[data-motion='lite'] .page-enter-active, html[data-motion='lite'] .page-leav
 [data-status='downtimeMaintenance'] .stat-tile { --tone: 239 68 68; }
 [data-status='underRepair'] .stat-tile { --tone: 139 92 246; }
 html[data-motion='lite'] .stat-tile:hover { transform: none; }
+
+/* Tone + selected state for StatTile (declared after .stat-tile so they win) */
+.stat-tile.tone-brand { --tone: 12 69 149; }
+.stat-tile.tone-red { --tone: 239 68 68; }
+.stat-tile.tone-amber { --tone: 245 158 11; }
+.stat-tile.tone-emerald { --tone: 16 185 129; }
+.stat-tile.tone-violet { --tone: 139 92 246; }
+.stat-tile.is-active { border-color: rgb(var(--tone) / .75); box-shadow: 0 0 0 3px rgb(var(--tone) / .18), 0 16px 30px -18px rgb(var(--tone) / .7); }
+button.stat-tile:focus-visible { outline: 3px solid rgb(var(--tone) / .35); outline-offset: 2px; }
+
+.chip { display: inline-flex; align-items: center; gap: .45rem; border-radius: 9999px; border: 1px solid rgb(203 213 225); background: #fff; padding: .4rem .8rem; font-size: .75rem; font-weight: 700; color: rgb(71 85 105); transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease; }
+.chip:hover { border-color: rgb(12 69 149 / .5); color: #0C4595; }
+.chip.is-on { border-color: #082957; background: #082957; color: #fff; box-shadow: 0 8px 18px -10px rgb(8 41 87 / .8); }
+.chip b { font-variant-numeric: tabular-nums; opacity: .75; }
