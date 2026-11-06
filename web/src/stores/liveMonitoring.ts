@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../api/supabase'
 import { createLiveRefresh } from '../lib/liveRefresh'
+import { useLocaleStore } from './locale'
 
 export type Machine = {
   id: string; code: string; name: string; department: string; status: string
@@ -23,7 +24,7 @@ export const useLiveMonitoringStore = defineStore('live-monitoring', () => {
   let scheduler: ReturnType<typeof createLiveRefresh> | null = null
 
   async function refresh() {
-    if (!supabase) { error.value = 'إعداد Supabase غير مكتمل.'; return }
+    if (!supabase) { error.value = useLocaleStore().t('workOrders.supabaseMissing'); return }
     // Only the very first load shows the skeleton. Later refreshes swap data in
     // place so cards don't flash and entrance animations don't replay.
     const firstLoad = machines.value.length === 0

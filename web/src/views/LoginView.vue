@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Activity, ArrowLeft, Eye, EyeOff, Lock, Mail, ShieldCheck, Zap } from 'lucide-vue-next'
+import { Activity, ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck, Zap } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { supabaseConfigError } from '../api/supabase'
 import { useLocaleStore } from '../stores/locale'
@@ -113,7 +113,7 @@ async function submit() {
             <button :disabled="auth.loading || Boolean(supabaseConfigError)" class="enter btn-shine group mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand via-brand-light to-brand-dark px-4 py-3.5 text-sm font-extrabold text-white shadow-[0_16px_30px_-12px_rgba(12,69,149,.8)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_36px_-12px_rgba(240,78,55,.6)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60" style="--d:540ms">
               <span v-if="auth.loading" class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
               {{ auth.loading ? t('login.loading') : t('login.submit') }}
-              <ArrowLeft v-if="!auth.loading" :size="17" class="transition-transform duration-300 group-hover:-translate-x-1.5" />
+              <component :is="locale.direction === 'rtl' ? ArrowLeft : ArrowRight" v-if="!auth.loading" :size="17" class="transition-transform duration-300 ltr:group-hover:translate-x-1.5 rtl:group-hover:-translate-x-1.5" />
             </button>
             <p class="enter mt-6 text-center text-[11px] text-slate-400" style="--d:620ms">{{ t('login.access') }}</p>
           </form>

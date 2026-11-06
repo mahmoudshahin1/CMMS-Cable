@@ -33,11 +33,11 @@ async function logout() {
       <h1 class="mt-2 text-2xl font-extrabold text-brand-navy md:text-3xl">{{ t('noAccess.title') }}</h1>
       <p class="mx-auto mt-3 max-w-md text-sm leading-7 text-slate-600">{{ t('noAccess.message') }}</p>
 
-      <div class="mx-auto mt-7 max-w-sm rounded-2xl border border-slate-200 bg-slate-50 p-4 text-right">
+      <div class="mx-auto mt-7 max-w-sm rounded-2xl border border-slate-200 bg-slate-50 p-4 text-start">
         <p class="text-xs text-slate-500">{{ t('noAccess.account') }}</p>
-        <p class="mt-1 font-bold text-brand-navy">{{ auth.fullName || auth.user?.email || 'مستخدم' }}</p>
+        <p class="mt-1 font-bold text-brand-navy">{{ auth.fullName || auth.user?.email || (locale.locale === 'ar' ? 'مستخدم' : 'User') }}</p>
         <p class="mt-2 text-xs text-slate-500">{{ t('noAccess.role') }}</p>
-        <p class="mt-1 font-semibold text-slate-700">{{ auth.roleLabel || 'غير محدد' }}</p>
+        <p class="mt-1 font-semibold text-slate-700">{{ auth.roleLabel || (locale.locale === 'ar' ? 'غير محدد' : 'Not specified') }}</p>
       </div>
 
       <div class="mt-7 flex flex-col items-center gap-3">

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { ClipboardX, Filter, SlidersHorizontal, X } from 'lucide-vue-next'
 import { supabase } from '../api/supabase'
 import {
+  departmentLabel,
   departmentLabels,
   formatDateTime,
   priorityInfo,
@@ -52,6 +53,7 @@ const priorityFilter = ref('')
 const typeFilter = ref('')
 const technicianFilter = ref('')
 const showFilters = ref(false)
+const departmentKeys = Object.keys(departmentLabels)
 
 const liveRefresh = createLiveRefresh(refresh)
 let channel: ReturnType<NonNullable<typeof supabase>['channel']> | null = null
@@ -87,7 +89,7 @@ function machineOf(row: WorkOrder): Machine | null {
 
 function technicianName(id: string | null): string {
   if (!id) return t('workOrders.unassigned')
-  return people.value[id] || `فني #${shortId(id)}`
+  return people.value[id] || `${t('workOrders.techPrefix')}${shortId(id)}`
 }
 
 function openWorkOrder(id: string) {
@@ -108,7 +110,7 @@ async function loadProfiles(workOrders: WorkOrder[]) {
 
 async function refresh() {
   if (!supabase) {
-    error.value = 'إعداد Supabase غير مكتمل. أضف متغيرات البيئة المطلوبة.'
+    error.value = t('workOrders.supabaseMissing')
     loading.value = false
     return
   }
@@ -127,7 +129,7 @@ async function refresh() {
     error.value = ''
     await loadProfiles(workOrders)
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : 'تعذر تحميل أوامر الشغل.'
+    error.value = cause instanceof Error ? cause.message : t('workOrders.loadListError')
   } finally {
     loading.value = false
     refreshing.value = false
@@ -172,23 +174,23 @@ onUnmounted(() => { liveRefresh.dispose();
     <template v-else>
       <!-- quick-glance summary strip -->
       <div class="mb-5 grid grid-cols-3 gap-3 rise-in">
-        <div class="surface-card flex items-center gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand"><ClipboardX :size="18" /></span><div><p class="text-xl font-extrabold text-brand-navy">{{ openCount }}</p><p class="text-[11px] text-slate-500">{{ locale.locale === 'ar' ? 'أوامر مفتوحة' : 'Open orders' }}</p></div></div>
-        <div class="surface-card flex items-center gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-50 text-accent-dark"><Filter :size="18" /></span><div><p class="text-xl font-extrabold text-accent-dark">{{ criticalCount }}</p><p class="text-[11px] text-slate-500">{{ locale.locale === 'ar' ? 'حرجة بدون إغلاق' : 'Critical, open' }}</p></div></div>
-        <div class="surface-card flex items-center gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><SlidersHorizontal :size="18" /></span><div><p class="text-xl font-extrabold text-emerald-700">{{ completedTodayCount }}</p><p class="text-[11px] text-slate-500">{{ locale.locale === 'ar' ? 'أُغلقت اليوم' : 'Closed today' }}</p></div></div>
+        <div class="surface-card flex items-center gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand"><ClipboardX :size="18" /></span><div><p class="text-xl font-extrabold text-brand-navy">{{ openCount }}</p><p class="text-[11px] text-slate-500">{{ t('workOrders.openOrders') }}</p></div></div>
+        <div class="surface-card flex items-center gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-50 text-accent-dark"><Filter :size="18" /></span><div><p class="text-xl font-extrabold text-accent-dark">{{ criticalCount }}</p><p class="text-[11px] text-slate-500">{{ t('workOrders.criticalOpen') }}</p></div></div>
+        <div class="surface-card flex items-center gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><SlidersHorizontal :size="18" /></span><div><p class="text-xl font-extrabold text-emerald-700">{{ completedTodayCount }}</p><p class="text-[11px] text-slate-500">{{ t('workOrders.closedToday') }}</p></div></div>
       </div>
 
       <!-- filter toolbar -->
       <div class="surface-card mb-5 overflow-hidden">
         <button class="flex w-full items-center justify-between gap-3 p-4 text-sm font-bold text-brand-navy" @click="showFilters = !showFilters">
-          <span class="flex items-center gap-2"><SlidersHorizontal :size="16" class="text-brand" />{{ locale.locale === 'ar' ? 'الفلاتر' : 'Filters' }}<span v-if="activeFilterCount" class="grid h-5 w-5 place-items-center rounded-full bg-accent text-[10px] font-extrabold text-white">{{ activeFilterCount }}</span></span>
-          <span class="text-xs font-semibold text-slate-400">{{ showFilters ? (locale.locale === 'ar' ? 'إخفاء' : 'Hide') : (locale.locale === 'ar' ? 'إظهار' : 'Show') }}</span>
+          <span class="flex items-center gap-2"><SlidersHorizontal :size="16" class="text-brand" />{{ t('workOrders.filters') }}<span v-if="activeFilterCount" class="grid h-5 w-5 place-items-center rounded-full bg-accent text-[10px] font-extrabold text-white">{{ activeFilterCount }}</span></span>
+          <span class="text-xs font-semibold text-slate-400">{{ showFilters ? t('workOrders.hide') : t('workOrders.show') }}</span>
         </button>
         <div v-show="showFilters" class="grid gap-3 border-t border-slate-100 p-4 sm:grid-cols-2 xl:grid-cols-5">
           <label class="grid gap-1 text-sm font-semibold text-slate-700">
             {{ t('workOrders.department') }}
             <select v-model="departmentFilter" class="rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal focus:border-brand focus:outline-none">
               <option value="">{{ t('workOrders.allDepartments') }}</option>
-              <option v-for="(label, value) in departmentLabels" :key="value" :value="value">{{ label }}</option>
+              <option v-for="value in departmentKeys" :key="value" :value="value">{{ departmentLabel(value, locale.locale) }}</option>
             </select>
           </label>
           <label class="grid gap-1 text-sm font-semibold text-slate-700">
@@ -223,7 +225,7 @@ onUnmounted(() => { liveRefresh.dispose();
         </div>
       </div>
 
-      <p v-if="error" class="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800" role="status">تعذر تحديث أحدث البيانات: {{ error }}</p>
+      <p v-if="error" class="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800" role="status">{{ t('workOrders.refreshError') }} {{ error }}</p>
 
       <div v-if="!rows.length" class="rounded-xl border border-dashed bg-white p-8 text-center text-slate-500">
         {{ t('workOrders.empty') }}
@@ -233,7 +235,7 @@ onUnmounted(() => { liveRefresh.dispose();
         <button class="mt-3 rounded-lg px-3 py-2 text-sm font-semibold text-brand-dark hover:bg-brand-50" @click="clearFilters">{{ t('workOrders.clear') }}</button>
       </div>
       <div v-else class="table-scroll overflow-x-auto rounded-xl border bg-white shadow-sm">
-        <table class="w-full min-w-[960px] text-right text-sm">
+        <table class="w-full min-w-[960px] text-start text-sm">
           <thead class="bg-slate-50 text-slate-600">
             <tr>
               <th class="p-3 font-semibold">{{ t('workOrders.id') }}</th>
@@ -241,9 +243,9 @@ onUnmounted(() => { liveRefresh.dispose();
               <th class="p-3 font-semibold">{{ t('workOrders.machine') }}</th>
               <th class="p-3 font-semibold">{{ t('workOrders.department') }}</th>
               <th class="p-3 font-semibold">{{ t('workOrders.assignee') }}</th>
-              <th class="p-3 font-semibold">النوع</th>
-              <th class="p-3 font-semibold">الحالة</th>
-              <th class="p-3 font-semibold">الأولوية</th>
+              <th class="p-3 font-semibold">{{ t('workOrders.type') }}</th>
+              <th class="p-3 font-semibold">{{ t('workOrders.status') }}</th>
+              <th class="p-3 font-semibold">{{ t('workOrders.priority') }}</th>
               <th class="p-3 font-semibold">{{ t('workOrders.created') }}</th>
             </tr>
           </thead>
@@ -254,24 +256,24 @@ onUnmounted(() => { liveRefresh.dispose();
               class="group cursor-pointer border-t border-s-2 border-s-transparent transition duration-150 hover:border-s-accent hover:bg-brand-50/50 focus:bg-brand-50/50 focus:outline-none"
               :style="{ '--rise-delay': `${Math.min(ri, 14) * 28}ms` }"
               tabindex="0"
-              :aria-label="`فتح أمر الشغل ${shortId(row.id)}: ${row.title}`"
+              :aria-label="`${t('workOrders.openAria')} ${shortId(row.id)}: ${row.title}`"
               @click="openWorkOrder(row.id)"
               @keydown.enter="openWorkOrder(row.id)"
             >
               <td class="p-3 font-mono text-xs text-brand-dark">#{{ shortId(row.id) }}</td>
               <td class="max-w-64 truncate p-3 font-semibold text-slate-800">{{ row.title }}</td>
               <td class="p-3">{{ machineOf(row)?.code ?? shortId(row.machine_id) }}</td>
-              <td class="p-3">{{ departmentLabels[machineOf(row)?.department ?? ''] ?? machineOf(row)?.department ?? '—' }}</td>
+              <td class="p-3">{{ departmentLabel(machineOf(row)?.department, locale.locale) }}</td>
               <td class="p-3">{{ technicianName(row.assigned_to_technician_id) }}</td>
               <td class="p-3">{{ typeLabel(row.type, locale.locale) }}</td>
               <td class="p-3"><span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusClass(row.status)">{{ statusLabel(row.status, locale.locale) }}</span></td>
               <td class="p-3"><span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold" :class="priorityInfo(row.priority, locale.locale).className"><i v-if="row.priority === 'critical'" class="h-1.5 w-1.5 animate-pulse rounded-full bg-current"></i>{{ priorityInfo(row.priority, locale.locale).label }}</span></td>
-              <td class="p-3 text-slate-600" :title="formatDateTime(row.created_at)">{{ relativeTime(row.created_at) }}</td>
+              <td class="p-3 text-slate-600" :title="formatDateTime(row.created_at, locale.locale)">{{ relativeTime(row.created_at, locale.locale) }}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p v-if="truncated" class="mt-3 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800">{{ locale.locale === 'ar' ? `يتم عرض أحدث ${ROW_LIMIT} أمر شغل فقط.` : `Showing the latest ${ROW_LIMIT} work orders only.` }}</p>
+      <p v-if="truncated" class="mt-3 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800">{{ t('workOrders.truncated').replace('{n}', String(ROW_LIMIT)) }}</p>
       <p v-if="rows.length" class="mt-3 text-xs text-slate-500">{{ t('workOrders.count') }} {{ filteredRows.length }} {{ t('workOrders.of') }} {{ rows.length }} {{ t('workOrders.orders') }}</p>
     </template>
   </section>

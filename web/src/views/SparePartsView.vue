@@ -21,7 +21,7 @@ const filtered = computed(() => {
 })
 
 async function refresh() {
-  if (!supabase) { error.value = 'إعداد Supabase غير مكتمل.'; loading.value = false; return }
+  if (!supabase) { error.value = t('workOrders.supabaseMissing'); loading.value = false; return }
   const [partResult, bomResult] = await Promise.all([
     supabase.from('spare_parts').select('*').order('part_code'),
     supabase.from('machine_bom').select('spare_part_id'),

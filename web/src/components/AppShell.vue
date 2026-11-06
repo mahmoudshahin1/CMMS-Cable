@@ -33,7 +33,7 @@ async function logout() { await auth.signOut(); await router.replace('/login') }
       <div class="pointer-events-none absolute inset-x-0 top-0 h-[2px] cable-flow opacity-70"></div>
 
       <div class="relative flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 lg:block lg:px-5 lg:pb-6 lg:pt-6">
-        <RouterLink to="/plant-floor" class="block rounded-2xl bg-white px-4 py-3 shadow-brand transition duration-300 hover:-translate-y-0.5 hover:shadow-xl" aria-label="Energya Cables — الصفحة الرئيسية">
+        <RouterLink to="/plant-floor" class="block rounded-2xl bg-white px-4 py-3 shadow-brand transition duration-300 hover:-translate-y-0.5 hover:shadow-xl" aria-label="Energya Cables">
           <img :src="logoUrl" alt="Energya Cables" class="mx-auto h-12 w-full max-w-[205px] object-contain" />
         </RouterLink>
         <div class="hidden pt-4 lg:block">
@@ -81,7 +81,7 @@ async function logout() { await auth.signOut(); await router.replace('/login') }
             <div class="hidden text-start sm:block"><p class="max-w-36 truncate text-xs font-bold text-slate-800">{{ auth.fullName || t('nav.user') }}</p><p class="mt-0.5 text-[10px] text-slate-500">{{ auth.roleLabel || auth.role || t('nav.noRole') }}</p></div>
             <span class="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-accent text-xs font-extrabold text-white shadow-brand">{{ initials }}</span>
           </div>
-          <button class="group inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600 transition hover:border-accent/40 hover:bg-accent-50 hover:text-accent-dark" @click="logout"><LogOut :size="15" class="transition-transform group-hover:-translate-x-0.5" /><span class="hidden sm:inline">{{ t('nav.logout') }}</span></button>
+          <button class="group inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600 transition hover:border-accent/40 hover:bg-accent-50 hover:text-accent-dark" @click="logout"><LogOut :size="15" class="transition-transform ltr:group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5" /><span class="hidden sm:inline">{{ t('nav.logout') }}</span></button>
         </div>
       </header>
       <main class="mx-auto w-full max-w-[1680px] p-4 md:p-7 xl:p-9">

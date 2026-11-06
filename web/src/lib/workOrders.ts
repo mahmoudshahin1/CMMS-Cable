@@ -1,5 +1,6 @@
 import { supabase } from '../api/supabase'
 import { TECHNICIAN_ROLES } from './roles'
+import { useLocaleStore } from '../stores/locale'
 
 export type Technician = {
   id: string
@@ -11,7 +12,7 @@ export type Technician = {
 type VersionedWorkOrder = { id: string; version: number }
 
 function requireSupabase() {
-  if (!supabase) throw new Error('إعداد Supabase غير مكتمل.')
+  if (!supabase) throw new Error(useLocaleStore().t('workOrders.supabaseMissing'))
   return supabase
 }
 
@@ -62,6 +63,16 @@ export const departmentLabels: Record<string, string> = {
   rewinding: 'قسم إعادة اللف والتجهيز',
 }
 
+const departmentLabelsEn: Record<string, string> = {
+  drawing: 'Drawing', ccv: 'Insulation & CCV', stranding: 'Stranding', armouring: 'Armouring',
+  extrusion: 'Outer Sheath', assembly: 'Assembly', screening: 'Screening', rewinding: 'Rewinding',
+}
+
+export function departmentLabel(department: string | null | undefined, locale: 'ar' | 'en' = 'en'): string {
+  if (!department) return '—'
+  return (locale === 'ar' ? departmentLabels : departmentLabelsEn)[department] ?? department
+}
+
 export const workOrderStatuses = [
   { value: 'open', label: 'مفتوح' },
   { value: 'assigned', label: 'مُسند' },
@@ -100,23 +111,23 @@ const statusLabelsEn: Record<string, string> = { open: 'Open', assigned: 'Assign
 const priorityLabelsEn: Record<string, string> = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' }
 const typeLabelsEn: Record<string, string> = { breakdown: 'Breakdown', preventive: 'Preventive Maintenance', corrective: 'Corrective Maintenance', inspection: 'Inspection' }
 
-export function statusLabel(status: string | null | undefined, locale: 'ar' | 'en' = 'ar'): string {
+export function statusLabel(status: string | null | undefined, locale: 'ar' | 'en' = 'en'): string {
   if (locale === 'en' && status) return statusLabelsEn[status] ?? status
-  return workOrderStatuses.find((item) => item.value === status)?.label ?? status ?? 'غير محدد'
+  return workOrderStatuses.find((item) => item.value === status)?.label ?? status ?? (locale === 'en' ? 'Not specified' : 'غير محدد')
 }
 
-export function priorityInfo(priority: string | null | undefined, locale: 'ar' | 'en' = 'ar') {
+export function priorityInfo(priority: string | null | undefined, locale: 'ar' | 'en' = 'en') {
   const info = workOrderPriorities.find((item) => item.value === priority) ?? {
     value: priority ?? '',
-    label: priority ?? 'غير محدد',
+    label: priority ?? (locale === 'en' ? 'Not specified' : 'غير محدد'),
     className: 'bg-slate-100 text-slate-700',
   }
   return locale === 'en' ? { ...info, label: priorityLabelsEn[info.value] ?? info.label } : info
 }
 
-export function typeLabel(type: string | null | undefined, locale: 'ar' | 'en' = 'ar'): string {
+export function typeLabel(type: string | null | undefined, locale: 'ar' | 'en' = 'en'): string {
   if (locale === 'en' && type) return typeLabelsEn[type] ?? type
-  return workOrderTypes.find((item) => item.value === type)?.label ?? type ?? 'غير محدد'
+  return workOrderTypes.find((item) => item.value === type)?.label ?? type ?? (locale === 'en' ? 'Not specified' : 'غير محدد')
 }
 
 export function statusClass(status: string | null | undefined): string {
@@ -132,14 +143,14 @@ export function statusClass(status: string | null | undefined): string {
   return styles[status ?? ''] ?? 'bg-slate-100 text-slate-700'
 }
 
-export function eventTypeLabel(eventType: string | null | undefined, locale: 'ar' | 'en' = 'ar'): string {
-  if (!eventType) return 'تحديث'
+export function eventTypeLabel(eventType: string | null | undefined, locale: 'ar' | 'en' = 'en'): string {
+  if (!eventType) return locale === 'en' ? 'Update' : 'تحديث'
   const english: Record<string, string> = { REPORTED: 'Work order reported', ASSIGNED: 'Technician assigned', REPAIR_STARTED: 'Repair started', SPARE_PART_ADDED: 'Spare part added', REPAIR_COMPLETED: 'Repair completed', TEST_RUN_PASSED: 'Test run passed', CLOSED: 'Work order closed' }
   if (locale === 'en') return english[eventType.toUpperCase()] ?? eventType.replaceAll('_', ' ')
   return eventTypeLabels[eventType.toUpperCase()] ?? eventType.replaceAll('_', ' ')
 }
 
-export function formatDateTime(value: string | null | undefined, locale: 'ar' | 'en' = 'ar'): string {
+export function formatDateTime(value: string | null | undefined, locale: 'ar' | 'en' = 'en'): string {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
@@ -150,7 +161,7 @@ export function formatDateTime(value: string | null | undefined, locale: 'ar' | 
   }).format(date)
 }
 
-export function relativeTime(value: string | null | undefined): string {
+export function relativeTime(value: string | null | undefined, locale: 'ar' | 'en' = 'en'): string {
   if (!value) return '—'
   const timestamp = new Date(value).getTime()
   if (Number.isNaN(timestamp)) return '—'
@@ -163,7 +174,7 @@ export function relativeTime(value: string | null | undefined): string {
     ['minute', 60],
   ]
   const [unit, divisor] = units.find(([, size]) => Math.abs(seconds) >= size) ?? ['second', 1]
-  return new Intl.RelativeTimeFormat('ar', { numeric: 'auto' }).format(Math.round(seconds / divisor), unit)
+  return new Intl.RelativeTimeFormat(locale === 'ar' ? 'ar' : 'en', { numeric: 'auto' }).format(Math.round(seconds / divisor), unit)
 }
 
 export function shortId(value: string | null | undefined): string {
