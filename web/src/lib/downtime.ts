@@ -53,13 +53,13 @@ export function calculateShiftMinutes(startValue: string, endDate = new Date()) 
   return minutes
 }
 
-export const downtimeCategoryLabel = (value: string | null | undefined, locale: 'ar' | 'en' = 'ar') => {
+export const downtimeCategoryLabel = (value: string | null | undefined, locale: 'ar' | 'en' = 'en') => {
   const category = downtimeCategories.find((item) => item.value === value)
   return category ? (locale === 'ar' ? category.label : category.labelEn) : value ?? (locale === 'ar' ? 'غير محدد' : 'Unspecified')
 }
 
-export const formatCairoDate = (value: string | null | undefined) => {
+export const formatCairoDate = (value: string | null | undefined, locale: 'ar' | 'en' = 'en') => {
   if (!value) return '—'
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(date)
+  return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(date)
 }

@@ -13,6 +13,7 @@ import { departmentLabels, statusLabel } from '../lib/workOrders'
 import { downtimeCategoryLabel } from '../lib/downtime'
 import { useLocaleStore } from '../stores/locale'
 import type { Machine } from '../stores/liveMonitoring'
+import { createLiveRefresh } from '../lib/liveRefresh'
 
 use([BarChart, LineChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
@@ -23,7 +24,7 @@ type BadActor = { id: string; code: string; name: string; department: string; br
 type Funnel = { status: string; count: number }
 type ShiftSplit = { production_date: string; department: string; shift1_morning_minutes: number; shift2_evening_minutes: number; shift3_night_minutes: number }
 
-const colors = ['#00AEEF', '#123B66', '#24B47E', '#F3A63B', '#7C6CE7', '#F06464', '#5AA6B9']
+const colors = ['#0C4595', '#F04E37', '#24B47E', '#F3A63B', '#7C6CE7', '#082957', '#5AA6B9']
 const router = useRouter()
 const locale = useLocaleStore()
 const t = (key: string) => locale.t(`analytics.${key}`)
@@ -41,6 +42,7 @@ const error = ref('')
 const connected = ref(false)
 const selectedDepartment = ref('')
 const updatedAt = ref<Date | null>(null)
+const liveRefresh = createLiveRefresh(refresh)
 let channel: RealtimeChannel | null = null
 
 const departments = computed(() => Object.keys(departmentLabels).filter((key) => availability.value.some((row) => row.department === key) || machines.value.some((m) => m.department === key)))
@@ -107,23 +109,23 @@ const availabilityTrendOption = computed<Record<string, unknown>>(() => {
   }
 })
 const causesOption = computed<Record<string, unknown>>(() => ({
-  color: ['#0A2540', '#00AEEF', '#24B47E', '#F3A63B', '#7C6CE7', '#F06464', '#5AA6B9', '#94A3B8'],
+  color: ['#082957', '#0C4595', '#F04E37', '#24B47E', '#F3A63B', '#7C6CE7', '#F06464', '#5AA6B9', '#94A3B8'],
   tooltip: { trigger: 'item', formatter: (params: { name: string; value: number; percent: number }) => `${downtimeCategoryLabel(params.name, locale.locale)}<br/><b>${number(params.value)} ${t('minuteUnit')}</b> · ${params.percent}%` },
   series: [{ type: 'pie', radius: ['56%', '78%'], center: ['50%', '48%'], avoidLabelOverlap: true, itemStyle: { borderColor: '#fff', borderWidth: 4, borderRadius: 7 }, label: { show: false }, emphasis: { scale: true, scaleSize: 8 }, data: downtimeByCause.value.map((row) => ({ name: row.category, value: Math.round(row.minutes) })) }],
 }))
 const departmentOption = computed<Record<string, unknown>>(() => ({
-  color: ['#00AEEF'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${number(value, 1)}%` },
+  color: ['#0C4595'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${number(value, 1)}%` },
   grid: { top: 12, left: 8, right: 20, bottom: 4, containLabel: true }, xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%', color: '#94a3b8' }, splitLine: { lineStyle: { color: '#edf2f7' } } },
   yAxis: { type: 'category', data: departmentAvailability.value.map((row) => departmentName(row.department)).reverse(), axisLabel: { color: '#475569', fontFamily: locale.locale === 'ar' ? 'Cairo' : 'Inter' }, axisLine: { show: false }, axisTick: { show: false } },
   series: [{ type: 'bar', barWidth: 15, showBackground: true, backgroundStyle: { color: '#f1f5f9', borderRadius: 8 }, itemStyle: { borderRadius: [0, 8, 8, 0], color: (params: { value: number }) => params.value >= 90 ? '#24B47E' : params.value >= 75 ? '#F3A63B' : '#F06464' }, data: departmentAvailability.value.map((row) => Number(row.availability_pct)).reverse() }],
 }))
 const workOrderOption = computed<Record<string, unknown>>(() => ({
-  color: ['#00AEEF'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } }, grid: { top: 10, left: 8, right: 20, bottom: 4, containLabel: true },
+  color: ['#0C4595'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } }, grid: { top: 10, left: 8, right: 20, bottom: 4, containLabel: true },
   xAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#edf2f7' } }, axisLabel: { color: '#94a3b8' } }, yAxis: { type: 'category', data: workOrderStatus.value.map((row) => statusLabel(row.status, locale.locale)).reverse(), axisLabel: { color: '#475569', fontFamily: locale.locale === 'ar' ? 'Cairo' : 'Inter' }, axisLine: { show: false }, axisTick: { show: false } },
   series: [{ type: 'bar', barWidth: 17, itemStyle: { borderRadius: [0, 8, 8, 0], color: '#123B66' }, data: workOrderStatus.value.map((row) => Number(row.count)).reverse(), label: { show: true, position: 'insideRight', color: '#fff', fontWeight: 'bold' } }],
 }))
 const shiftOption = computed<Record<string, unknown>>(() => ({
-  color: ['#00AEEF', '#F3A63B', '#123B66'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${number(value)} ${t('minuteUnit')}` }, legend: { bottom: 0, textStyle: { fontFamily: locale.locale === 'ar' ? 'Cairo' : 'Inter', fontSize: 10 } },
+  color: ['#0C4595', '#F04E37', '#082957'], tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${number(value)} ${t('minuteUnit')}` }, legend: { bottom: 0, textStyle: { fontFamily: locale.locale === 'ar' ? 'Cairo' : 'Inter', fontSize: 10 } },
   grid: { top: 20, left: 8, right: 15, bottom: 45, containLabel: true }, xAxis: { type: 'category', data: shiftsByDate.value.map(([date]) => dateLabel(date)), axisLabel: { color: '#64748b', fontFamily: locale.locale === 'ar' ? 'Cairo' : 'Inter' } }, yAxis: { type: 'value', axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#edf2f7' } } },
   series: [
     { name: t('shifts.morning'), type: 'bar', stack: 'total', barMaxWidth: 25, itemStyle: { borderRadius: [0, 0, 4, 4] }, data: shiftsByDate.value.map(([, value]) => Math.round(value.morning)) },
@@ -171,30 +173,30 @@ function openMachine(code: string) { void router.push(`/machines/${encodeURIComp
 onMounted(() => {
   void refresh()
   if (supabase) channel = supabase.channel('web-analytics-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, () => void refresh())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'downtime_logs' }, () => void refresh())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, () => void refresh())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, () => liveRefresh.request())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'downtime_logs' }, () => liveRefresh.request())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, () => liveRefresh.request())
     .subscribe((status) => { connected.value = status === 'SUBSCRIBED' })
 })
-onUnmounted(() => { if (supabase && channel) void supabase.removeChannel(channel) })
+onUnmounted(() => { liveRefresh.dispose(); if (supabase && channel) void supabase.removeChannel(channel) })
 </script>
 
 <template>
   <section class="space-y-6">
     <header class="rise-in relative isolate overflow-hidden rounded-[26px] bg-brand-navy px-5 py-6 text-white shadow-[0_20px_55px_-28px_rgba(10,37,64,.6)] md:px-8 md:py-7">
-      <div class="pointer-events-none absolute -left-12 -top-24 -z-10 h-80 w-80 rounded-full border border-cyan-100/10"></div>
-      <div class="pointer-events-none absolute -left-2 -top-16 -z-10 h-60 w-60 rounded-full border border-cyan-100/10"></div>
+      <div class="pointer-events-none absolute -left-12 -top-24 -z-10 h-80 w-80 rounded-full border border-accent-50/10"></div>
+      <div class="pointer-events-none absolute -left-2 -top-16 -z-10 h-60 w-60 rounded-full border border-accent-50/10"></div>
       <div class="pointer-events-none absolute bottom-[-120px] right-[35%] -z-10 h-64 w-64 rounded-full bg-brand/25 blur-3xl"></div>
       <div class="flex flex-wrap items-end justify-between gap-5">
         <div>
-          <div class="mb-3 flex items-center gap-2 text-xs font-bold text-cyan-200"><ChartNoAxesCombined :size="16" /> {{ t('eyebrow') }} <span class="rounded-full bg-white/10 px-2 py-1 text-[10px] text-white/65">{{ t('period') }}</span></div>
+          <div class="mb-3 flex items-center gap-2 text-xs font-bold text-accent-light"><ChartNoAxesCombined :size="16" /> {{ t('eyebrow') }} <span class="rounded-full bg-white/10 px-2 py-1 text-[10px] text-white/65">{{ t('period') }}</span></div>
           <h1 class="text-2xl font-extrabold md:text-3xl">{{ t('title') }}</h1>
           <p class="mt-2 max-w-2xl text-sm leading-6 text-white/60">{{ t('subtitle') }}</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <label :title="t('filterHint')" class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[.08] px-3 py-2 text-xs"><Factory :size="15" class="text-cyan-200"/><select v-model="selectedDepartment" class="max-w-40 bg-transparent text-white outline-none [&>option]:text-slate-900"><option value="">{{ t('allDepartments') }}</option><option v-for="department in departments" :key="department" :value="department">{{ departmentName(department) }}</option></select></label>
+          <label :title="t('filterHint')" class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[.08] px-3 py-2 text-xs"><Factory :size="15" class="text-accent-light"/><select v-model="selectedDepartment" class="max-w-40 bg-transparent text-white outline-none [&>option]:text-slate-900"><option value="">{{ t('allDepartments') }}</option><option v-for="department in departments" :key="department" :value="department">{{ departmentName(department) }}</option></select></label>
           <span class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[.08] px-3 py-2 text-xs"><i class="h-2 w-2 rounded-full" :class="connected ? 'bg-emerald-300 soft-pulse' : 'bg-red-300'"></i>{{ connected ? t('connected') : t('disconnected') }}</span>
-          <button class="inline-flex items-center gap-2 rounded-xl bg-brand px-3.5 py-2 text-xs font-extrabold text-white shadow-lg shadow-cyan-950/25 transition hover:-translate-y-0.5 hover:bg-brand-dark disabled:opacity-60" :disabled="refreshing" @click="refresh"><RefreshCw :size="14" :class="refreshing ? 'animate-spin' : ''"/>{{ refreshing ? t('refreshing') : t('refresh') }}</button>
+          <button class="inline-flex items-center gap-2 rounded-xl bg-brand px-3.5 py-2 text-xs font-extrabold text-white shadow-lg shadow-brand-navy/25 transition hover:-translate-y-0.5 hover:bg-brand-dark disabled:opacity-60" :disabled="refreshing" @click="refresh"><RefreshCw :size="14" :class="refreshing ? 'animate-spin' : ''"/>{{ refreshing ? t('refreshing') : t('refresh') }}</button>
         </div>
       </div>
       <p class="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-white/40">{{ t('lastSync') }} {{ updatedAt ? updatedAt.toLocaleTimeString(locale.locale === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Cairo' }) : '—' }} <span v-if="latestDate">· {{ t('productionThrough') }} {{ dateLabel(latestDate) }}</span><span v-if="dataLagDays !== null && dataLagDays >= 1" class="rounded-md bg-amber-300/15 px-2 py-0.5 font-bold text-amber-200">{{ t('stalePrefix') }} {{ number(dataLagDays) }} {{ t('days') }}</span></p>
@@ -210,14 +212,14 @@ onUnmounted(() => { if (supabase && channel) void supabase.removeChannel(channel
     <template v-else>
       <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <article class="surface-card rise-in p-4"><div class="flex items-start justify-between"><div><p class="text-xs font-bold text-slate-500">{{ t('availability') }}</p><p class="mt-3 text-3xl font-extrabold tracking-tight" :class="availabilityScore === null ? 'text-slate-400' : availabilityColor(availabilityScore)">{{ availabilityScore === null ? '—' : `${number(availabilityScore, 1)}%` }}</p><p class="mt-1 text-[10px] text-slate-400">{{ t('weightedLastDay') }}</p></div><span class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><Activity :size="19"/></span></div></article>
-        <article class="surface-card rise-in p-4"><div class="flex items-start justify-between"><div><p class="text-xs font-bold text-slate-500">{{ t('machinesRunning') }}</p><p class="mt-3 text-3xl font-extrabold tracking-tight text-brand-navy">{{ number(runningCount) }}<span class="mx-1 text-sm font-semibold text-slate-400">/ {{ number(machines.length) }}</span></p><p class="mt-1 text-[10px] text-slate-400">{{ t('machinesVisible') }}</p></div><span class="grid h-10 w-10 place-items-center rounded-xl bg-cyan-50 text-brand-dark"><Zap :size="19"/></span></div></article>
+        <article class="surface-card rise-in p-4"><div class="flex items-start justify-between"><div><p class="text-xs font-bold text-slate-500">{{ t('machinesRunning') }}</p><p class="mt-3 text-3xl font-extrabold tracking-tight text-brand-navy">{{ number(runningCount) }}<span class="mx-1 text-sm font-semibold text-slate-400">/ {{ number(machines.length) }}</span></p><p class="mt-1 text-[10px] text-slate-400">{{ t('machinesVisible') }}</p></div><span class="grid h-10 w-10 place-items-center rounded-xl bg-accent-50 text-brand-dark"><Zap :size="19"/></span></div></article>
         <article class="surface-card rise-in p-4"><div class="flex items-start justify-between"><div><p class="text-xs font-bold text-slate-500">{{ t('activeDowntimes') }}</p><p class="mt-3 text-3xl font-extrabold tracking-tight text-red-600">{{ number(activeStops.length) }}</p><p class="mt-1 text-[10px] text-slate-400">{{ t('accumulatedTime') }} {{ number(downtimeMinutesNow / 60, 1) }} {{ t('hour') }}</p></div><span class="grid h-10 w-10 place-items-center rounded-xl bg-red-50 text-red-600"><Timer :size="19"/></span></div></article>
         <article class="surface-card rise-in p-4"><div class="flex items-start justify-between"><div><p class="text-xs font-bold text-slate-500">{{ t('openOrders') }}</p><p class="mt-3 text-3xl font-extrabold tracking-tight text-brand-navy">{{ number(openOrders) }}</p><p class="mt-1 text-[10px] text-slate-400">{{ number(closedOrders) }} {{ t('verifiedClosed') }}</p></div><span class="grid h-10 w-10 place-items-center rounded-xl bg-amber-50 text-amber-600"><ClipboardList :size="19"/></span></div></article>
         <article class="surface-card rise-in p-4"><div class="flex items-start justify-between"><div><p class="text-xs font-bold text-slate-500">{{ t('mttr') }}</p><p class="mt-3 text-3xl font-extrabold tracking-tight text-brand-navy">{{ averageMttr === null ? '—' : number(averageMttr < 60 ? averageMttr : averageMttr / 60, 1) }}<span v-if="averageMttr !== null" class="mx-1 text-sm font-semibold text-slate-400">{{ averageMttr < 60 ? t('minute') : t('hour') }}</span></p><p class="mt-1 text-[10px] text-slate-400">{{ averageMttr === null ? t('noCompletedRepair') : t('weightedClosed') }}</p></div><span class="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-600"><ArrowDownLeft :size="19"/></span></div></article>
       </div>
 
       <div class="grid gap-4 xl:grid-cols-[1.65fr_1fr]">
-        <article class="chart-card rise-in"><div class="mb-1 flex items-start justify-between gap-3"><div><h2 class="font-extrabold text-brand-navy">{{ t('trend') }}</h2><p class="mt-1 text-xs text-slate-400">{{ t('trendSubtitle') }}</p></div><span class="rounded-lg bg-cyan-50 px-2.5 py-1.5 text-[10px] font-bold text-brand-dark">{{ selectedDepartment ? departmentName(selectedDepartment) : t('compareDepartments') }}</span></div><VChart v-if="visibleAvailability.length" :option="availabilityTrendOption" autoresize class="chart-wrap h-[280px] w-full"/><div v-else class="grid h-[280px] place-items-center text-sm text-slate-400">{{ t('insufficient') }}</div></article>
+        <article class="chart-card rise-in"><div class="mb-1 flex items-start justify-between gap-3"><div><h2 class="font-extrabold text-brand-navy">{{ t('trend') }}</h2><p class="mt-1 text-xs text-slate-400">{{ t('trendSubtitle') }}</p></div><span class="rounded-lg bg-accent-50 px-2.5 py-1.5 text-[10px] font-bold text-brand-dark">{{ selectedDepartment ? departmentName(selectedDepartment) : t('compareDepartments') }}</span></div><VChart v-if="visibleAvailability.length" :option="availabilityTrendOption" autoresize class="chart-wrap h-[280px] w-full"/><div v-else class="grid h-[280px] place-items-center text-sm text-slate-400">{{ t('insufficient') }}</div></article>
         <article class="chart-card rise-in"><div><h2 class="font-extrabold text-brand-navy">{{ t('downtimeSources') }}</h2><p class="mt-1 text-xs text-slate-400">{{ t('downtimeSubtitle') }}</p></div><div class="relative"><VChart v-if="downtimeByCause.length" :option="causesOption" autoresize class="chart-wrap h-[250px] w-full"/><div v-else class="grid h-[250px] place-items-center text-sm text-slate-400">{{ t('noDowntime') }}</div><div v-if="downtimeByCause.length" class="pointer-events-none absolute inset-0 grid place-items-center pb-2"><div class="text-center"><p class="text-[10px] text-slate-400">{{ t('totalMinutes') }}</p><p class="mt-1 text-2xl font-extrabold text-brand-navy">{{ number(downtimeByCause.reduce((sum, row) => sum + row.minutes, 0) / 60, 1) }}<span class="mx-1 text-xs font-bold text-slate-400">{{ t('hour') }}</span></p></div></div></div><div class="-mt-1 space-y-2"><div v-for="(item, i) in downtimeByCause.slice(0, 4)" :key="item.category" class="flex items-center gap-2 text-[11px]"><i class="h-2 w-2 shrink-0 rounded-full" :style="{background: colors[i]}"/><span class="min-w-0 flex-1 truncate text-slate-600">{{ downtimeCategoryLabel(item.category, locale.locale) }}</span><b class="text-slate-700">{{ number(item.minutes) }} {{ t('minutesShort') }}</b></div></div></article>
       </div>
 
