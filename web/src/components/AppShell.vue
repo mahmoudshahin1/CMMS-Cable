@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
-import { Activity, Boxes, ChartColumnIncreasing, ClipboardList, Factory, Gauge, Languages, LogOut, Timer, type LucideIcon } from 'lucide-vue-next'
+import { Activity, Boxes, ChartColumnIncreasing, ClipboardList, Factory, Gauge, Languages, LogOut, Sparkles, Timer, ZapOff, type LucideIcon } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { useLocaleStore } from '../stores/locale'
+import { motionMode, toggleMotion } from '../lib/motion'
 
 const auth = useAuthStore()
 const locale = useLocaleStore()
@@ -27,8 +28,8 @@ async function logout() { await auth.signOut(); await router.replace('/login') }
 <template>
   <div class="min-h-screen lg:flex" :dir="locale.direction" :lang="locale.locale">
     <aside class="relative z-20 w-full shrink-0 overflow-hidden bg-brand-navy text-white lg:sticky lg:top-0 lg:h-screen lg:w-[272px] lg:overflow-y-auto">
-      <div class="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-brand/40 blur-3xl float-blob"></div>
-      <div class="pointer-events-none absolute -left-16 bottom-24 h-56 w-56 rounded-full bg-accent/25 blur-3xl float-blob" style="animation-delay:-4s"></div>
+      <div class="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-brand/40 blur-3xl"></div>
+      <div class="pointer-events-none absolute -left-16 bottom-24 h-56 w-56 rounded-full bg-accent/25 blur-3xl"></div>
       <div class="pointer-events-none absolute inset-x-0 top-0 h-[2px] cable-flow opacity-70"></div>
 
       <div class="relative flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 lg:block lg:px-5 lg:pb-6 lg:pt-6">
@@ -70,10 +71,11 @@ async function logout() { await auth.signOut(); await router.replace('/login') }
     </aside>
 
     <div class="min-w-0 flex-1">
-      <header class="sticky top-0 z-10 flex min-h-[76px] items-center justify-between gap-4 border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl md:px-8">
+      <header class="sticky top-0 z-10 flex min-h-[76px] items-center justify-between gap-4 border-b border-slate-200/80 bg-white/95 px-4 md:px-8">
         <div class="min-w-0"><div class="flex items-center gap-2 text-xs text-slate-400"><Gauge :size="14" class="text-brand" /><span>{{ t('nav.operations') }}</span><span>/</span><span class="truncate font-semibold text-slate-600">{{ activePage }}</span></div><p class="mt-1 hidden text-[11px] text-slate-400 sm:block">{{ today }}</p></div>
         <div class="flex shrink-0 items-center gap-2.5 md:gap-4">
           <div class="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 sm:flex"><i class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></i> {{ t('nav.connection') }}</div>
+          <button class="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-brand hover:bg-brand-50" :class="motionMode === 'lite' ? 'text-slate-400' : 'text-accent'" :title="motionMode === 'lite' ? (locale.locale === 'ar' ? 'الحركة مخففة — اضغط لتفعيل الحركة الكاملة' : 'Reduced motion — click for full motion') : (locale.locale === 'ar' ? 'حركة كاملة — اضغط لتخفيف الحركة وتحسين الأداء' : 'Full motion — click to reduce motion and save resources')" :aria-pressed="motionMode === 'lite'" :aria-label="locale.locale === 'ar' ? 'تبديل وضع الحركة' : 'Toggle motion mode'" @click="toggleMotion"><component :is="motionMode === 'lite' ? ZapOff : Sparkles" :size="16" /></button>
           <button class="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 px-2.5 text-xs font-bold text-slate-700 transition hover:border-brand hover:bg-brand-50" :aria-label="locale.locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'" @click="locale.setLocale(locale.locale === 'ar' ? 'en' : 'ar')"><Languages :size="15"/><span>{{ locale.locale === 'ar' ? 'EN' : 'عربي' }}</span></button>
           <div class="flex items-center gap-2.5 border-s border-slate-200 ps-2.5 md:ps-4">
             <div class="hidden text-start sm:block"><p class="max-w-36 truncate text-xs font-bold text-slate-800">{{ auth.fullName || t('nav.user') }}</p><p class="mt-0.5 text-[10px] text-slate-500">{{ auth.roleLabel || auth.role || t('nav.noRole') }}</p></div>

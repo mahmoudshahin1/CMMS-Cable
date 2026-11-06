@@ -17,6 +17,7 @@ import {
   workOrderTypes,
 } from '../lib/workOrders'
 import { useLocaleStore } from '../stores/locale'
+import { createLiveRefresh } from '../lib/liveRefresh'
 
 type Machine = { code: string; name: string; department: string }
 type WorkOrder = {
@@ -35,6 +36,8 @@ type WorkOrder = {
   machine: Machine | Machine[] | null
 }
 
+// Cap the payload so the page stays fast as the table grows over the years.
+const ROW_LIMIT = 500
 const router = useRouter()
 const locale = useLocaleStore()
 const t = locale.t
@@ -50,6 +53,7 @@ const typeFilter = ref('')
 const technicianFilter = ref('')
 const showFilters = ref(false)
 
+const liveRefresh = createLiveRefresh(refresh)
 let channel: ReturnType<NonNullable<typeof supabase>['channel']> | null = null
 
 const technicianOptions = computed(() => {
@@ -68,6 +72,7 @@ const filteredRows = computed(() => rows.value.filter((row) => {
     && (!technicianFilter.value || row.assigned_to_technician_id === technicianFilter.value)
 }))
 
+const truncated = computed(() => rows.value.length >= ROW_LIMIT)
 const openCount = computed(() => rows.value.filter((r) => ['open', 'assigned', 'inProgress', 'pendingParts'].includes(r.status)).length)
 const criticalCount = computed(() => rows.value.filter((r) => r.priority === 'critical' && !['verified', 'verifiedClosed'].includes(r.status)).length)
 const completedTodayCount = computed(() => {
@@ -114,6 +119,7 @@ async function refresh() {
       .from('work_orders')
       .select('id, title, description, machine_id, type, status, priority, reported_by, assigned_to_technician_id, started_at, created_at, updated_at, machine:machines!work_orders_machine_id_fkey(code, name, department)')
       .order('created_at', { ascending: false })
+      .limit(ROW_LIMIT)
 
     if (queryError) throw queryError
     const workOrders = (data ?? []) as unknown as WorkOrder[]
@@ -141,12 +147,12 @@ onMounted(() => {
   if (supabase) {
     channel = supabase
       .channel('web-work-orders')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, () => void refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, () => liveRefresh.request())
       .subscribe()
   }
 })
 
-onUnmounted(() => {
+onUnmounted(() => { liveRefresh.dispose();
   if (supabase && channel) void supabase.removeChannel(channel)
 })
 </script>
@@ -265,6 +271,7 @@ onUnmounted(() => {
           </tbody>
         </table>
       </div>
+      <p v-if="truncated" class="mt-3 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800">{{ locale.locale === 'ar' ? `يتم عرض أحدث ${ROW_LIMIT} أمر شغل فقط.` : `Showing the latest ${ROW_LIMIT} work orders only.` }}</p>
       <p v-if="rows.length" class="mt-3 text-xs text-slate-500">{{ t('workOrders.count') }} {{ filteredRows.length }} {{ t('workOrders.of') }} {{ rows.length }} {{ t('workOrders.orders') }}</p>
     </template>
   </section>

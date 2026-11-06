@@ -50,6 +50,7 @@ async function submit() {
           <svg class="pointer-events-none absolute -bottom-10 -end-20 h-[22rem] w-[22rem] opacity-80 md:-end-14" viewBox="-90 -90 180 180" aria-hidden="true">
             <defs>
               <radialGradient id="cu" cx="35%" cy="30%"><stop offset="0" stop-color="#FFB38A"/><stop offset=".6" stop-color="#F04E37"/><stop offset="1" stop-color="#B8321F"/></radialGradient>
+              <radialGradient id="glow"><stop offset=".5" stop-color="#FF7A5C" stop-opacity=".55"/><stop offset="1" stop-color="#FF7A5C" stop-opacity="0"/></radialGradient>
               <linearGradient id="sheath" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F04E37"/><stop offset="1" stop-color="#FF7A5C"/></linearGradient>
             </defs>
             <circle r="80" fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.08)" />
@@ -58,7 +59,7 @@ async function submit() {
             <circle r="52" fill="#0f3a7d" opacity=".9" />
             <g class="cable-spin"><circle r="40" fill="none" stroke="#2563EB" stroke-width="8" opacity=".85" /><circle r="40" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="2 10" opacity=".5" /></g>
             <circle r="31" fill="#082957" />
-            <g class="cable-core"><circle v-for="(s, i) in strands" :key="i" :cx="s[0]" :cy="s[1]" r="8.4" fill="url(#cu)" /></g>
+            <g class="cable-core"><circle r="38" fill="url(#glow)" /><circle v-for="(s, i) in strands" :key="i" :cx="s[0]" :cy="s[1]" r="8.4" fill="url(#cu)" /></g>
             <g class="cable-orbit"><circle cx="72" cy="0" r="4.5" fill="#fff" /><circle cx="72" cy="0" r="10" fill="#FF7A5C" opacity=".35" /></g>
           </svg>
 
@@ -70,12 +71,12 @@ async function submit() {
           </div>
 
           <div class="relative mt-10 grid max-w-md grid-cols-2 gap-3">
-            <div class="enter group rounded-2xl border border-white/10 bg-white/[.07] p-4 shadow-lg shadow-black/20 backdrop-blur-sm transition duration-300 hover:-translate-y-1.5 hover:border-accent/50 hover:bg-white/[.12] hover:shadow-accent" style="--d:480ms">
+            <div class="enter group rounded-2xl border border-white/10 bg-white/[.07] p-4 shadow-lg shadow-black/20 transition duration-300 hover:-translate-y-1.5 hover:border-accent/50 hover:bg-white/[.12] hover:shadow-accent" style="--d:480ms">
               <Activity :size="18" class="text-accent-light transition duration-300 group-hover:scale-125" />
               <p class="mt-3 text-sm font-bold">{{ t('login.live') }}</p>
               <p class="mt-1 text-[11px] text-white/55">{{ t('login.liveSub') }}</p>
             </div>
-            <div class="enter group rounded-2xl border border-white/10 bg-white/[.07] p-4 shadow-lg shadow-black/20 backdrop-blur-sm transition duration-300 hover:-translate-y-1.5 hover:border-accent/50 hover:bg-white/[.12] hover:shadow-accent" style="--d:560ms">
+            <div class="enter group rounded-2xl border border-white/10 bg-white/[.07] p-4 shadow-lg shadow-black/20 transition duration-300 hover:-translate-y-1.5 hover:border-accent/50 hover:bg-white/[.12] hover:shadow-accent" style="--d:560ms">
               <ShieldCheck :size="18" class="text-accent-light transition duration-300 group-hover:scale-125" />
               <p class="mt-3 text-sm font-bold">{{ t('login.secure') }}</p>
               <p class="mt-1 text-[11px] text-white/55">{{ t('login.secureSub') }}</p>

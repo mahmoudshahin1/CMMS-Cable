@@ -9,6 +9,7 @@ import { buildChronology, calculateShiftMinutes, downtimeCategories, downtimeCat
 import { SUPERVISOR_ROLES } from '../lib/roles'
 import { useLocaleStore } from '../stores/locale'
 import { ClipboardList, Clock3, Factory, FileText, Wrench } from 'lucide-vue-next'
+import { createLiveRefresh } from '../lib/liveRefresh'
 
 type Downtime = { id: string; machine_id: string; category: string | null; reason: string; is_maintenance_requested: boolean; comments: string | null; started_at: string; ended_at: string | null; work_order_id: string | null }
 const auth = useAuthStore()
@@ -55,6 +56,7 @@ function formatRpcError(cause: unknown, fallbackKey: string): string {
   }
   return t(fallbackKey)
 }
+const liveRefresh = createLiveRefresh(refresh)
 let channel: RealtimeChannel | null = null
 let timer: ReturnType<typeof setInterval> | null = null
 
@@ -124,16 +126,16 @@ onMounted(() => {
   void refresh()
   timer = setInterval(() => { now.value = Date.now() }, 30000)
   if (supabase) channel = supabase.channel('web-downtime-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'downtime_logs' }, () => void refresh())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, () => void refresh())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'downtime_logs' }, () => liveRefresh.request())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, () => liveRefresh.request())
     .subscribe()
 })
-onUnmounted(() => { if (timer) clearInterval(timer); if (supabase && channel) void supabase.removeChannel(channel) })
+onUnmounted(() => { liveRefresh.dispose(); if (timer) clearInterval(timer); if (supabase && channel) void supabase.removeChannel(channel) })
 </script>
 
 <template>
   <div :dir="locale.direction" :lang="locale.locale">
-    <div class="mb-6"><h1 class="text-2xl font-bold">{{ t('downtime.title') }}</h1><p class="mt-1 text-sm text-slate-500">{{ t('downtime.subtitle') }}</p></div>
+    <div class="page-hero enter"><div><h1 class="text-2xl font-extrabold md:text-3xl">{{ t('downtime.title') }}</h1><p class="mt-1 text-sm text-white/60">{{ t('downtime.subtitle') }}</p></div></div>
     <p v-if="error" class="mb-4 rounded-lg bg-red-50 p-4 text-red-700" role="alert">{{ error }}</p>
     <p v-if="notice" class="mb-4 rounded-lg bg-emerald-50 p-4 text-emerald-800" role="status">{{ notice }}</p>
     <form v-if="canCreate" class="surface-card mb-7 overflow-hidden p-0" @submit.prevent="createDowntime">
@@ -151,6 +153,6 @@ onUnmounted(() => { if (timer) clearInterval(timer); if (supabase && channel) vo
     <h2 class="mb-3 flex items-center gap-2 text-lg font-extrabold text-brand-navy"><Clock3 :size="18" class="text-brand-dark" />{{ t('downtime.history') }}</h2>
     <div v-if="loading" class="text-slate-500" role="status">{{ locale.locale === 'ar' ? 'جارٍ تحميل سجل التوقفات…' : 'Loading downtime records…' }}</div>
     <div v-else-if="!sortedLogs.length" class="rounded-xl border border-dashed bg-white p-10 text-center text-slate-500">{{ t('downtime.noLogs') }}</div>
-    <div v-else class="overflow-x-auto rounded-xl border bg-white shadow-sm"><table class="w-full min-w-[850px] text-sm" :class="locale.direction === 'rtl' ? 'text-right' : 'text-left'"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">{{ t('downtime.machineDepartment') }}</th><th class="p-3">{{ t('downtime.cause') }}</th><th class="p-3">{{ t('downtime.start') }}</th><th class="p-3">{{ t('downtime.duration') }}</th><th class="p-3">{{ t('downtime.status') }}</th><th class="p-3">{{ t('downtime.action') }}</th></tr></thead><tbody><tr v-for="log in sortedLogs" :key="log.id" class="border-t"><td class="p-3 font-semibold">{{ machineInfo(log.machine_id) }}</td><td class="max-w-xs p-3"><p>{{ categoryName(log.category) }}</p><p class="mt-1 text-xs text-slate-500">{{ log.reason || '—' }}</p><p v-if="log.is_maintenance_requested" class="mt-1 text-xs text-amber-700">{{ t('downtime.maintenanceNeeded') }}</p></td><td class="p-3">{{ formatCairoDate(log.started_at) }}</td><td class="p-3">{{ duration(log.started_at, log.ended_at) }}</td><td class="p-3"><span class="rounded-full px-3 py-1 text-xs font-semibold" :class="log.ended_at ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-800'">{{ log.ended_at ? t('downtime.closed') : t('downtime.active') }}</span></td><td class="p-3"><button v-if="!log.ended_at && canCloseLog(log)" :disabled="saving" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" @click="closeDowntime(log)">{{ t('downtime.close') }}</button><span v-else-if="!log.ended_at" class="text-xs text-slate-400">{{ t('downtime.noPermissionClose') }}</span><span v-else class="text-xs text-slate-400">—</span></td></tr></tbody></table></div>
+    <div v-else class="overflow-x-auto panel shadow-sm"><table class="w-full min-w-[850px] text-sm" :class="locale.direction === 'rtl' ? 'text-right' : 'text-left'"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">{{ t('downtime.machineDepartment') }}</th><th class="p-3">{{ t('downtime.cause') }}</th><th class="p-3">{{ t('downtime.start') }}</th><th class="p-3">{{ t('downtime.duration') }}</th><th class="p-3">{{ t('downtime.status') }}</th><th class="p-3">{{ t('downtime.action') }}</th></tr></thead><tbody><tr v-for="log in sortedLogs" :key="log.id" class="border-t"><td class="p-3 font-semibold">{{ machineInfo(log.machine_id) }}</td><td class="max-w-xs p-3"><p>{{ categoryName(log.category) }}</p><p class="mt-1 text-xs text-slate-500">{{ log.reason || '—' }}</p><p v-if="log.is_maintenance_requested" class="mt-1 text-xs text-amber-700">{{ t('downtime.maintenanceNeeded') }}</p></td><td class="p-3">{{ formatCairoDate(log.started_at) }}</td><td class="p-3">{{ duration(log.started_at, log.ended_at) }}</td><td class="p-3"><span class="rounded-full px-3 py-1 text-xs font-semibold" :class="log.ended_at ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-800'">{{ log.ended_at ? t('downtime.closed') : t('downtime.active') }}</span></td><td class="p-3"><button v-if="!log.ended_at && canCloseLog(log)" :disabled="saving" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" @click="closeDowntime(log)">{{ t('downtime.close') }}</button><span v-else-if="!log.ended_at" class="text-xs text-slate-400">{{ t('downtime.noPermissionClose') }}</span><span v-else class="text-xs text-slate-400">—</span></td></tr></tbody></table></div>
   </div>
 </template>

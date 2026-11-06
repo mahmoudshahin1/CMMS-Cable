@@ -9,7 +9,6 @@ const dots: Record<string, string> = { running: 'bg-status-running', idle: 'bg-s
 </script>
 <template>
   <span v-if="props.dotOnly" class="relative inline-flex h-2.5 w-2.5">
-    <span v-if="props.status === 'running'" class="absolute inline-flex h-full w-full animate-ping rounded-full opacity-40" :class="dots[props.status]"></span>
     <span class="relative h-2.5 w-2.5 rounded-full" :class="dots[props.status] ?? 'bg-slate-300'"></span>
   </span>
   <span v-else class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" :class="colors[props.status] ?? 'bg-slate-100 text-slate-700'">

@@ -21,7 +21,7 @@ async function logout() {
     <div class="pointer-events-none absolute -right-28 top-20 h-72 w-72 rounded-full bg-accent-light/20 blur-3xl"></div>
     <div class="pointer-events-none absolute -bottom-36 left-10 h-96 w-96 rounded-full bg-blue-300/20 blur-3xl"></div>
 
-    <section class="relative w-full max-w-xl rounded-[30px] border border-white/80 bg-white/90 p-7 text-center shadow-[0_32px_90px_-35px_rgba(10,37,64,.28)] backdrop-blur-xl md:p-12">
+    <section class="relative w-full max-w-xl rounded-[30px] border border-white/80 bg-white/90 p-7 text-center shadow-[0_32px_90px_-35px_rgba(10,37,64,.28)] md:p-12">
       <div class="mx-auto mb-8 inline-flex rounded-2xl bg-white px-5 py-4 shadow-lg">
         <img :src="logoUrl" alt="Energya Cables" class="h-12 w-[200px] object-contain" />
       </div>

@@ -7,6 +7,7 @@ import StatusBadge from '../components/StatusBadge.vue'
 import type { Machine } from '../stores/liveMonitoring'
 import { departmentLabels, formatDateTime } from '../lib/workOrders'
 import { downtimeCategoryLabel, formatCairoDate } from '../lib/downtime'
+import { createLiveRefresh } from '../lib/liveRefresh'
 
 type Downtime = { id: string; category: string | null; reason: string; started_at: string; ended_at: string | null; shift_minutes: Record<string, number> | null; work_order_id: string | null }
 type BomItem = { id: string; quantity_per_machine: number; part: { id: string; part_code: string; name: string; unit: string; quantity_on_hand: number; reorder_level: number } | null }
@@ -17,6 +18,7 @@ const bom = ref<BomItem[]>([])
 const loading = ref(true)
 const error = ref('')
 const machineId = computed(() => decodeURIComponent(String(route.params.id ?? '')))
+const liveRefresh = createLiveRefresh(refresh)
 let channel: RealtimeChannel | null = null
 
 async function refresh() {
@@ -51,24 +53,24 @@ async function refresh() {
 onMounted(() => {
   void refresh()
   if (supabase) channel = supabase.channel(`machine-detail-${machineId.value}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, () => void refresh())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'downtime_logs' }, () => void refresh())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'machine_bom' }, () => void refresh())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'spare_parts' }, () => void refresh())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, () => liveRefresh.request())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'downtime_logs' }, () => liveRefresh.request())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'machine_bom' }, () => liveRefresh.request())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'spare_parts' }, () => liveRefresh.request())
     .subscribe()
 })
-onUnmounted(() => { if (supabase && channel) void supabase.removeChannel(channel) })
+onUnmounted(() => { liveRefresh.dispose(); if (supabase && channel) void supabase.removeChannel(channel) })
 </script>
 
 <template>
   <div>
-    <RouterLink to="/plant-floor" class="text-sm font-semibold text-brand-dark">← العودة لأرضية المصنع</RouterLink>
+    <RouterLink to="/plant-floor" class="inline-flex items-center rounded-lg px-2 py-1 text-sm font-semibold text-brand-dark transition hover:bg-brand-50">← العودة لأرضية المصنع</RouterLink>
     <p v-if="loading" class="mt-5 text-slate-500">جارٍ تحميل بيانات الماكينة…</p>
     <div v-else-if="error" class="mt-5 rounded-xl bg-red-50 p-4 text-red-700">{{ error }}</div>
     <template v-else-if="machine">
-      <div class="mt-5 flex flex-wrap items-start justify-between gap-4"><div><p class="text-sm text-slate-500">{{ departmentLabels[machine.department] ?? machine.department }}</p><h1 class="text-3xl font-bold">{{ machine.code }} · {{ machine.name }}</h1><p class="mt-1 text-slate-500">{{ machine.sub_category || 'بدون تصنيف فرعي' }}</p></div><StatusBadge :status="machine.status" /></div>
-      <section class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><div class="rounded-xl border bg-white p-4"><p class="text-sm text-slate-500">السرعة الحالية</p><p class="mt-2 text-2xl font-bold">{{ machine.current_speed_mpm ?? 0 }} <span class="text-sm font-normal">متر/دقيقة</span></p></div><div class="rounded-xl border bg-white p-4"><p class="text-sm text-slate-500">إجمالي الإنتاج</p><p class="mt-2 text-2xl font-bold">{{ Number(machine.total_meters_produced ?? 0).toLocaleString('ar-EG') }} <span class="text-sm font-normal">متر</span></p></div><div class="rounded-xl border bg-white p-4"><p class="text-sm text-slate-500">آخر صيانة</p><p class="mt-2 font-semibold">{{ formatDateTime(machine.last_maintenance_at) }}</p></div><div class="rounded-xl border bg-white p-4"><p class="text-sm text-slate-500">سبب التوقف النشط</p><p class="mt-2 font-semibold">{{ machine.active_downtime_id ? `${downtimeCategoryLabel(machine.active_downtime_category)} · ${machine.active_downtime_reason || 'بدون تفاصيل'}` : 'لا يوجد توقف نشط' }}</p></div></section>
-      <section class="mt-8 grid gap-6 xl:grid-cols-2"><div class="rounded-xl border bg-white p-5"><div class="mb-4 flex items-center justify-between"><h2 class="text-lg font-bold">سجل التوقفات</h2><RouterLink :to="`/downtime?machine=${encodeURIComponent(machine.id)}`" class="text-sm font-semibold text-brand-dark">عرض السجل</RouterLink></div><div v-if="!downtime.length" class="text-sm text-slate-500">لا يوجد سجل توقفات لهذه الماكينة.</div><div v-else class="space-y-3"><article v-for="entry in downtime" :key="entry.id" class="rounded-lg bg-slate-50 p-3"><div class="flex justify-between gap-3"><p class="font-semibold">{{ downtimeCategoryLabel(entry.category) }}</p><span :class="entry.ended_at ? 'text-slate-500' : 'text-red-700'" class="text-xs">{{ entry.ended_at ? 'مغلق' : 'نشط' }}</span></div><p class="mt-1 text-sm">{{ entry.reason || 'بدون وصف' }}</p><p class="mt-1 text-xs text-slate-500">{{ formatCairoDate(entry.started_at) }}<template v-if="entry.ended_at"> — {{ formatCairoDate(entry.ended_at) }}</template></p></article></div></div><div class="rounded-xl border bg-white p-5"><h2 class="mb-4 text-lg font-bold">قطع الغيار المرتبطة (BOM)</h2><div v-if="!bom.length" class="text-sm text-slate-500">لا توجد قطع غيار مرتبطة بهذه الماكينة.</div><div v-else class="space-y-3"><article v-for="item in bom" :key="item.id" class="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3"><div><p class="font-semibold">{{ item.part?.name ?? 'قطعة غير متاحة' }}</p><p class="text-xs text-slate-500">{{ item.part?.part_code ?? '—' }} · مطلوب {{ item.quantity_per_machine }} {{ item.part?.unit ?? '' }}</p></div><span class="text-sm" :class="(item.part?.quantity_on_hand ?? 0) <= (item.part?.reorder_level ?? 0) ? 'text-red-700' : 'text-slate-600'">المخزون: {{ item.part?.quantity_on_hand ?? '—' }}</span></article></div></div></section>
+      <div class="page-hero enter mt-5 !items-start"><div><p class="text-sm font-semibold text-accent-light">{{ departmentLabels[machine.department] ?? machine.department }}</p><h1 class="mt-1 text-3xl font-extrabold">{{ machine.code }} · {{ machine.name }}</h1><p class="mt-1 text-white/60">{{ machine.sub_category || 'بدون تصنيف فرعي' }}</p></div><StatusBadge :status="machine.status" /></div>
+      <section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" :data-status="machine.status"><div class="stat-tile enter" style="--d:0ms"><p class="text-sm text-slate-500">السرعة الحالية</p><p class="mt-2 text-2xl font-bold">{{ machine.current_speed_mpm ?? 0 }} <span class="text-sm font-normal">متر/دقيقة</span></p></div><div class="stat-tile enter" style="--d:70ms"><p class="text-sm text-slate-500">إجمالي الإنتاج</p><p class="mt-2 text-2xl font-bold">{{ Number(machine.total_meters_produced ?? 0).toLocaleString('ar-EG') }} <span class="text-sm font-normal">متر</span></p></div><div class="stat-tile enter" style="--d:140ms"><p class="text-sm text-slate-500">آخر صيانة</p><p class="mt-2 font-semibold">{{ formatDateTime(machine.last_maintenance_at) }}</p></div><div class="stat-tile enter" style="--d:210ms"><p class="text-sm text-slate-500">سبب التوقف النشط</p><p class="mt-2 font-semibold">{{ machine.active_downtime_id ? `${downtimeCategoryLabel(machine.active_downtime_category)} · ${machine.active_downtime_reason || 'بدون تفاصيل'}` : 'لا يوجد توقف نشط' }}</p></div></section>
+      <section class="mt-8 grid gap-6 xl:grid-cols-2"><div class="panel p-5"><div class="mb-4 flex items-center justify-between"><h2 class="text-lg font-bold">سجل التوقفات</h2><RouterLink :to="`/downtime?machine=${encodeURIComponent(machine.id)}`" class="text-sm font-semibold text-brand-dark">عرض السجل</RouterLink></div><div v-if="!downtime.length" class="text-sm text-slate-500">لا يوجد سجل توقفات لهذه الماكينة.</div><div v-else class="space-y-3"><article v-for="entry in downtime" :key="entry.id" class="rounded-lg bg-slate-50 p-3 transition hover:bg-brand-50"><div class="flex justify-between gap-3"><p class="font-semibold">{{ downtimeCategoryLabel(entry.category) }}</p><span :class="entry.ended_at ? 'text-slate-500' : 'text-red-700'" class="text-xs">{{ entry.ended_at ? 'مغلق' : 'نشط' }}</span></div><p class="mt-1 text-sm">{{ entry.reason || 'بدون وصف' }}</p><p class="mt-1 text-xs text-slate-500">{{ formatCairoDate(entry.started_at) }}<template v-if="entry.ended_at"> — {{ formatCairoDate(entry.ended_at) }}</template></p></article></div></div><div class="panel p-5"><h2 class="mb-4 text-lg font-bold">قطع الغيار المرتبطة (BOM)</h2><div v-if="!bom.length" class="text-sm text-slate-500">لا توجد قطع غيار مرتبطة بهذه الماكينة.</div><div v-else class="space-y-3"><article v-for="item in bom" :key="item.id" class="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3 transition hover:bg-brand-50"><div><p class="font-semibold">{{ item.part?.name ?? 'قطعة غير متاحة' }}</p><p class="text-xs text-slate-500">{{ item.part?.part_code ?? '—' }} · مطلوب {{ item.quantity_per_machine }} {{ item.part?.unit ?? '' }}</p></div><span class="text-sm" :class="(item.part?.quantity_on_hand ?? 0) <= (item.part?.reorder_level ?? 0) ? 'text-red-700' : 'text-slate-600'">المخزون: {{ item.part?.quantity_on_hand ?? '—' }}</span></article></div></div></section>
     </template>
   </div>
 </template>

@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/auth'
 import { useLocaleStore } from '../stores/locale'
 import { WORK_ORDER_ASSIGN_ROLES, WORK_ORDER_CLOSE_ROLES } from '../lib/roles'
 import { assignWorkOrder, closeWorkOrder, fetchTechnicians, type Technician } from '../lib/workOrders'
+import { createLiveRefresh } from '../lib/liveRefresh'
 import {
   departmentLabels,
   eventTypeLabel,
@@ -85,6 +86,7 @@ const selectedTechnician = ref('')
 const closeComments = ref('')
 const realtimeConnected = ref(false)
 let currentRequest = 0
+const liveRefresh = createLiveRefresh(() => load(true))
 let detailChannel: RealtimeChannel | null = null
 
 const canAssign = computed(() => Boolean(order.value)
@@ -148,17 +150,20 @@ function partAdder(part: WorkOrderPart): string {
   return personName(part.added_by)
 }
 
-async function load() {
+// silent = realtime refresh: swap data in place instead of blanking the page.
+async function load(silent = false) {
   const request = ++currentRequest
   const rawId = route.params.id
   const id = Array.isArray(rawId) ? rawId[0] : rawId
-  order.value = null
-  events.value = []
-  parts.value = []
-  people.value = {}
   error.value = ''
-  notFound.value = false
-  loading.value = true
+  if (!silent) {
+    order.value = null
+    events.value = []
+    parts.value = []
+    people.value = {}
+    notFound.value = false
+    loading.value = true
+  }
 
   if (!supabase) {
     error.value = 'إعداد Supabase غير مكتمل. أضف متغيرات البيئة المطلوبة.'
@@ -249,10 +254,10 @@ async function submitAssignment() {
     await assignWorkOrder(order.value, selectedTechnician.value)
     assignDialogOpen.value = false
       notice.value = t('workOrders.assignedSuccess')
-    await load()
+    await load(true)
   } catch (cause) {
     if (isVersionConflict(cause)) {
-      await load()
+      await load(true)
       notice.value = t('workOrders.conflict')
     } else actionError.value = cause instanceof Error ? cause.message : 'تعذر إسناد أمر الشغل.'
   } finally {
@@ -270,10 +275,10 @@ async function submitClose() {
     closeDialogOpen.value = false
     closeComments.value = ''
       notice.value = t('workOrders.closedSuccess')
-    await load()
+    await load(true)
   } catch (cause) {
     if (isVersionConflict(cause)) {
-      await load()
+      await load(true)
       notice.value = t('workOrders.conflict')
     } else actionError.value = cause instanceof Error ? cause.message : 'تعذر إغلاق أمر الشغل.'
   } finally {
@@ -294,12 +299,12 @@ watch(() => route.params.id, async () => {
   if (!supabase || typeof id !== 'string' || !id) return
 
   detailChannel = supabase.channel(`wo-detail-${id}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders', filter: `id=eq.${id}` }, () => void load())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_order_events', filter: `work_order_id=eq.${id}` }, () => void load())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders', filter: `id=eq.${id}` }, () => liveRefresh.request())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_order_events', filter: `work_order_id=eq.${id}` }, () => liveRefresh.request())
     .subscribe((status) => { realtimeConnected.value = status === 'SUBSCRIBED' })
 }, { immediate: true })
 
-onUnmounted(() => {
+onUnmounted(() => { liveRefresh.dispose();
   if (supabase && detailChannel) void supabase.removeChannel(detailChannel)
 })
 </script>
@@ -308,7 +313,7 @@ onUnmounted(() => {
   <section :dir="locale.direction">
     <RouterLink to="/work-orders" class="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-dark hover:underline">{{ t('workOrders.back') }}</RouterLink>
 
-    <p v-if="loading" class="rounded-xl border bg-white p-6 text-slate-500" role="status">جارٍ تحميل تفاصيل أمر الشغل…</p>
+    <p v-if="loading" class="panel p-6 text-slate-500" role="status">جارٍ تحميل تفاصيل أمر الشغل…</p>
     <p v-else-if="error" class="rounded-lg bg-red-50 p-4 text-red-700" role="alert">{{ error }}</p>
     <div v-else-if="notFound || !order" class="rounded-xl border border-dashed bg-white p-8 text-center text-slate-500">لم يتم العثور على أمر الشغل</div>
     <template v-else>
@@ -334,7 +339,7 @@ onUnmounted(() => {
 
       <div class="grid gap-5 xl:grid-cols-[1.5fr_1fr]">
         <div class="space-y-5">
-          <section class="rounded-xl border bg-white p-5">
+          <section class="panel p-5">
             <h2 class="mb-4 text-lg font-bold">{{ t('workOrders.details') }}</h2>
             <p class="whitespace-pre-wrap leading-7 text-slate-700">{{ order.description || t('workOrders.noDescription') }}</p>
             <dl class="mt-5 grid gap-4 border-t pt-4 sm:grid-cols-2">
@@ -351,7 +356,7 @@ onUnmounted(() => {
             </dl>
           </section>
 
-          <section class="rounded-xl border bg-white p-5">
+          <section class="panel p-5">
             <h2 class="mb-4 text-lg font-bold">{{ t('workOrders.rootActions') }}</h2>
             <div class="grid gap-4 md:grid-cols-2">
               <div class="rounded-lg bg-slate-50 p-4"><h3 class="text-sm font-semibold text-slate-600">{{ t('workOrders.root') }}</h3><p class="mt-2 whitespace-pre-wrap text-sm leading-6">{{ order.root_cause || t('workOrders.notEntered') }}</p></div>
@@ -359,7 +364,7 @@ onUnmounted(() => {
             </div>
           </section>
 
-          <section class="rounded-xl border bg-white p-5">
+          <section class="panel p-5">
             <div class="mb-4 flex items-center justify-between gap-3">
               <div class="flex items-center gap-3"><h2 class="text-lg font-bold">{{ t('workOrders.events') }}</h2><span class="inline-flex items-center gap-1.5 text-xs" :class="realtimeConnected ? 'text-emerald-700' : 'text-slate-400'"><span class="h-2 w-2 rounded-full" :class="realtimeConnected ? 'bg-emerald-500' : 'bg-slate-300'"></span>{{ realtimeConnected ? t('workOrders.live') : t('workOrders.disconnected') }}</span></div>
               <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">{{ events.length }} {{ t('workOrders.eventCount') }}</span>
@@ -385,7 +390,7 @@ onUnmounted(() => {
         </div>
 
         <aside class="space-y-5">
-          <section class="rounded-xl border bg-white p-5">
+          <section class="panel p-5">
             <div class="mb-4 flex items-center justify-between gap-3">
               <h2 class="text-lg font-bold">{{ t('workOrders.parts') }}</h2>
               <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">{{ parts.length }}</span>
@@ -403,7 +408,7 @@ onUnmounted(() => {
             </div>
           </section>
 
-          <section class="rounded-xl border bg-white p-5">
+          <section class="panel p-5">
             <h2 class="mb-4 text-lg font-bold">{{ t('workOrders.timeline') }}</h2>
             <div v-if="!chronologyItems.length" class="text-sm text-slate-500">{{ t('workOrders.noTimeline') }}</div>
             <dl v-else class="space-y-3">

@@ -40,17 +40,24 @@ watch(totalRunning, (to) => {
 }, { immediate: true })
 
 // spotlight + tilt that follow the pointer
+let pending = 0
 function onMove(event: MouseEvent) {
   const el = event.currentTarget as HTMLElement
-  const rect = el.getBoundingClientRect()
-  const x = event.clientX - rect.left
-  const y = event.clientY - rect.top
-  el.style.setProperty('--mx', `${x}px`)
-  el.style.setProperty('--my', `${y}px`)
-  el.style.setProperty('--ry', `${(x / rect.width - 0.5) * 9}deg`)
-  el.style.setProperty('--rx', `${-(y / rect.height - 0.5) * 9}deg`)
+  const { clientX, clientY } = event
+  if (pending) return // at most one style write per frame
+  pending = requestAnimationFrame(() => {
+    pending = 0
+    const rect = el.getBoundingClientRect()
+    const x = clientX - rect.left
+    const y = clientY - rect.top
+    el.style.setProperty('--mx', `${x}px`)
+    el.style.setProperty('--my', `${y}px`)
+    el.style.setProperty('--ry', `${(x / rect.width - 0.5) * 9}deg`)
+    el.style.setProperty('--rx', `${-(y / rect.height - 0.5) * 9}deg`)
+  })
 }
 function onLeave(event: MouseEvent) {
+  cancelAnimationFrame(pending); pending = 0
   const el = event.currentTarget as HTMLElement
   el.style.setProperty('--rx', '0deg')
   el.style.setProperty('--ry', '0deg')
@@ -66,8 +73,8 @@ onUnmounted(() => { if (timer) clearInterval(timer); cancelAnimationFrame(raf); 
     <!-- hero -->
     <div class="enter relative mb-8 overflow-hidden rounded-3xl bg-brand-navy p-5 text-white shadow-[0_30px_60px_-30px_rgba(8,41,87,.8)] md:p-8">
       <div class="pointer-events-none absolute inset-x-0 top-0 h-[3px] cable-flow"></div>
-      <div class="pointer-events-none absolute -right-10 -top-12 h-52 w-52 rounded-full bg-brand/50 blur-3xl float-blob"></div>
-      <div class="pointer-events-none absolute -bottom-16 left-1/3 h-48 w-48 rounded-full bg-accent/25 blur-3xl float-blob" style="animation-delay:-3s"></div>
+      <div class="pointer-events-none absolute -right-10 -top-12 h-52 w-52 rounded-full bg-brand/50 blur-3xl"></div>
+      <div class="pointer-events-none absolute -bottom-16 left-1/3 h-48 w-48 rounded-full bg-accent/25 blur-3xl"></div>
       <svg class="pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full opacity-70" viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true">
         <path d="M0 34 H70 L82 34 L92 10 L104 54 L114 34 H210 L222 34 L231 18 L241 48 L250 34 H400" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5" vector-effect="non-scaling-stroke" />
         <path class="pulse-trace" pathLength="100" d="M0 34 H70 L82 34 L92 10 L104 54 L114 34 H210 L222 34 L231 18 L241 48 L250 34 H400" fill="none" stroke="#FF7A5C" stroke-width="2.2" stroke-linecap="round" vector-effect="non-scaling-stroke" />
@@ -78,11 +85,11 @@ onUnmounted(() => { if (timer) clearInterval(timer); cancelAnimationFrame(raf); 
           <p class="mt-1 text-sm text-white/60">{{ t('plant.subtitle') }}</p>
         </div>
         <div class="flex flex-wrap items-center gap-4 md:gap-6">
-          <div class="rounded-2xl border border-white/10 bg-white/[.07] px-5 py-3 text-center backdrop-blur-sm">
+          <div class="rounded-2xl border border-white/10 bg-white/[.07] px-5 py-3 text-center">
             <p class="text-3xl font-extrabold tabular-nums text-emerald-300 md:text-4xl">{{ shownRunning }}<span class="mx-1 text-base font-semibold text-white/40">/ {{ live.machines.length }}</span></p>
             <p class="text-[11px] text-white/50">{{ locale.locale === 'ar' ? 'ماكينة تعمل الآن' : 'machines running now' }}</p>
           </div>
-          <div class="rounded-2xl border border-white/10 bg-white/[.07] px-5 py-3 text-center backdrop-blur-sm">
+          <div class="rounded-2xl border border-white/10 bg-white/[.07] px-5 py-3 text-center">
             <p class="text-3xl font-extrabold tabular-nums md:text-4xl" :class="totalDown ? 'text-red-300' : 'text-white/80'">{{ totalDown }}</p>
             <p class="text-[11px] text-white/50">{{ locale.locale === 'ar' ? 'متوقفة / قيد الإصلاح' : 'down / in repair' }}</p>
           </div>
@@ -101,8 +108,8 @@ onUnmounted(() => { if (timer) clearInterval(timer); cancelAnimationFrame(raf); 
     </div>
 
     <div v-else class="space-y-9">
-      <section v-for="group in grouped" :key="group.key">
-        <div class="enter mb-4 flex items-center justify-between gap-3" :style="{ '--d': `${Math.min(group.offset, 30) * 28}ms` }">
+      <section v-for="group in grouped" :key="group.key" class="dept-section">
+        <div class="enter mb-4 flex items-center justify-between gap-3" :style="{ '--d': `${Math.min(group.offset, 24) * 18}ms` }">
           <h2 class="flex items-center gap-2.5 text-lg font-extrabold text-brand-navy"><span class="h-5 w-1.5 rounded-full bg-gradient-to-b from-accent to-brand"></span>{{ group.name }}</h2>
           <div class="flex items-center gap-2.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
             <span class="text-xs font-bold tabular-nums text-slate-600">{{ group.running }}/{{ group.machines.length }}</span>
@@ -118,7 +125,7 @@ onUnmounted(() => { if (timer) clearInterval(timer); cancelAnimationFrame(raf); 
             v-for="(machine, mi) in group.machines" :key="machine.id" :to="`/machines/${encodeURIComponent(machine.id)}`"
             class="machine-card enter p-4 outline-none"
             :data-status="machine.status" :data-urgent="isUrgent(machine.status)"
-            :style="{ '--d': `${Math.min(group.offset + mi, 30) * 28 + 140}ms` }"
+            :style="{ '--d': `${Math.min(group.offset + mi, 24) * 18 + 120}ms` }"
             @mousemove="onMove" @mouseleave="onLeave"
           >
             <div class="flex items-start justify-between gap-2">

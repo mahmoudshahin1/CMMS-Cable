@@ -13,6 +13,7 @@ import { departmentLabels, statusLabel } from '../lib/workOrders'
 import { downtimeCategoryLabel } from '../lib/downtime'
 import { useLocaleStore } from '../stores/locale'
 import type { Machine } from '../stores/liveMonitoring'
+import { createLiveRefresh } from '../lib/liveRefresh'
 
 use([BarChart, LineChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
@@ -41,6 +42,7 @@ const error = ref('')
 const connected = ref(false)
 const selectedDepartment = ref('')
 const updatedAt = ref<Date | null>(null)
+const liveRefresh = createLiveRefresh(refresh)
 let channel: RealtimeChannel | null = null
 
 const departments = computed(() => Object.keys(departmentLabels).filter((key) => availability.value.some((row) => row.department === key) || machines.value.some((m) => m.department === key)))
@@ -171,12 +173,12 @@ function openMachine(code: string) { void router.push(`/machines/${encodeURIComp
 onMounted(() => {
   void refresh()
   if (supabase) channel = supabase.channel('web-analytics-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, () => void refresh())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'downtime_logs' }, () => void refresh())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, () => void refresh())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, () => liveRefresh.request())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'downtime_logs' }, () => liveRefresh.request())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, () => liveRefresh.request())
     .subscribe((status) => { connected.value = status === 'SUBSCRIBED' })
 })
-onUnmounted(() => { if (supabase && channel) void supabase.removeChannel(channel) })
+onUnmounted(() => { liveRefresh.dispose(); if (supabase && channel) void supabase.removeChannel(channel) })
 </script>
 
 <template>
