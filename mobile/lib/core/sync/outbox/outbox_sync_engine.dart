@@ -1,17 +1,15 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
-import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../database/hive_boxes.dart';
 import 'command_error_classifier.dart';
 import 'outbox_command.dart';
 import 'outbox_local_data_source.dart';
 import 'outbox_terminal_failure.dart';
 import '../network/network_connectivity_checker.dart';
-import '../../../features/work_orders/domain/models/work_order_model.dart';
 import '../../../features/work_orders/data/datasources/work_order_remote_data_source.dart';
 import '../../../features/downtime/data/datasources/downtime_remote_data_source.dart';
+import 'outbox_aggregate_reconciler.dart';
 
 export 'outbox_terminal_failure.dart';
 
@@ -44,10 +42,10 @@ class OutboxSyncEngine {
     NetworkConnectivityChecker? networkChecker,
     Duration periodicInterval = const Duration(seconds: 15),
     bool autoStartSync = true,
-  })  : _outboxLocal = outboxLocal,
-        _workOrderRemote = workOrderRemote,
-        _downtimeRemote = downtimeRemote,
-        _networkChecker = networkChecker {
+  }) : _outboxLocal = outboxLocal,
+       _workOrderRemote = workOrderRemote,
+       _downtimeRemote = downtimeRemote,
+       _networkChecker = networkChecker {
     _initConnectivityListener();
     _initPeriodicSync(periodicInterval);
     if (autoStartSync) unawaited(syncNow());
@@ -63,7 +61,8 @@ class OutboxSyncEngine {
       if (isOnline) {
         final now = DateTime.now();
         if (_lastBackgroundSyncAt != null &&
-            now.difference(_lastBackgroundSyncAt!) < const Duration(seconds: 2)) {
+            now.difference(_lastBackgroundSyncAt!) <
+                const Duration(seconds: 2)) {
           return;
         }
         _lastBackgroundSyncAt = now;
@@ -141,52 +140,65 @@ class OutboxSyncEngine {
         await _dispatchCommand(cmd);
         await _outboxLocal.markCompleted(cmd.commandId);
         await _updateCount();
+        if (cmd.commandType == 'create_work_order') {
+          await OutboxAggregateReconciler.reconcile(
+            aggregateId: cmd.aggregateId,
+            commandType: cmd.commandType,
+            workOrderRemote: _workOrderRemote,
+          );
+        }
       } catch (e) {
         final errStr = e.toString();
         final classification = CommandErrorClassifier.classify(e);
         if (!classification.isRetryable) {
-          debugPrint('🛑 Terminal rejection [${classification.type.name}] on ${cmd.commandId}: $errStr');
+          debugPrint(
+            '🛑 Terminal rejection [${classification.type.name}] on ${cmd.commandId}: $errStr',
+          );
           await _outboxLocal.markTerminalFailure(
             cmd.commandId,
             errStr,
             status: classification.terminalStatus,
           );
-          await _reconcileAggregate(cmd.aggregateId, cmd.commandType);
-          _terminalFailureController.add(OutboxTerminalFailure(
-            command: cmd,
-            classification: classification,
-            rawError: errStr,
-          ));
+          await OutboxAggregateReconciler.reconcile(
+            aggregateId: cmd.aggregateId,
+            commandType: cmd.commandType,
+            workOrderRemote: _workOrderRemote,
+          );
+          _terminalFailureController.add(
+            OutboxTerminalFailure(
+              command: cmd,
+              classification: classification,
+              rawError: errStr,
+            ),
+          );
           break;
         }
         if (cmd.attempts >= 10) {
           debugPrint('☠️ Max attempts reached on ${cmd.commandId}: $errStr');
-          await _outboxLocal.markFailed(cmd.commandId, errStr, isDeadLetter: true);
+          await _outboxLocal.markFailed(
+            cmd.commandId,
+            errStr,
+            isDeadLetter: true,
+          );
         } else {
-          final isRateLimit = classification.type == CommandFailureType.retryableRateLimit;
-          final backoffSec = _calculateBackoff(cmd.attempts, isRateLimited: isRateLimit);
+          final isRateLimit =
+              classification.type == CommandFailureType.retryableRateLimit;
+          final backoffSec = _calculateBackoff(
+            cmd.attempts,
+            isRateLimited: isRateLimit,
+          );
           final nextRetry = DateTime.now().add(Duration(seconds: backoffSec));
-          debugPrint('⏳ Transient failure on ${cmd.commandId}: $errStr. Backoff: ${backoffSec}s');
-          await _outboxLocal.markFailed(cmd.commandId, errStr, isDeadLetter: false, nextRetryAt: nextRetry);
+          debugPrint(
+            '⏳ Transient failure on ${cmd.commandId}: $errStr. Backoff: ${backoffSec}s',
+          );
+          await _outboxLocal.markFailed(
+            cmd.commandId,
+            errStr,
+            isDeadLetter: false,
+            nextRetryAt: nextRetry,
+          );
         }
         break;
-      }
-    }
-  }
-
-  Future<void> _reconcileAggregate(String aggregateId, String commandType) async {
-    if (commandType.endsWith('_work_order') ||
-        commandType.endsWith('_part') ||
-        commandType.contains('test_run')) {
-      try {
-        final authoritative = await _workOrderRemote.fetchWorkOrderById(aggregateId);
-        if (authoritative != null && Hive.isBoxOpen(HiveBoxes.workOrdersBox)) {
-          final box = Hive.box<WorkOrderModel>(HiveBoxes.workOrdersBox);
-          await box.put(authoritative.id, authoritative);
-          debugPrint('🔄 Reconciled WorkOrder ${authoritative.id} to server version: ${authoritative.version}');
-        }
-      } catch (e) {
-        debugPrint('⚠️ OutboxSyncEngine failed to reconcile aggregate $aggregateId: $e');
       }
     }
   }
@@ -203,8 +215,10 @@ class OutboxSyncEngine {
     }
   }
 
-  bool isPermanentRejection(Object error) => CommandErrorClassifier.isTerminal(error);
-  bool isRateLimited(Object error) => CommandErrorClassifier.isRateLimited(error);
+  bool isPermanentRejection(Object error) =>
+      CommandErrorClassifier.isTerminal(error);
+  bool isRateLimited(Object error) =>
+      CommandErrorClassifier.isRateLimited(error);
   int calculateBackoff(int attempts, {bool isRateLimited = false}) =>
       _calculateBackoff(attempts, isRateLimited: isRateLimited);
 

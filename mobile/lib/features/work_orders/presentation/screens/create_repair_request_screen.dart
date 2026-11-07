@@ -25,10 +25,7 @@ import 'work_orders_list_screen.dart';
 class CreateRepairRequestScreen extends StatefulWidget {
   final MachineModel? initialMachine;
 
-  const CreateRepairRequestScreen({
-    super.key,
-    this.initialMachine,
-  });
+  const CreateRepairRequestScreen({super.key, this.initialMachine});
 
   @override
   State<CreateRepairRequestScreen> createState() =>
@@ -58,6 +55,7 @@ class _CreateRepairRequestScreenState extends State<CreateRepairRequestScreen> {
 
   bool _isSubmitting = false;
   String? _voiceNoteUrl;
+  String? _voiceNoteLocalPath;
   late final String _draftWorkOrderId;
 
   @override
@@ -88,6 +86,7 @@ class _CreateRepairRequestScreenState extends State<CreateRepairRequestScreen> {
         selectedType: _selectedType,
         selectedPriority: _selectedPriority,
         voiceNoteUrl: _voiceNoteUrl,
+        voiceNoteLocalPath: _voiceNoteLocalPath,
         workOrderId: _draftWorkOrderId,
       );
     } finally {
@@ -141,22 +140,27 @@ class _CreateRepairRequestScreenState extends State<CreateRepairRequestScreen> {
           final userDept = currentUser?.department;
           final isPlantManager = currentUser?.role == UserRole.plantManager;
           final isOperator = currentUser?.role == UserRole.operator;
-          final hasDeptScope = isOperator || (userDept != null && !isPlantManager);
+          final hasDeptScope =
+              isOperator || (userDept != null && !isPlantManager);
 
           List<MachineModel> allMachines = [];
           if (machineState is MachineLoaded) {
             allMachines = machineState.allMachines;
           }
 
-          final List<MachineModel> selectableMachines = (hasDeptScope && userDept != null)
+          final List<MachineModel> selectableMachines =
+              (hasDeptScope && userDept != null)
               ? allMachines.where((m) => m.department == userDept).toList()
               : (isOperator ? <MachineModel>[] : allMachines);
 
           if ((_selectedMachineId == null ||
                   !selectableMachines.any((m) => m.id == _selectedMachineId)) &&
               selectableMachines.isNotEmpty) {
-            final validInitialMachine = widget.initialMachine != null &&
-                selectableMachines.any((m) => m.id == widget.initialMachine!.id);
+            final validInitialMachine =
+                widget.initialMachine != null &&
+                selectableMachines.any(
+                  (m) => m.id == widget.initialMachine!.id,
+                );
 
             _selectedMachineId = validInitialMachine
                 ? widget.initialMachine!.id
@@ -165,10 +169,10 @@ class _CreateRepairRequestScreenState extends State<CreateRepairRequestScreen> {
 
           final effectiveMachineId =
               selectableMachines.any((m) => m.id == _selectedMachineId)
-                  ? _selectedMachineId
-                  : (selectableMachines.isNotEmpty
-                      ? selectableMachines.first.id
-                      : null);
+              ? _selectedMachineId
+              : (selectableMachines.isNotEmpty
+                    ? selectableMachines.first.id
+                    : null);
 
           return Form(
             key: _formKey,
@@ -216,7 +220,10 @@ class _CreateRepairRequestScreenState extends State<CreateRepairRequestScreen> {
                     workOrderId: _draftWorkOrderId,
                     initialAudioUrl: _voiceNoteUrl,
                     isEditable: !_isSubmitting,
-                    onAudioUrlChanged: (url) => setState(() => _voiceNoteUrl = url),
+                    onAudioUrlChanged: (path) => setState(() {
+                      _voiceNoteUrl = null;
+                      _voiceNoteLocalPath = path;
+                    }),
                   ),
                   const SizedBox(height: 28),
                   CreateRequestSubmitButton(

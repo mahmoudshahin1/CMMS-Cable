@@ -8,10 +8,7 @@ import '../../../../core/sync/outbox/outbox_command.dart';
 class WorkOrderOutboxFactory {
   static const _uuid = Uuid();
 
-  static OutboxCommand create(
-    WorkOrderModel wo, {
-    String? voiceNoteUrl,
-  }) {
+  static OutboxCommand create(WorkOrderModel wo, {String? voiceNoteUrl}) {
     return OutboxCommand(
       commandId: _uuid.v4(),
       commandType: 'create_work_order',
@@ -22,10 +19,13 @@ class WorkOrderOutboxFactory {
         'machine_id': wo.machineId,
         'type': wo.type.name,
         'priority': wo.priority.name,
+        if (wo.voiceNoteLocalPath != null)
+          'voice_note_local_path': wo.voiceNoteLocalPath,
+        if (wo.voiceNoteLocalPath != null) 'voice_note_command_id': _uuid.v4(),
         if (voiceNoteUrl != null || wo.voiceNoteUrl != null) ...{
           'voice_note_url': voiceNoteUrl ?? wo.voiceNoteUrl,
           'p_voice_note_url': voiceNoteUrl ?? wo.voiceNoteUrl,
-        }
+        },
       },
       occurredAt: wo.createdAt,
       expectedVersion: 1,
@@ -89,12 +89,16 @@ class WorkOrderOutboxFactory {
       payload: {
         'root_cause': rootCause,
         'actions_taken': actionsTaken,
-        'repair_steps': (repairSteps ?? wo.repairSteps).map((e) => e.toJson()).toList(),
-        'p_repair_steps': (repairSteps ?? wo.repairSteps).map((e) => e.toJson()).toList(),
+        'repair_steps': (repairSteps ?? wo.repairSteps)
+            .map((e) => e.toJson())
+            .toList(),
+        'p_repair_steps': (repairSteps ?? wo.repairSteps)
+            .map((e) => e.toJson())
+            .toList(),
         if (repairVoiceUrl != null || wo.repairVoiceUrl != null) ...{
           'repair_voice_url': repairVoiceUrl ?? wo.repairVoiceUrl,
           'p_repair_voice_url': repairVoiceUrl ?? wo.repairVoiceUrl,
-        }
+        },
       },
       occurredAt: DateTime.now(),
       expectedVersion: expectedVersion ?? wo.version,

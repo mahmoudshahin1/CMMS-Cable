@@ -1,19 +1,23 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import '../../../../core/di/service_locator.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 import '../../../../core/storage/attachment_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'voice_note_player_view.dart';
 
-/// Industrial audio voice note recorder and playback widget for fault reports and repair remarks.
+/// Records voice notes to an app-private file so they survive offline submission.
 class VoiceNoteRecorderWidget extends StatefulWidget {
   final String label;
   final String? initialAudioUrl;
   final bool isEditable;
   final String? workOrderId;
   final ValueChanged<String?> onAudioUrlChanged;
-  final Future<String?> Function(Uint8List bytes, String fileName)? onUploadAudio;
+  final Future<String?> Function(Uint8List bytes, String fileName)?
+  onUploadAudio;
 
   const VoiceNoteRecorderWidget({
     super.key,
@@ -31,115 +35,172 @@ class VoiceNoteRecorderWidget extends StatefulWidget {
 }
 
 class _VoiceNoteRecorderWidgetState extends State<VoiceNoteRecorderWidget> {
+  final AudioRecorder _recorder = AudioRecorder();
+  final AudioPlayer _player = AudioPlayer();
   String? _audioUrl;
   bool _isRecording = false;
-  bool _isPlaying = false;
   bool _isUploading = false;
-  int _recordSeconds = 0;
-  int _playProgressSeconds = 0;
+  Duration _recordDuration = Duration.zero;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
   Timer? _recordTimer;
-  Timer? _playbackTimer;
+  StreamSubscription<Duration>? _positionSub;
+  StreamSubscription<Duration?>? _durationSub;
+  StreamSubscription<PlayerState>? _playerStateSub;
 
   @override
   void initState() {
     super.initState();
     _audioUrl = widget.initialAudioUrl;
+    _positionSub = _player.positionStream.listen((value) {
+      if (mounted) setState(() => _position = value);
+    });
+    _durationSub = _player.durationStream.listen((value) {
+      if (mounted) setState(() => _duration = value ?? Duration.zero);
+    });
+    _playerStateSub = _player.playerStateStream.listen((state) {
+      if (mounted && state.processingState == ProcessingState.completed) {
+        setState(() => _position = Duration.zero);
+      }
+    });
   }
 
   @override
   void didUpdateWidget(covariant VoiceNoteRecorderWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.initialAudioUrl != oldWidget.initialAudioUrl) {
-      setState(() => _audioUrl = widget.initialAudioUrl);
+      _audioUrl = widget.initialAudioUrl;
     }
   }
 
   @override
   void dispose() {
     _recordTimer?.cancel();
-    _playbackTimer?.cancel();
+    _positionSub?.cancel();
+    _durationSub?.cancel();
+    _playerStateSub?.cancel();
+    unawaited(_recorder.dispose());
+    unawaited(_player.dispose());
     super.dispose();
   }
 
-  void _startRecording() {
-    setState(() { _isRecording = true; _recordSeconds = 0; });
-    _recordTimer?.cancel();
-    _recordTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (mounted) setState(() => _recordSeconds++);
-    });
+  Future<void> _startRecording() async {
+    try {
+      if (!await _recorder.hasPermission()) {
+        _showMessage(
+          'Microphone permission is required to record a voice note.',
+        );
+        return;
+      }
+      final directory = await getApplicationDocumentsDirectory();
+      final filePath =
+          '${directory.path}${Platform.pathSeparator}'
+          'voice_note_${DateTime.now().microsecondsSinceEpoch}.m4a';
+      await _recorder.start(
+        const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 64000),
+        path: filePath,
+      );
+      if (!mounted) return;
+      setState(() {
+        _isRecording = true;
+        _recordDuration = Duration.zero;
+      });
+      _recordTimer?.cancel();
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) {
+          setState(() => _recordDuration += const Duration(seconds: 1));
+        }
+      });
+    } catch (error) {
+      _showMessage('Could not start recording: $error');
+    }
   }
 
   Future<void> _stopRecording() async {
     _recordTimer?.cancel();
-    final duration = _recordSeconds;
     setState(() {
       _isRecording = false;
       _isUploading = true;
     });
-
     try {
-      final syntheticBytes = Uint8List.fromList(
-        List.generate(1024 * (duration > 0 ? duration : 1), (i) => i % 256),
-      );
-      final fileName = 'audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
-
-      String? uploadedUrl;
-      if (widget.onUploadAudio != null) {
-        uploadedUrl = await widget.onUploadAudio!(syntheticBytes, fileName);
-      } else if (getIt.isRegistered<AttachmentService>()) {
-        final service = getIt<AttachmentService>();
-        final id = widget.workOrderId ?? 'draft_${DateTime.now().millisecondsSinceEpoch}';
-        uploadedUrl = await service.uploadVoiceNote(
-          workOrderId: id,
-          bytes: syntheticBytes,
-          fileName: fileName,
-        );
-      } else {
-        final id = widget.workOrderId ?? 'draft_${DateTime.now().millisecondsSinceEpoch}';
-        uploadedUrl = 'voice-notes/$id/$fileName';
+      final recordedPath = await _recorder.stop();
+      if (recordedPath == null) {
+        throw StateError('The recorder did not produce an audio file.');
+      }
+      final recordedFile = File(recordedPath);
+      if (!await recordedFile.exists() || await recordedFile.length() == 0) {
+        throw StateError('The recorded audio file is empty.');
       }
 
+      // Tests and integrations may inject an uploader. Normal reporting keeps the
+      // file local; the outbox uploads it after the work order has been created.
+      final resolvedPath = widget.onUploadAudio == null
+          ? recordedPath
+          : await widget.onUploadAudio!(
+              await recordedFile.readAsBytes(),
+              'voice_note_${DateTime.now().millisecondsSinceEpoch}.m4a',
+            );
+      if (resolvedPath == null) {
+        throw StateError('Voice note upload returned no storage path.');
+      }
+      if (!mounted) return;
+      setState(() {
+        _audioUrl = resolvedPath;
+        _isRecording = false;
+      });
+      widget.onAudioUrlChanged(resolvedPath);
+    } catch (error) {
       if (mounted) {
-        setState(() { _audioUrl = uploadedUrl; _isUploading = false; });
-        widget.onAudioUrlChanged(uploadedUrl);
+        setState(() => _isRecording = false);
+        _showMessage('Could not save the voice note: $error');
       }
-    } catch (_) {
+    } finally {
       if (mounted) setState(() => _isUploading = false);
     }
   }
 
-  void _togglePlayback() {
-    if (_isPlaying) {
-      _playbackTimer?.cancel();
-      setState(() => _isPlaying = false);
-      return;
+  Future<void> _togglePlayback() async {
+    try {
+      if (_player.playing) {
+        await _player.pause();
+        return;
+      }
+      final audio = _audioUrl;
+      if (audio == null) return;
+      if (audio.startsWith('http://') || audio.startsWith('https://')) {
+        await _player.setUrl(audio);
+      } else if (await File(audio).exists()) {
+        await _player.setFilePath(audio);
+      } else {
+        final signedUrl = await AttachmentService().getSignedUrl(audio);
+        await _player.setUrl(signedUrl);
+      }
+      await _player.play();
+    } catch (error) {
+      _showMessage('Could not play the voice note: $error');
     }
-    setState(() {
-      _isPlaying = true;
-      _playProgressSeconds = 0;
-    });
-    _playbackTimer?.cancel();
-    _playbackTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-      setState(() {
-        _playProgressSeconds++;
-        if (_playProgressSeconds >= 12) {
-          _isPlaying = false;
-          _playProgressSeconds = 0;
-          timer.cancel();
-        }
-      });
-    });
   }
 
-  void _deleteAudio() {
-    _playbackTimer?.cancel();
+  Future<void> _deleteAudio() async {
+    await _player.stop();
+    final audio = _audioUrl;
+    if (audio != null && await File(audio).exists()) {
+      await File(audio).delete();
+    }
+    if (!mounted) return;
     setState(() {
       _audioUrl = null;
-      _isPlaying = false;
-      _playProgressSeconds = 0;
+      _position = Duration.zero;
+      _duration = Duration.zero;
     });
     widget.onAudioUrlChanged(null);
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -156,7 +217,11 @@ class _VoiceNoteRecorderWidgetState extends State<VoiceNoteRecorderWidget> {
         children: [
           Row(
             children: [
-              Icon(Icons.mic_none_rounded, size: 16, color: context.brandPrimary),
+              Icon(
+                Icons.mic_none_rounded,
+                size: 16,
+                color: context.brandPrimary,
+              ),
               const SizedBox(width: 6),
               Text(
                 widget.label.toUpperCase(),
@@ -181,15 +246,16 @@ class _VoiceNoteRecorderWidgetState extends State<VoiceNoteRecorderWidget> {
           const SizedBox(height: 10),
           if (_audioUrl != null)
             VoiceNotePlayerView(
-              isPlaying: _isPlaying,
-              playProgressSeconds: _playProgressSeconds,
-              isEditable: widget.isEditable,
+              player: _player,
+              position: _position,
+              duration: _duration,
+              isEditable: widget.isEditable && !_isUploading,
               onTogglePlayback: _togglePlayback,
               onDeleteAudio: _deleteAudio,
             )
           else if (_isRecording)
             VoiceNoteRecordingView(
-              recordSeconds: _recordSeconds,
+              recordSeconds: _recordDuration.inSeconds,
               onStopRecording: _stopRecording,
             )
           else
@@ -211,7 +277,7 @@ class _VoiceNoteRecorderWidgetState extends State<VoiceNoteRecorderWidget> {
       );
     }
     return InkWell(
-      onTap: _startRecording,
+      onTap: _isUploading ? null : _startRecording,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         width: double.infinity,

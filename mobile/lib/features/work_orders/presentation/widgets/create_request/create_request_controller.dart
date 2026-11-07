@@ -29,6 +29,7 @@ class CreateRequestController {
     required WorkOrderType selectedType,
     required Priority selectedPriority,
     String? voiceNoteUrl,
+    String? voiceNoteLocalPath,
     String? workOrderId,
   }) async {
     if (allMachines.isEmpty) {
@@ -80,8 +81,7 @@ class CreateRequestController {
         id: effectiveId,
         title: titleController.text.trim(),
         description: descriptionController.text.trim().isEmpty
-            ? context
-                .trArgs('wo_request_desc', {'code': selectedMachine.code})
+            ? context.trArgs('wo_request_desc', {'code': selectedMachine.code})
             : descriptionController.text.trim(),
         machineId: selectedMachine.id,
         type: selectedType,
@@ -91,16 +91,16 @@ class CreateRequestController {
         chronology: chrono,
         spareParts: const [],
         voiceNoteUrl: voiceNoteUrl,
+        voiceNoteLocalPath: voiceNoteLocalPath,
       );
 
       final messenger = ScaffoldMessenger.of(context);
       final navigator = Navigator.of(context);
       final workOrderCubit = context.read<WorkOrderCubit>();
       final machineCubit = context.read<MachineCubit>();
-      final snackMsg = context.trArgs(
-        'wo_submitted_snack',
-        {'code': selectedMachine.code},
-      );
+      final snackMsg = context.trArgs('wo_submitted_snack', {
+        'code': selectedMachine.code,
+      });
 
       final currentUser = context.read<AuthCubit>().currentUser;
       await workOrderCubit.createWorkOrder(newWorkOrder, caller: currentUser);
@@ -113,9 +113,7 @@ class CreateRequestController {
       }
 
       navigator.pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const WorkOrdersListScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const WorkOrdersListScreen()),
       );
 
       messenger.showSnackBar(
