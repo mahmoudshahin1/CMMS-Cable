@@ -76,6 +76,15 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (!authSubscription) {
         const { data: authState } = supabase.auth.onAuthStateChange((_event, session) => {
+          // A background token refresh fires this with the SAME user and no
+          // profile change. Re-running loadProfile for it would still be
+          // correct eventually, but it starts by zeroing webAccess/role back
+          // to false/'' before the (two-step) re-fetch resolves — and if a
+          // navigation lands in that window, the router reads that transient
+          // false and bounces a fully-authorized user to /no-access. Only
+          // reload when the signed-in identity actually changes.
+          const nextId = session?.user?.id ?? null
+          if (nextId === (user.value?.id ?? null)) return
           void loadProfile(session?.user ?? null)
         })
         authSubscription = authState.subscription
