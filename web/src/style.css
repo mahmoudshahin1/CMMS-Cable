@@ -118,7 +118,7 @@ textarea.form-control { min-height: 100px; }
 html[data-motion='lite'] .float-blob, html[data-motion='lite'] .cable-flow, html[data-motion='lite'] .pulse-trace,
 html[data-motion='lite'] .cable-spin, html[data-motion='lite'] .cable-spin-rev, html[data-motion='lite'] .cable-orbit, html[data-motion='lite'] .cable-core,
 html[data-motion='lite'] .aurora-border::before, html[data-motion='lite'] .machine-card::after, html[data-motion='lite'] .eq i,
-html[data-motion='lite'] .animate-pulse, html[data-motion='lite'] .animate-ping, html[data-motion='lite'] .animate-spin { animation: none !important; }
+html[data-motion='lite'] .animate-pulse, html[data-motion='lite'] .animate-ping, html[data-motion='lite'] .animate-spin, html[data-motion='lite'] .soft-pulse { animation: none !important; }
 html[data-motion='lite'] .machine-card:hover, html[data-motion='lite'] .machine-card:focus-visible { transform: none; }
 html[data-motion='lite'] .enter, html[data-motion='lite'] .rise-in { animation: none; }
 html[data-motion='lite'] .page-enter-active, html[data-motion='lite'] .page-leave-active { transition: none; }
@@ -163,3 +163,17 @@ button.stat-tile:focus-visible { outline: 3px solid rgb(var(--tone) / .35); outl
 .chip:hover { border-color: rgb(12 69 149 / .5); color: #0C4595; }
 .chip.is-on { border-color: #082957; background: #082957; color: #fff; box-shadow: 0 8px 18px -10px rgb(8 41 87 / .8); }
 .chip b { font-variant-numeric: tabular-nums; opacity: .75; }
+
+/* Login fields: the wrapper (.field-wrap) already shows focus with its border
+   and underline, so the browser's own focus ring on the <input> just doubles
+   it up as a second, misaligned rectangle. Suppress it there only. */
+.field-wrap input:focus-visible { outline: none; }
+
+/* Autofilled fields (saved passwords) paint their own yellow/blue background
+   that ignores our styling. Force it back to the field's real colors. */
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0a2540;
+  box-shadow: 0 0 0 1000px #fff inset;
+  transition: background-color 99999s ease-in-out 0s;
+  caret-color: #0a2540;
+}
