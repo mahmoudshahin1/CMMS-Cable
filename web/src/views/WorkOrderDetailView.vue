@@ -445,7 +445,7 @@ onUnmounted(() => { liveRefresh.dispose();
         <p v-if="techniciansLoading" class="py-5 text-sm text-slate-500" role="status">{{ t('workOrders.loadingTechs') }}</p>
         <template v-else>
           <label class="block text-sm font-medium">{{ t('workOrders.technician') }}
-            <select v-model="selectedTechnician" class="mt-2 block w-full rounded-lg border-slate-300" :disabled="!technicians.length">
+            <select v-model="selectedTechnician" class="form-control mt-2" :disabled="!technicians.length">
               <option v-for="technician in technicians" :key="technician.id" :value="technician.id">{{ technician.full_name }}<template v-if="technician.specialty"> — {{ technician.specialty }}</template></option>
             </select>
           </label>
@@ -460,7 +460,7 @@ onUnmounted(() => { liveRefresh.dispose();
       <section role="dialog" aria-modal="true" aria-labelledby="close-title" class="enter w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
         <div class="mb-5 flex items-center justify-between gap-3"><h2 id="close-title" class="text-xl font-bold">{{ t('workOrders.closeTitle') }}</h2><button class="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100" aria-label="Close" @click="closeDialogOpen = false">×</button></div>
         <div class="grid gap-3 rounded-xl bg-slate-50 p-4 text-sm md:grid-cols-2"><div><p class="font-semibold text-slate-600">{{ t('workOrders.root') }}</p><p class="mt-1 whitespace-pre-wrap">{{ order?.root_cause || t('workOrders.notEntered') }}</p></div><div><p class="font-semibold text-slate-600">{{ t('workOrders.actions') }}</p><p class="mt-1 whitespace-pre-wrap">{{ order?.actions_taken || t('workOrders.notEnteredF') }}</p></div></div>
-        <label class="mt-4 block text-sm font-medium">{{ t('workOrders.closeNotes') }}<textarea v-model="closeComments" rows="3" maxlength="2000" class="mt-2 block w-full rounded-lg border-slate-300" :placeholder="t('workOrders.closePlaceholder')" /></label>
+        <label class="mt-4 block text-sm font-medium">{{ t('workOrders.closeNotes') }}<textarea v-model="closeComments" rows="3" maxlength="2000" class="form-control mt-2" :placeholder="t('workOrders.closePlaceholder')" /></label>
         <p v-if="actionError" class="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{{ actionError }}</p>
         <div class="mt-6 flex justify-end gap-2"><button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-brand hover:bg-brand-50 hover:text-brand" @click="closeDialogOpen = false">{{ t('workOrders.cancel') }}</button><button :disabled="actionLoading" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" @click="submitClose">{{ actionLoading ? t('workOrders.closing') : t('workOrders.confirmClose') }}</button></div>
       </section>
