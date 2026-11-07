@@ -141,7 +141,7 @@ onUnmounted(() => { if (timer) clearInterval(timer); cancelAnimationFrame(raf); 
     <!-- needs attention -->
     <div v-if="attention.length && !live.loading" class="enter mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 to-white p-3 shadow-[0_14px_28px_-20px_rgba(239,68,68,.6)]" style="--d:80ms">
       <span class="inline-flex items-center gap-1.5 pe-1 text-xs font-extrabold text-red-700"><TriangleAlert :size="15" />{{ t('plant.needsAttention') }}</span>
-      <RouterLink v-for="m in attention.slice(0, 8)" :key="m.id" :to="`/machines/${encodeURIComponent(m.code)}`" class="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-white px-2.5 py-1 text-xs font-bold text-red-800 transition hover:-translate-y-0.5 hover:border-red-400 hover:shadow-md">
+      <RouterLink v-for="m in attention.slice(0, 8)" :key="m.id" :to="`/machines/${encodeURIComponent(m.code || m.id)}`" class="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-white px-2.5 py-1 text-xs font-bold text-red-800 transition hover:-translate-y-0.5 hover:border-red-400 hover:shadow-md">
         <i class="h-1.5 w-1.5 rounded-full" :class="m.status === 'underRepair' ? 'bg-status-underRepair' : 'bg-status-downMaintenance'"></i>{{ m.code }}
       </RouterLink>
       <span v-if="attention.length > 8" class="text-xs font-semibold text-red-700">{{ t('plant.more').replace('{n}', String(attention.length - 8)) }}</span>
@@ -184,7 +184,7 @@ onUnmounted(() => { if (timer) clearInterval(timer); cancelAnimationFrame(raf); 
         <div v-if="!group.machines.length" class="rounded-xl border border-dashed p-5 text-sm text-slate-500">{{ t('plant.noData') }}</div>
         <div v-else class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
           <RouterLink
-            v-for="(machine, mi) in group.machines" :key="machine.id" :to="`/machines/${encodeURIComponent(machine.code)}`"
+            v-for="(machine, mi) in group.machines" :key="machine.id" :to="`/machines/${encodeURIComponent(machine.code || machine.id)}`"
             class="machine-card enter p-4 outline-none"
             :data-status="machine.status" :data-urgent="isUrgent(machine.status)"
             :style="{ '--d': `${Math.min(group.offset + mi, 24) * 18 + 120}ms` }"

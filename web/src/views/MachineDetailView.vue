@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { ArrowLeft, ArrowRight, ClipboardList, Gauge, PackageSearch, Ruler, Timer, Wrench } from 'lucide-vue-next'
 import type { RealtimeChannel } from '@supabase/supabase-js'
@@ -26,21 +26,22 @@ const workOrders = ref<WorkOrderRow[]>([])
 const loading = ref(true)
 const error = ref('')
 const machineId = computed(() => decodeURIComponent(String(route.params.id ?? '')))
+const isUuid = computed(() => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(machineId.value))
 const liveRefresh = createLiveRefresh(refresh)
 let channel: RealtimeChannel | null = null
 
 async function refresh() {
   if (!supabase) { error.value = t('machineDetail.supabaseMissing'); loading.value = false; return }
+  const queryField = isUuid.value ? 'id' : 'code'
   const [machineResult, machineDbResult] = await Promise.all([
-    supabase.from('v_machine_status_live').select('*').eq('code', machineId.value).maybeSingle(),
-    supabase.from('machines').select('id,code').eq('code', machineId.value).maybeSingle(),
+    supabase.from('v_machine_status_live').select('*').eq(queryField, machineId.value).maybeSingle(),
+    supabase.from('machines').select('id,code').eq(queryField, machineId.value).maybeSingle(),
   ])
   if (machineResult.error) error.value = `${t('machineDetail.errMachine')}: ${machineResult.error.message}`
   else if (!machineResult.data) error.value = t('machineDetail.notFound')
   else { machine.value = machineResult.data as Machine; error.value = '' }
   if (machineDbResult.error) error.value ||= `${t('machineDetail.errId')}: ${machineDbResult.error.message}`
-  const dbMachineId = machineDbResult.data?.id ?? machineId.value
-
+  const dbMachineId = machineDbResult.data?.id ?? (isUuid.value ? machineId.value : machine.value?.id ?? machineId.value)
   const [downtimeResult, bomResult, workOrderResult] = await Promise.all([
     supabase.from('downtime_logs').select('id,category,reason,started_at,ended_at,shift_minutes,work_order_id').eq('machine_id', dbMachineId).order('started_at', { ascending: false }).limit(20),
     supabase.from('machine_bom').select('id,machine_id,quantity_per_machine,spare_part_id'),
@@ -71,16 +72,27 @@ function barWidth(part: NonNullable<BomItem['part']>) {
 }
 const barClass = (part: NonNullable<BomItem['part']>) => part.quantity_on_hand <= 0 ? 'bg-red-500' : part.quantity_on_hand <= part.reorder_level ? 'bg-amber-500' : 'bg-emerald-500'
 
-onMounted(() => {
-  void refresh()
-  if (supabase) channel = supabase.channel(`machine-detail-${machineId.value}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, () => liveRefresh.request())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'downtime_logs' }, () => liveRefresh.request())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'machine_bom' }, () => liveRefresh.request())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'spare_parts' }, () => liveRefresh.request())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, () => liveRefresh.request())
-    .subscribe()
-})
+// Re-subscribes whenever the route's machine changes, so clicking from one
+// machine's "linked work orders" to another (without leaving this page) still
+// loads the new machine instead of reusing the previous one's data/channel.
+watch(machineId, async (newVal, oldVal) => {
+  if (oldVal && supabase && channel) {
+    await supabase.removeChannel(channel)
+    channel = null
+  }
+  if (!newVal) return
+  await refresh()
+  if (supabase) {
+    channel = supabase.channel(`machine-detail-${newVal}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, () => liveRefresh.request())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'downtime_logs' }, () => liveRefresh.request())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'machine_bom' }, () => liveRefresh.request())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spare_parts' }, () => liveRefresh.request())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, () => liveRefresh.request())
+      .subscribe()
+  }
+}, { immediate: true })
+
 onUnmounted(() => { liveRefresh.dispose(); if (supabase && channel) void supabase.removeChannel(channel) })
 </script>
 
