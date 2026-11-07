@@ -27,6 +27,14 @@ export const WEB_ROLE_LABELS: Record<string, string> = {
   PRODUCTION_SUPERVISOR: 'مشرف الإنتاج',
 }
 
+export const WEB_ROLE_LABELS_EN: Record<string, string> = {
+  ADMIN: 'System Admin',
+  PLANT_MANAGER: 'Plant Manager',
+  SUPERVISOR: 'Supervisor',
+  MAINTENANCE_SUPERVISOR: 'Maintenance Supervisor',
+  PRODUCTION_SUPERVISOR: 'Production Supervisor',
+}
+
 // These match the roles enforced by rpc_assign_work_order in PostgreSQL.
 export const WORK_ORDER_ASSIGN_ROLES = [
   'ADMIN',

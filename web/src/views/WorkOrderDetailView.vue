@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { ArrowLeft, ArrowRight } from 'lucide-vue-next'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../api/supabase'
 import { useAuthStore } from '../stores/auth'
 import { useLocaleStore } from '../stores/locale'
 import { WORK_ORDER_ASSIGN_ROLES, WORK_ORDER_CLOSE_ROLES } from '../lib/roles'
 import { assignWorkOrder, closeWorkOrder, fetchTechnicians, type Technician } from '../lib/workOrders'
+import { createLiveRefresh } from '../lib/liveRefresh'
 import {
-  departmentLabels,
+  departmentLabel,
   eventTypeLabel,
   formatDateTime,
   priorityInfo,
@@ -85,6 +87,7 @@ const selectedTechnician = ref('')
 const closeComments = ref('')
 const realtimeConnected = ref(false)
 let currentRequest = 0
+const liveRefresh = createLiveRefresh(() => load(true))
 let detailChannel: RealtimeChannel | null = null
 
 const canAssign = computed(() => Boolean(order.value)
@@ -93,6 +96,13 @@ const canAssign = computed(() => Boolean(order.value)
 const canClose = computed(() => Boolean(order.value)
   && (WORK_ORDER_CLOSE_ROLES as readonly string[]).includes(auth.role.toUpperCase())
   && ['completed', 'verified'].includes(order.value!.status))
+
+// Lifecycle tracker: pendingParts is a pause inside "in progress", so it keeps that step.
+const lifecycle = ['open', 'assigned', 'inProgress', 'completed', 'verified', 'verifiedClosed'] as const
+const lifecycleIndex = computed(() => {
+  const status = order.value?.status === 'pendingParts' ? 'inProgress' : order.value?.status
+  return lifecycle.indexOf(status as (typeof lifecycle)[number])
+})
 
 const machine = computed<Machine | null>(() => {
   const value = order.value?.machine
@@ -107,17 +117,18 @@ const chronologyItems = computed(() => {
   const value = order.value?.chronology ?? eventChronology
   if (!value) return []
   const shiftNames: Record<string, string> = {
-    shift1_Morning: 'صباحية',
-    shift2_Evening: 'مسائية',
-    shift3_Night: 'ليلية',
+    shift1_Morning: t('workOrders.shiftMorning'),
+    shift2_Evening: t('workOrders.shiftEvening'),
+    shift3_Night: t('workOrders.shiftNight'),
   }
   const rawShift = value.activeShift
+  const yesNo = (flag: unknown) => flag === true ? t('workOrders.yes') : flag === false ? t('workOrders.no') : '—'
   return [
-    { label: 'تاريخ الإنتاج', value: displayValue(value.productionDate) },
-    { label: 'وقت المصنع', value: displayValue(value.plantTimeFormatted) },
-    { label: 'الوردية', value: typeof rawShift === 'string' ? shiftNames[rawShift] ?? rawShift : '—' },
-    { label: 'تم التسجيل دون اتصال', value: value.isOfflineGenerated === true ? 'نعم' : value.isOfflineGenerated === false ? 'لا' : '—' },
-    { label: 'وقت المزامنة', value: displayValue(value.syncedAtUtc) },
+    { label: t('workOrders.productionDate'), value: displayValue(value.productionDate) },
+    { label: t('workOrders.plantTime'), value: displayValue(value.plantTimeFormatted) },
+    { label: t('workOrders.shift'), value: typeof rawShift === 'string' ? shiftNames[rawShift] ?? rawShift : '—' },
+    { label: t('workOrders.offlineLogged'), value: yesNo(value.isOfflineGenerated) },
+    { label: t('workOrders.syncedAt'), value: displayValue(value.syncedAtUtc) },
   ].filter((item) => item.value !== '—')
 })
 
@@ -127,15 +138,15 @@ function displayValue(value: unknown): string {
 }
 
 function personName(id: string | null, fallback?: unknown): string {
-  if (!id) return typeof fallback === 'string' && fallback ? fallback : 'غير مسجل'
-  return people.value[id] || (typeof fallback === 'string' && fallback ? fallback : `مستخدم #${shortId(id)}`)
+  if (!id) return typeof fallback === 'string' && fallback ? fallback : t('workOrders.notRecorded')
+  return people.value[id] || (typeof fallback === 'string' && fallback ? fallback : `${t('workOrders.userPrefix')}${shortId(id)}`)
 }
 
 function eventSummary(event: WorkOrderEvent): string {
   const summary = event.payload?.summary
   if (typeof summary === 'string' && summary.trim()) return summary
   if (event.old_status || event.new_status) {
-    return `${locale.locale === 'ar' ? 'Status' : 'Status'}: ${statusLabel(event.old_status, locale.locale)} ← ${statusLabel(event.new_status, locale.locale)}`
+    return `${t('workOrders.statusWord')}: ${statusLabel(event.old_status, locale.locale)} ${locale.direction === 'rtl' ? '←' : '→'} ${statusLabel(event.new_status, locale.locale)}`
   }
   return eventTypeLabel(event.event_type, locale.locale)
 }
@@ -148,20 +159,23 @@ function partAdder(part: WorkOrderPart): string {
   return personName(part.added_by)
 }
 
-async function load() {
+// silent = realtime refresh: swap data in place instead of blanking the page.
+async function load(silent = false) {
   const request = ++currentRequest
   const rawId = route.params.id
   const id = Array.isArray(rawId) ? rawId[0] : rawId
-  order.value = null
-  events.value = []
-  parts.value = []
-  people.value = {}
   error.value = ''
-  notFound.value = false
-  loading.value = true
+  if (!silent) {
+    order.value = null
+    events.value = []
+    parts.value = []
+    people.value = {}
+    notFound.value = false
+    loading.value = true
+  }
 
   if (!supabase) {
-    error.value = 'إعداد Supabase غير مكتمل. أضف متغيرات البيئة المطلوبة.'
+    error.value = t('workOrders.supabaseMissing')
     loading.value = false
     return
   }
@@ -215,7 +229,7 @@ async function load() {
       people.value = Object.fromEntries((profiles ?? []).map((profile) => [profile.id, profile.full_name]))
     }
   } catch (cause) {
-    if (request === currentRequest) error.value = cause instanceof Error ? cause.message : 'تعذر تحميل تفاصيل أمر الشغل.'
+    if (request === currentRequest) error.value = cause instanceof Error ? cause.message : t('workOrders.loadDetailError')
   } finally {
     if (request === currentRequest) loading.value = false
   }
@@ -229,7 +243,7 @@ async function openAssignDialog() {
     technicians.value = await fetchTechnicians()
     selectedTechnician.value = order.value?.assigned_to_technician_id ?? technicians.value[0]?.id ?? ''
   } catch (cause) {
-    actionError.value = cause instanceof Error ? cause.message : 'تعذر تحميل قائمة الفنيين.'
+    actionError.value = cause instanceof Error ? cause.message : t('workOrders.loadTechsError')
   } finally {
     techniciansLoading.value = false
   }
@@ -249,12 +263,12 @@ async function submitAssignment() {
     await assignWorkOrder(order.value, selectedTechnician.value)
     assignDialogOpen.value = false
       notice.value = t('workOrders.assignedSuccess')
-    await load()
+    await load(true)
   } catch (cause) {
     if (isVersionConflict(cause)) {
-      await load()
+      await load(true)
       notice.value = t('workOrders.conflict')
-    } else actionError.value = cause instanceof Error ? cause.message : 'تعذر إسناد أمر الشغل.'
+    } else actionError.value = cause instanceof Error ? cause.message : t('workOrders.assignError')
   } finally {
     actionLoading.value = false
   }
@@ -270,12 +284,12 @@ async function submitClose() {
     closeDialogOpen.value = false
     closeComments.value = ''
       notice.value = t('workOrders.closedSuccess')
-    await load()
+    await load(true)
   } catch (cause) {
     if (isVersionConflict(cause)) {
-      await load()
+      await load(true)
       notice.value = t('workOrders.conflict')
-    } else actionError.value = cause instanceof Error ? cause.message : 'تعذر إغلاق أمر الشغل.'
+    } else actionError.value = cause instanceof Error ? cause.message : t('workOrders.closeError')
   } finally {
     actionLoading.value = false
   }
@@ -294,52 +308,61 @@ watch(() => route.params.id, async () => {
   if (!supabase || typeof id !== 'string' || !id) return
 
   detailChannel = supabase.channel(`wo-detail-${id}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders', filter: `id=eq.${id}` }, () => void load())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_order_events', filter: `work_order_id=eq.${id}` }, () => void load())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders', filter: `id=eq.${id}` }, () => liveRefresh.request())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'work_order_events', filter: `work_order_id=eq.${id}` }, () => liveRefresh.request())
     .subscribe((status) => { realtimeConnected.value = status === 'SUBSCRIBED' })
 }, { immediate: true })
 
-onUnmounted(() => {
+onUnmounted(() => { liveRefresh.dispose();
   if (supabase && detailChannel) void supabase.removeChannel(detailChannel)
 })
 </script>
 
 <template>
   <section :dir="locale.direction">
-    <RouterLink to="/work-orders" class="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-dark hover:underline">{{ t('workOrders.back') }}</RouterLink>
+    <RouterLink to="/work-orders" class="group mb-5 inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-brand-dark transition hover:bg-brand-50"><component :is="locale.direction === 'rtl' ? ArrowRight : ArrowLeft" :size="16" class="transition-transform ltr:group-hover:-translate-x-1 rtl:group-hover:translate-x-1" />{{ t('workOrders.back') }}</RouterLink>
 
-    <p v-if="loading" class="rounded-xl border bg-white p-6 text-slate-500" role="status">جارٍ تحميل تفاصيل أمر الشغل…</p>
+    <p v-if="loading" class="panel p-6 text-slate-500" role="status">{{ t('workOrders.loadingDetail') }}</p>
     <p v-else-if="error" class="rounded-lg bg-red-50 p-4 text-red-700" role="alert">{{ error }}</p>
-    <div v-else-if="notFound || !order" class="rounded-xl border border-dashed bg-white p-8 text-center text-slate-500">لم يتم العثور على أمر الشغل</div>
+    <div v-else-if="notFound || !order" class="rounded-xl border border-dashed bg-white p-8 text-center text-slate-500">{{ t('workOrders.notFound') }}</div>
     <template v-else>
       <div v-if="notice || actionError" class="mb-4 space-y-2">
         <p v-if="notice" class="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800" role="status">{{ notice }}</p>
         <p v-if="actionError" class="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{{ actionError }}</p>
       </div>
-      <header class="mb-6 rounded-2xl border bg-white p-5 shadow-sm md:p-7">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div class="min-w-0">
-            <p class="font-mono text-sm text-slate-500">{{ locale.locale === 'ar' ? 'أمر شغل' : 'Work Order' }} #{{ shortId(order.id) }}</p>
-            <h1 class="mt-2 text-2xl font-bold text-brand-navy md:text-3xl">{{ order.title }}</h1>
-            <p class="mt-2 text-sm text-slate-500">{{ locale.locale === 'ar' ? 'أُنشئ' : 'Created' }} {{ formatDateTime(order.created_at, locale.locale) }}</p>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="rounded-full px-3 py-1.5 text-sm font-semibold" :class="statusClass(order.status)">{{ statusLabel(order.status, locale.locale) }}</span>
-            <span class="rounded-full px-3 py-1.5 text-sm font-semibold" :class="priorityInfo(order.priority, locale.locale).className">{{ priorityInfo(order.priority, locale.locale).label }}</span>
-            <button v-if="canAssign" class="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-dark" @click="openAssignDialog">{{ order.assigned_to_technician_id ? t('workOrders.changeTech') : t('workOrders.assign') }}</button>
-            <button v-if="canClose" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100" @click="closeDialogOpen = true; actionError = ''">{{ t('workOrders.close') }}</button>
-          </div>
-        </div>
-      </header>
+      <header class="page-hero enter !items-start">
+<div class="w-full">
+<div class="flex flex-wrap items-start justify-between gap-4">
+<div class="min-w-0">
+<p class="font-mono text-sm font-semibold text-accent-light">{{ t('workOrders.workOrder') }} #{{ shortId(order.id) }}</p>
+<h1 class="mt-2 text-2xl font-extrabold md:text-3xl">{{ order.title }}</h1>
+<p class="mt-2 text-sm text-white/60">{{ t('workOrders.createdOn') }} {{ formatDateTime(order.created_at, locale.locale) }}</p>
+</div>
+<div class="flex flex-wrap items-center gap-2">
+<span class="rounded-full px-3 py-1.5 text-sm font-semibold" :class="statusClass(order.status)">{{ statusLabel(order.status, locale.locale) }}</span>
+<span class="rounded-full px-3 py-1.5 text-sm font-semibold" :class="priorityInfo(order.priority, locale.locale).className">{{ priorityInfo(order.priority, locale.locale).label }}</span>
+<button v-if="canAssign" class="btn-shine rounded-xl bg-gradient-to-r from-accent to-accent-dark px-4 py-2 text-sm font-bold text-white shadow-accent transition hover:-translate-y-0.5" @click="openAssignDialog">{{ order.assigned_to_technician_id ? t('workOrders.changeTech') : t('workOrders.assign') }}</button>
+<button v-if="canClose" class="rounded-xl border border-emerald-300/40 bg-emerald-400/15 px-4 py-2 text-sm font-bold text-emerald-100 transition hover:bg-emerald-400/25" @click="closeDialogOpen = true; actionError = ''">{{ t('workOrders.close') }}</button>
+</div>
+</div>
+<ol class="mt-6 flex w-full items-center gap-1 overflow-x-auto pb-1" :aria-label="t('workOrders.lifecycle')">
+<li v-for="(step, i) in lifecycle" :key="step" class="flex min-w-0 flex-1 items-center gap-1.5 last:flex-none">
+<span class="grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-extrabold" :class="i <= lifecycleIndex ? 'bg-accent text-white' : 'bg-white/10 text-white/40'">{{ i < lifecycleIndex ? '✓' : i + 1 }}</span>
+<span class="hidden truncate text-[11px] font-semibold sm:inline" :class="i <= lifecycleIndex ? 'text-white' : 'text-white/40'">{{ statusLabel(step, locale.locale) }}</span>
+<span v-if="i < lifecycle.length - 1" class="h-px min-w-3 flex-1" :class="i < lifecycleIndex ? 'bg-accent' : 'bg-white/15'"></span>
+</li>
+</ol>
+</div>
+</header>
 
       <div class="grid gap-5 xl:grid-cols-[1.5fr_1fr]">
         <div class="space-y-5">
-          <section class="rounded-xl border bg-white p-5">
-            <h2 class="mb-4 text-lg font-bold">{{ t('workOrders.details') }}</h2>
+          <section class="panel p-5">
+            <h2 class="mb-4 flex items-center gap-2 text-lg font-extrabold text-brand-navy"><span class="h-5 w-1.5 rounded-full bg-gradient-to-b from-accent to-brand"></span>{{ t('workOrders.details') }}</h2>
             <p class="whitespace-pre-wrap leading-7 text-slate-700">{{ order.description || t('workOrders.noDescription') }}</p>
             <dl class="mt-5 grid gap-4 border-t pt-4 sm:grid-cols-2">
               <div><dt class="text-xs text-slate-500">{{ t('workOrders.machine') }}</dt><dd class="mt-1 font-semibold">{{ machine ? `${machine.code} — ${machine.name}` : shortId(order.machine_id) }}</dd></div>
-              <div><dt class="text-xs text-slate-500">{{ t('workOrders.department') }}</dt><dd class="mt-1 font-semibold">{{ departmentLabels[machine?.department ?? ''] ?? machine?.department ?? '—' }}</dd></div>
+              <div><dt class="text-xs text-slate-500">{{ t('workOrders.department') }}</dt><dd class="mt-1 font-semibold">{{ departmentLabel(machine?.department, locale.locale) }}</dd></div>
               <div><dt class="text-xs text-slate-500">{{ t('workOrders.type') }}</dt><dd class="mt-1 font-semibold">{{ typeLabel(order.type, locale.locale) }}</dd></div>
               <div><dt class="text-xs text-slate-500">{{ t('workOrders.priority') }}</dt><dd class="mt-1 font-semibold">{{ priorityInfo(order.priority, locale.locale).label }}</dd></div>
               <div><dt class="text-xs text-slate-500">{{ t('workOrders.reporter') }}</dt><dd class="mt-1 font-semibold">{{ personName(order.reported_by) }}</dd></div>
@@ -351,33 +374,33 @@ onUnmounted(() => {
             </dl>
           </section>
 
-          <section class="rounded-xl border bg-white p-5">
-            <h2 class="mb-4 text-lg font-bold">{{ t('workOrders.rootActions') }}</h2>
+          <section class="panel p-5">
+            <h2 class="mb-4 flex items-center gap-2 text-lg font-extrabold text-brand-navy"><span class="h-5 w-1.5 rounded-full bg-gradient-to-b from-accent to-brand"></span>{{ t('workOrders.rootActions') }}</h2>
             <div class="grid gap-4 md:grid-cols-2">
               <div class="rounded-lg bg-slate-50 p-4"><h3 class="text-sm font-semibold text-slate-600">{{ t('workOrders.root') }}</h3><p class="mt-2 whitespace-pre-wrap text-sm leading-6">{{ order.root_cause || t('workOrders.notEntered') }}</p></div>
               <div class="rounded-lg bg-slate-50 p-4"><h3 class="text-sm font-semibold text-slate-600">{{ t('workOrders.actions') }}</h3><p class="mt-2 whitespace-pre-wrap text-sm leading-6">{{ order.actions_taken || t('workOrders.notEnteredF') }}</p></div>
             </div>
           </section>
 
-          <section class="rounded-xl border bg-white p-5">
+          <section class="panel p-5">
             <div class="mb-4 flex items-center justify-between gap-3">
-              <div class="flex items-center gap-3"><h2 class="text-lg font-bold">{{ t('workOrders.events') }}</h2><span class="inline-flex items-center gap-1.5 text-xs" :class="realtimeConnected ? 'text-emerald-700' : 'text-slate-400'"><span class="h-2 w-2 rounded-full" :class="realtimeConnected ? 'bg-emerald-500' : 'bg-slate-300'"></span>{{ realtimeConnected ? t('workOrders.live') : t('workOrders.disconnected') }}</span></div>
+              <div class="flex items-center gap-3"><h2 class="flex items-center gap-2 text-lg font-extrabold text-brand-navy"><span class="h-5 w-1.5 rounded-full bg-gradient-to-b from-accent to-brand"></span>{{ t('workOrders.events') }}</h2><span class="inline-flex items-center gap-1.5 text-xs" :class="realtimeConnected ? 'text-emerald-700' : 'text-slate-400'"><span class="h-2 w-2 rounded-full" :class="realtimeConnected ? 'bg-emerald-500' : 'bg-slate-300'"></span>{{ realtimeConnected ? t('workOrders.live') : t('workOrders.disconnected') }}</span></div>
               <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">{{ events.length }} {{ t('workOrders.eventCount') }}</span>
             </div>
             <div v-if="!events.length" class="rounded-lg border border-dashed p-5 text-center text-sm text-slate-500">{{ t('workOrders.noEvents') }}</div>
             <div v-else class="space-y-0">
-              <article v-for="(event, index) in events" :key="event.id" class="relative flex gap-4 pb-6 last:pb-0">
+              <article v-for="(event, index) in events" :key="event.id" class="enter relative flex gap-4 pb-6 last:pb-0" :style="{ '--d': `${Math.min(index, 8) * 45}ms` }">
                 <div class="relative flex w-4 shrink-0 justify-center">
                   <span class="mt-1.5 h-3 w-3 rounded-full border-2 border-brand bg-white"></span>
                   <span v-if="index < events.length - 1" class="absolute top-5 bottom-0 w-px bg-slate-200"></span>
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="flex flex-wrap items-start justify-between gap-2">
-                    <h3 class="font-semibold">{{ eventTypeLabel(event.event_type) }}</h3>
-                    <time class="text-xs text-slate-500">{{ formatDateTime(event.occurred_at || event.received_at) }}</time>
+                    <h3 class="font-semibold">{{ eventTypeLabel(event.event_type, locale.locale) }}</h3>
+                    <time class="text-xs text-slate-500">{{ formatDateTime(event.occurred_at || event.received_at, locale.locale) }}</time>
                   </div>
                   <p class="mt-1 text-sm leading-6 text-slate-600">{{ eventSummary(event) }}</p>
-                  <p class="mt-2 text-xs text-slate-500">بواسطة {{ eventActor(event) }}</p>
+                  <p class="mt-2 text-xs text-slate-500">{{ t('workOrders.by') }} {{ eventActor(event) }}</p>
                 </div>
               </article>
             </div>
@@ -385,9 +408,9 @@ onUnmounted(() => {
         </div>
 
         <aside class="space-y-5">
-          <section class="rounded-xl border bg-white p-5">
+          <section class="panel p-5">
             <div class="mb-4 flex items-center justify-between gap-3">
-              <h2 class="text-lg font-bold">{{ t('workOrders.parts') }}</h2>
+              <h2 class="flex items-center gap-2 text-lg font-extrabold text-brand-navy"><span class="h-5 w-1.5 rounded-full bg-gradient-to-b from-accent to-brand"></span>{{ t('workOrders.parts') }}</h2>
               <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">{{ parts.length }}</span>
             </div>
             <div v-if="!parts.length" class="rounded-lg border border-dashed p-5 text-center text-sm text-slate-500">{{ t('workOrders.noParts') }}</div>
@@ -395,20 +418,20 @@ onUnmounted(() => {
               <article v-for="part in parts" :key="part.id" class="py-4 first:pt-0 last:pb-0">
                 <div class="flex items-start justify-between gap-3">
                   <div><h3 class="font-semibold">{{ part.part_name }}</h3><p v-if="part.part_code" class="mt-1 font-mono text-xs text-slate-500">{{ part.part_code }}</p></div>
-                  <span class="shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800">× {{ part.quantity }}</span>
+                  <span class="shrink-0 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand">× {{ part.quantity }}</span>
                 </div>
-                <p v-if="part.unit_cost !== null" class="mt-2 text-xs text-slate-500">تكلفة الوحدة: {{ Number(part.unit_cost).toLocaleString('ar-EG') }}</p>
-                <p class="mt-2 text-xs text-slate-500">أضيفت بواسطة {{ partAdder(part) }} · {{ formatDateTime(part.occurred_at || part.received_at) }}</p>
+                <p v-if="part.unit_cost !== null" class="mt-2 text-xs text-slate-500">{{ t('workOrders.unitCost') }}: {{ Number(part.unit_cost).toLocaleString(locale.locale === 'ar' ? 'ar-EG' : 'en-US') }}</p>
+                <p class="mt-2 text-xs text-slate-500">{{ t('workOrders.addedBy') }} {{ partAdder(part) }} · {{ formatDateTime(part.occurred_at || part.received_at, locale.locale) }}</p>
               </article>
             </div>
           </section>
 
-          <section class="rounded-xl border bg-white p-5">
-            <h2 class="mb-4 text-lg font-bold">{{ t('workOrders.timeline') }}</h2>
+          <section class="panel p-5">
+            <h2 class="mb-4 flex items-center gap-2 text-lg font-extrabold text-brand-navy"><span class="h-5 w-1.5 rounded-full bg-gradient-to-b from-accent to-brand"></span>{{ t('workOrders.timeline') }}</h2>
             <div v-if="!chronologyItems.length" class="text-sm text-slate-500">{{ t('workOrders.noTimeline') }}</div>
             <dl v-else class="space-y-3">
               <div v-for="item in chronologyItems" :key="item.label" class="flex items-start justify-between gap-3 border-b pb-3 last:border-0 last:pb-0">
-                <dt class="text-sm text-slate-500">{{ item.label }}</dt><dd class="text-left text-sm font-semibold">{{ item.value }}</dd>
+                <dt class="text-sm text-slate-500">{{ item.label }}</dt><dd class="text-end text-sm font-semibold">{{ item.value }}</dd>
               </div>
             </dl>
           </section>
@@ -417,29 +440,29 @@ onUnmounted(() => {
     </template>
 
     <div v-if="assignDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" @click.self="assignDialogOpen = false">
-      <section role="dialog" aria-modal="true" aria-labelledby="assign-title" class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+      <section role="dialog" aria-modal="true" aria-labelledby="assign-title" class="enter w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
         <div class="mb-5 flex items-center justify-between gap-3"><h2 id="assign-title" class="text-xl font-bold">{{ t('workOrders.assignTitle') }}</h2><button class="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100" aria-label="Close" @click="assignDialogOpen = false">×</button></div>
         <p v-if="techniciansLoading" class="py-5 text-sm text-slate-500" role="status">{{ t('workOrders.loadingTechs') }}</p>
         <template v-else>
           <label class="block text-sm font-medium">{{ t('workOrders.technician') }}
-            <select v-model="selectedTechnician" class="mt-2 block w-full rounded-lg border-slate-300" :disabled="!technicians.length">
+            <select v-model="selectedTechnician" class="form-control mt-2" :disabled="!technicians.length">
               <option v-for="technician in technicians" :key="technician.id" :value="technician.id">{{ technician.full_name }}<template v-if="technician.specialty"> — {{ technician.specialty }}</template></option>
             </select>
           </label>
           <p v-if="!technicians.length" class="mt-3 text-sm text-amber-700">{{ t('workOrders.noTechs') }}</p>
         </template>
         <p v-if="actionError" class="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{{ actionError }}</p>
-        <div class="mt-6 flex justify-end gap-2"><button class="rounded-lg border px-4 py-2 text-sm" @click="assignDialogOpen = false">{{ t('workOrders.cancel') }}</button><button :disabled="actionLoading || techniciansLoading || !selectedTechnician" class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" @click="submitAssignment">{{ actionLoading ? t('workOrders.assigning') : t('workOrders.confirmAssign') }}</button></div>
+        <div class="mt-6 flex justify-end gap-2"><button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-brand hover:bg-brand-50 hover:text-brand" @click="assignDialogOpen = false">{{ t('workOrders.cancel') }}</button><button :disabled="actionLoading || techniciansLoading || !selectedTechnician" class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" @click="submitAssignment">{{ actionLoading ? t('workOrders.assigning') : t('workOrders.confirmAssign') }}</button></div>
       </section>
     </div>
 
     <div v-if="closeDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" @click.self="closeDialogOpen = false">
-      <section role="dialog" aria-modal="true" aria-labelledby="close-title" class="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
+      <section role="dialog" aria-modal="true" aria-labelledby="close-title" class="enter w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
         <div class="mb-5 flex items-center justify-between gap-3"><h2 id="close-title" class="text-xl font-bold">{{ t('workOrders.closeTitle') }}</h2><button class="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100" aria-label="Close" @click="closeDialogOpen = false">×</button></div>
         <div class="grid gap-3 rounded-xl bg-slate-50 p-4 text-sm md:grid-cols-2"><div><p class="font-semibold text-slate-600">{{ t('workOrders.root') }}</p><p class="mt-1 whitespace-pre-wrap">{{ order?.root_cause || t('workOrders.notEntered') }}</p></div><div><p class="font-semibold text-slate-600">{{ t('workOrders.actions') }}</p><p class="mt-1 whitespace-pre-wrap">{{ order?.actions_taken || t('workOrders.notEnteredF') }}</p></div></div>
-        <label class="mt-4 block text-sm font-medium">{{ t('workOrders.closeNotes') }}<textarea v-model="closeComments" rows="3" maxlength="2000" class="mt-2 block w-full rounded-lg border-slate-300" :placeholder="t('workOrders.closePlaceholder')" /></label>
+        <label class="mt-4 block text-sm font-medium">{{ t('workOrders.closeNotes') }}<textarea v-model="closeComments" rows="3" maxlength="2000" class="form-control mt-2" :placeholder="t('workOrders.closePlaceholder')" /></label>
         <p v-if="actionError" class="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{{ actionError }}</p>
-        <div class="mt-6 flex justify-end gap-2"><button class="rounded-lg border px-4 py-2 text-sm" @click="closeDialogOpen = false">{{ t('workOrders.cancel') }}</button><button :disabled="actionLoading" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" @click="submitClose">{{ actionLoading ? t('workOrders.closing') : t('workOrders.confirmClose') }}</button></div>
+        <div class="mt-6 flex justify-end gap-2"><button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-brand hover:bg-brand-50 hover:text-brand" @click="closeDialogOpen = false">{{ t('workOrders.cancel') }}</button><button :disabled="actionLoading" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" @click="submitClose">{{ actionLoading ? t('workOrders.closing') : t('workOrders.confirmClose') }}</button></div>
       </section>
     </div>
   </section>

@@ -18,10 +18,10 @@ async function logout() {
 
 <template>
   <main :dir="locale.direction" class="relative grid min-h-screen place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_top_left,_#dff7ff_0%,_transparent_44%),linear-gradient(145deg,#eef4f9,#f8fbfd)] p-4 md:p-8">
-    <div class="pointer-events-none absolute -right-28 top-20 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl"></div>
+    <div class="pointer-events-none absolute -right-28 top-20 h-72 w-72 rounded-full bg-accent-light/20 blur-3xl"></div>
     <div class="pointer-events-none absolute -bottom-36 left-10 h-96 w-96 rounded-full bg-blue-300/20 blur-3xl"></div>
 
-    <section class="relative w-full max-w-xl rounded-[30px] border border-white/80 bg-white/90 p-7 text-center shadow-[0_32px_90px_-35px_rgba(10,37,64,.28)] backdrop-blur-xl md:p-12">
+    <section class="relative w-full max-w-xl rounded-[30px] border border-white/80 bg-white/90 p-7 text-center shadow-[0_32px_90px_-35px_rgba(10,37,64,.28)] md:p-12">
       <div class="mx-auto mb-8 inline-flex rounded-2xl bg-white px-5 py-4 shadow-lg">
         <img :src="logoUrl" alt="Energya Cables" class="h-12 w-[200px] object-contain" />
       </div>
@@ -33,17 +33,17 @@ async function logout() {
       <h1 class="mt-2 text-2xl font-extrabold text-brand-navy md:text-3xl">{{ t('noAccess.title') }}</h1>
       <p class="mx-auto mt-3 max-w-md text-sm leading-7 text-slate-600">{{ t('noAccess.message') }}</p>
 
-      <div class="mx-auto mt-7 max-w-sm rounded-2xl border border-slate-200 bg-slate-50 p-4 text-right">
+      <div class="mx-auto mt-7 max-w-sm rounded-2xl border border-slate-200 bg-slate-50 p-4 text-start">
         <p class="text-xs text-slate-500">{{ t('noAccess.account') }}</p>
-        <p class="mt-1 font-bold text-brand-navy">{{ auth.fullName || auth.user?.email || 'مستخدم' }}</p>
+        <p class="mt-1 font-bold text-brand-navy">{{ auth.fullName || auth.user?.email || (locale.locale === 'ar' ? 'مستخدم' : 'User') }}</p>
         <p class="mt-2 text-xs text-slate-500">{{ t('noAccess.role') }}</p>
-        <p class="mt-1 font-semibold text-slate-700">{{ auth.roleLabel || 'غير محدد' }}</p>
+        <p class="mt-1 font-semibold text-slate-700">{{ auth.roleLabel || (locale.locale === 'ar' ? 'غير محدد' : 'Not specified') }}</p>
       </div>
 
       <div class="mt-7 flex flex-col items-center gap-3">
-        <div class="mb-3 flex justify-center"><button class="rounded-lg border px-3 py-2 text-xs font-bold" @click="locale.setLocale(locale.locale === 'ar' ? 'en' : 'ar')">{{ locale.locale === 'ar' ? 'EN' : 'عربي' }}</button></div>
+        <div class="mb-3 flex justify-center"><button class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:border-brand hover:text-brand" @click="locale.setLocale(locale.locale === 'ar' ? 'en' : 'ar')">{{ locale.locale === 'ar' ? 'EN' : 'عربي' }}</button></div>
         <span class="inline-flex items-center gap-2 text-xs font-semibold text-slate-500"><Smartphone :size="15" /> {{ t('noAccess.app') }}</span>
-        <button class="group inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-cyan-900/15 transition hover:-translate-y-0.5 hover:bg-brand-dark" @click="logout">
+        <button class="group inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-brand-navy/15 transition hover:-translate-y-0.5 hover:bg-brand-dark" @click="logout">
           <LogOut :size="16" class="transition-transform group-hover:-translate-x-0.5" />
           {{ t('noAccess.logout') }}
         </button>

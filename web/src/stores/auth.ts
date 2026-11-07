@@ -1,15 +1,20 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { User } from '@supabase/supabase-js'
+import { useLocaleStore } from './locale'
 import { supabase } from '../api/supabase'
-import { WEB_ACCESS_ROLES, WEB_ROLE_LABELS } from '../lib/roles'
+import { WEB_ACCESS_ROLES, WEB_ROLE_LABELS, WEB_ROLE_LABELS_EN } from '../lib/roles'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const fullName = ref('')
   const role = ref('')
   const webAccess = ref(false)
-  const roleLabel = ref('')
+  const roleNameAr = ref('')
+  const roleNameEn = ref('')
+  // Role names come from factory_roles (name_ar / name_en) and follow the UI language.
+  const roleLabel = computed(() => (useLocaleStore().locale === 'ar' ? roleNameAr.value : roleNameEn.value))
+  const pick = (en: string, ar: string) => (useLocaleStore().locale === 'ar' ? ar : en)
   const department = ref<string | null>(null)
   const loading = ref(false)
   const error = ref('')
@@ -24,7 +29,8 @@ export const useAuthStore = defineStore('auth', () => {
     fullName.value = ''
     role.value = ''
     webAccess.value = false
-    roleLabel.value = ''
+    roleNameAr.value = ''
+    roleNameEn.value = ''
     department.value = null
     if (!nextUser || !supabase) return
 
@@ -43,13 +49,14 @@ export const useAuthStore = defineStore('auth', () => {
 
     const { data: factoryRole, error: factoryRoleError } = await supabase
       .from('factory_roles')
-      .select('web_access, name_ar')
+      .select('web_access, name_ar, name_en')
       .eq('code', role.value.toUpperCase())
       .maybeSingle()
     if (request !== profileRequest) return
 
     const normalizedRole = role.value.toUpperCase()
-    roleLabel.value = factoryRole?.name_ar || WEB_ROLE_LABELS[normalizedRole] || role.value
+    roleNameAr.value = factoryRole?.name_ar || WEB_ROLE_LABELS[normalizedRole] || role.value
+    roleNameEn.value = factoryRole?.name_en || WEB_ROLE_LABELS_EN[normalizedRole] || role.value
     const explicitlyAllowed = (WEB_ACCESS_ROLES as readonly string[]).includes(normalizedRole)
     webAccess.value = explicitlyAllowed || (!factoryRoleError && factoryRole?.web_access === true)
   }
@@ -75,7 +82,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
     })().catch((cause: unknown) => {
       initPromise = null
-      error.value = cause instanceof Error ? cause.message : 'تعذر التحقق من جلسة الدخول.'
+      error.value = cause instanceof Error ? cause.message : pick('Could not verify your session.', 'تعذر التحقق من جلسة الدخول.')
       void loadProfile(null)
     })
 
@@ -83,7 +90,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function signIn(email: string, password: string) {
-    if (!supabase) throw new Error('إعداد Supabase غير مكتمل.')
+    if (!supabase) throw new Error(pick('Supabase is not configured.', 'إعداد Supabase غير مكتمل.'))
     loading.value = true
     error.value = ''
     try {
@@ -91,7 +98,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (authError) throw authError
       await loadProfile(data.user)
     } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : 'تعذر تسجيل الدخول.'
+      error.value = cause instanceof Error ? cause.message : pick('Could not sign in.', 'تعذر تسجيل الدخول.')
       throw cause
     } finally {
       loading.value = false
