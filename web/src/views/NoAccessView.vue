@@ -41,7 +41,7 @@ async function logout() {
       </div>
 
       <div class="mt-7 flex flex-col items-center gap-3">
-        <div class="mb-3 flex justify-center"><button class="rounded-lg border px-3 py-2 text-xs font-bold" @click="locale.setLocale(locale.locale === 'ar' ? 'en' : 'ar')">{{ locale.locale === 'ar' ? 'EN' : 'عربي' }}</button></div>
+        <div class="mb-3 flex justify-center"><button class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:border-brand hover:text-brand" @click="locale.setLocale(locale.locale === 'ar' ? 'en' : 'ar')">{{ locale.locale === 'ar' ? 'EN' : 'عربي' }}</button></div>
         <span class="inline-flex items-center gap-2 text-xs font-semibold text-slate-500"><Smartphone :size="15" /> {{ t('noAccess.app') }}</span>
         <button class="group inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-brand-navy/15 transition hover:-translate-y-0.5 hover:bg-brand-dark" @click="logout">
           <LogOut :size="16" class="transition-transform group-hover:-translate-x-0.5" />

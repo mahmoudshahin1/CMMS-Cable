@@ -452,7 +452,7 @@ onUnmounted(() => { liveRefresh.dispose();
           <p v-if="!technicians.length" class="mt-3 text-sm text-amber-700">{{ t('workOrders.noTechs') }}</p>
         </template>
         <p v-if="actionError" class="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{{ actionError }}</p>
-        <div class="mt-6 flex justify-end gap-2"><button class="rounded-lg border px-4 py-2 text-sm" @click="assignDialogOpen = false">{{ t('workOrders.cancel') }}</button><button :disabled="actionLoading || techniciansLoading || !selectedTechnician" class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" @click="submitAssignment">{{ actionLoading ? t('workOrders.assigning') : t('workOrders.confirmAssign') }}</button></div>
+        <div class="mt-6 flex justify-end gap-2"><button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-brand hover:bg-brand-50 hover:text-brand" @click="assignDialogOpen = false">{{ t('workOrders.cancel') }}</button><button :disabled="actionLoading || techniciansLoading || !selectedTechnician" class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" @click="submitAssignment">{{ actionLoading ? t('workOrders.assigning') : t('workOrders.confirmAssign') }}</button></div>
       </section>
     </div>
 
@@ -462,7 +462,7 @@ onUnmounted(() => { liveRefresh.dispose();
         <div class="grid gap-3 rounded-xl bg-slate-50 p-4 text-sm md:grid-cols-2"><div><p class="font-semibold text-slate-600">{{ t('workOrders.root') }}</p><p class="mt-1 whitespace-pre-wrap">{{ order?.root_cause || t('workOrders.notEntered') }}</p></div><div><p class="font-semibold text-slate-600">{{ t('workOrders.actions') }}</p><p class="mt-1 whitespace-pre-wrap">{{ order?.actions_taken || t('workOrders.notEnteredF') }}</p></div></div>
         <label class="mt-4 block text-sm font-medium">{{ t('workOrders.closeNotes') }}<textarea v-model="closeComments" rows="3" maxlength="2000" class="mt-2 block w-full rounded-lg border-slate-300" :placeholder="t('workOrders.closePlaceholder')" /></label>
         <p v-if="actionError" class="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{{ actionError }}</p>
-        <div class="mt-6 flex justify-end gap-2"><button class="rounded-lg border px-4 py-2 text-sm" @click="closeDialogOpen = false">{{ t('workOrders.cancel') }}</button><button :disabled="actionLoading" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" @click="submitClose">{{ actionLoading ? t('workOrders.closing') : t('workOrders.confirmClose') }}</button></div>
+        <div class="mt-6 flex justify-end gap-2"><button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-brand hover:bg-brand-50 hover:text-brand" @click="closeDialogOpen = false">{{ t('workOrders.cancel') }}</button><button :disabled="actionLoading" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" @click="submitClose">{{ actionLoading ? t('workOrders.closing') : t('workOrders.confirmClose') }}</button></div>
       </section>
     </div>
   </section>

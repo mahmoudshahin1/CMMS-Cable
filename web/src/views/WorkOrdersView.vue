@@ -215,7 +215,7 @@ onUnmounted(() => { liveRefresh.dispose();
       <p v-if="refreshing" class="flex items-center gap-1.5 text-xs text-slate-500" role="status"><i class="h-1.5 w-1.5 animate-pulse rounded-full bg-brand"></i>{{ t('workOrders.refresh') }}</p>
     </div>
 
-    <p v-if="loading" class="rounded-xl border bg-white p-6 text-slate-500" role="status">{{ t('workOrders.loading') }}</p>
+    <p v-if="loading" class="panel p-6 text-slate-500" role="status">{{ t('workOrders.loading') }}</p>
     <p v-else-if="error && !rows.length" class="rounded-lg bg-accent-50 p-4 text-accent-dark" role="alert">{{ error }}</p>
     <template v-else>
       <!-- summary tiles double as quick filters -->
@@ -286,7 +286,7 @@ onUnmounted(() => { liveRefresh.dispose();
         <p class="text-slate-600">{{ t('workOrders.noMatch') }}</p>
         <button class="mt-3 rounded-lg px-3 py-2 text-sm font-semibold text-brand-dark hover:bg-brand-50" @click="clearFilters">{{ t('workOrders.clear') }}</button>
       </div>
-      <div v-else class="table-scroll overflow-x-auto rounded-xl border bg-white shadow-sm">
+      <div v-else class="table-scroll overflow-x-auto panel shadow-sm">
         <table class="w-full min-w-[960px] text-start text-sm">
           <thead class="bg-slate-50 text-slate-600">
             <tr>

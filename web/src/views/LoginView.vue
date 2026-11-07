@@ -87,7 +87,7 @@ async function submit() {
         <!-- form panel -->
         <div class="relative flex items-center bg-[linear-gradient(180deg,#fff,#f6f9fd)] p-7 md:p-12">
           <form class="mx-auto w-full max-w-sm" @submit.prevent="submit">
-            <div class="enter mb-7 flex items-center justify-between md:hidden" style="--d:100ms"><img :src="logoUrl" alt="Energya Cables" class="h-12 w-48 object-contain object-left" /><button type="button" class="rounded-lg border px-3 py-2 text-xs font-bold" @click="locale.setLocale(locale.locale === 'ar' ? 'en' : 'ar')">{{ locale.locale === 'ar' ? 'EN' : 'عربي' }}</button></div>
+            <div class="enter mb-7 flex items-center justify-between md:hidden" style="--d:100ms"><img :src="logoUrl" alt="Energya Cables" class="h-12 w-48 object-contain object-left" /><button type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:border-brand hover:text-brand" @click="locale.setLocale(locale.locale === 'ar' ? 'en' : 'ar')">{{ locale.locale === 'ar' ? 'EN' : 'عربي' }}</button></div>
             <div class="enter mb-3 hidden justify-end md:flex" style="--d:100ms"><button type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold shadow-sm transition hover:-translate-y-0.5 hover:border-brand" @click="locale.setLocale(locale.locale === 'ar' ? 'en' : 'ar')">{{ locale.locale === 'ar' ? 'EN' : 'عربي' }}</button></div>
             <p class="enter text-xs font-extrabold tracking-[.18em] text-accent" style="--d:180ms">{{ t('login.welcome') }}</p>
             <h1 class="enter mt-2 text-3xl font-extrabold brand-gradient-text" style="--d:240ms">{{ t('login.title') }}</h1>
