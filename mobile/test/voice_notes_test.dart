@@ -98,42 +98,81 @@ void main() {
       );
 
       final cmd = WorkOrderOutboxFactory.create(wo);
-      expect(cmd.payload['p_voice_note_url'], 'voice-notes/wo-create-1/17300000.m4a');
-      expect(cmd.payload['voice_note_url'], 'voice-notes/wo-create-1/17300000.m4a');
+      expect(
+        cmd.payload['p_voice_note_url'],
+        'voice-notes/wo-create-1/17300000.m4a',
+      );
+      expect(
+        cmd.payload['voice_note_url'],
+        'voice-notes/wo-create-1/17300000.m4a',
+      );
     });
 
-    test('complete command produces p_repair_steps and p_repair_voice_url in payload', () {
+    test('create command keeps local recording path for offline upload', () {
       final wo = WorkOrderModel(
-        id: 'wo-comp-1',
-        title: 'Repair done',
+        id: 'wo-offline-audio',
+        title: 'Breakdown title',
         description: 'Details',
         machineId: 'DW01',
         type: WorkOrderType.breakdown,
-        status: WorkOrderStatus.inProgress,
+        status: WorkOrderStatus.open,
         priority: Priority.high,
         createdAt: DateTime.now(),
+        voiceNoteLocalPath: r'C:\app\voice_note.m4a',
       );
 
-      final steps = [
-        const RepairStepModel(id: 's1', description: 'Replaced bearing'),
-      ];
-
-      final cmd = WorkOrderOutboxFactory.complete(
-        wo,
-        rootCause: 'Bearing wear',
-        actionsTaken: 'Replaced',
-        repairSteps: steps,
-        repairVoiceUrl: 'voice-notes/wo-comp-1/17300099.m4a',
+      final command = WorkOrderOutboxFactory.create(wo);
+      expect(
+        command.payload['voice_note_local_path'],
+        r'C:\app\voice_note.m4a',
       );
+      expect(command.payload['voice_note_command_id'], isA<String>());
+      expect(command.payload, isNot(contains('p_voice_note_url')));
 
-      expect(cmd.payload['p_repair_voice_url'], 'voice-notes/wo-comp-1/17300099.m4a');
-      expect(cmd.payload['p_repair_steps'], isNotEmpty);
-      expect(cmd.payload['repair_steps'], isNotEmpty);
+      final restored = WorkOrderModel.fromJson(wo.toJson());
+      expect(restored.voiceNoteLocalPath, wo.voiceNoteLocalPath);
     });
+
+    test(
+      'complete command produces p_repair_steps and p_repair_voice_url in payload',
+      () {
+        final wo = WorkOrderModel(
+          id: 'wo-comp-1',
+          title: 'Repair done',
+          description: 'Details',
+          machineId: 'DW01',
+          type: WorkOrderType.breakdown,
+          status: WorkOrderStatus.inProgress,
+          priority: Priority.high,
+          createdAt: DateTime.now(),
+        );
+
+        final steps = [
+          const RepairStepModel(id: 's1', description: 'Replaced bearing'),
+        ];
+
+        final cmd = WorkOrderOutboxFactory.complete(
+          wo,
+          rootCause: 'Bearing wear',
+          actionsTaken: 'Replaced',
+          repairSteps: steps,
+          repairVoiceUrl: 'voice-notes/wo-comp-1/17300099.m4a',
+        );
+
+        expect(
+          cmd.payload['p_repair_voice_url'],
+          'voice-notes/wo-comp-1/17300099.m4a',
+        );
+        expect(cmd.payload['p_repair_steps'], isNotEmpty);
+        expect(cmd.payload['repair_steps'], isNotEmpty);
+      },
+    );
   });
 
   group('Voice Note UI Widgets Tests', () {
-    testWidgets('renders player view when audio URL is present', (tester) async {
+    testWidgets('renders player view when audio URL is present', (
+      tester,
+    ) async {
       String? changedUrl;
 
       await tester.pumpWidget(

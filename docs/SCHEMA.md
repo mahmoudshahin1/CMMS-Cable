@@ -59,6 +59,8 @@ Workflow writes must go through the transactional RPCs; authenticated clients ca
 
 Read each function signature in `20260921000004_workflow_commands.sql` or `20260921000005_audit_and_machine_rules.sql` before calling it. Flutter is the reference for parameter names, command IDs, expected-version handling, and payload shape.
 
+Read-only inspection of the connected Supabase project on 2026-11-06 confirmed that production already has an outcome-aware `rpc_confirm_test_run`, department checks, bounce-back behavior, and `work_orders.checks`. Production records 22 migrations while this checkout contains 11 different migration versions. The live schema also has tables and columns absent from local migrations, and `machine_bom.machine_id` has a different type. The live RPC is `SECURITY DEFINER` and currently executable by `anon`/`PUBLIC`; its idempotency lookup precedes authentication. Track this as a security issue in `PROJECT_AUDIT_BACKLOG_AR.md`. See `docs/SUPABASE_MIGRATION_DRIFT_AR.md` for the exact migration inventory and reconciliation plan. No production writes or RPC calls were made.
+
 ## Reporting views (migration `20260927000010`)
 
 The repository defines these views in migration `20260927000010`. Production already had views with these names from earlier recorded migrations, and they were read successfully by the authenticated dashboard; the local migration was not applied there. All intended views use PostgreSQL `security_invoker = true` and grant `SELECT` to `authenticated`, so underlying grants and RLS still apply. The target Supabase Postgres must support security-invoker views (PostgreSQL 15+). Read success alone does not prove production SQL matches this migration exactly.

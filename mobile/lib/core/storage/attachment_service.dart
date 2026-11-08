@@ -14,7 +14,12 @@ class AttachmentValidationException implements Exception {
 class AttachmentService {
   static const String bucketName = 'work-order-attachments';
   static const int maxFileSizeBytes = 10 * 1024 * 1024; // 10MB limit
-  static const Set<String> allowedExtensions = {'.jpg', '.jpeg', '.png', '.webp'};
+  static const Set<String> allowedExtensions = {
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.webp',
+  };
   static const Set<String> allowedVoiceExtensions = {
     '.m4a',
     '.mp3',
@@ -31,12 +36,11 @@ class AttachmentService {
   SupabaseClient get _effectiveClient => _client ?? Supabase.instance.client;
 
   /// Validates photo attachment file size and format.
-  void validateAttachment({
-    required int sizeBytes,
-    required String fileName,
-  }) {
+  void validateAttachment({required int sizeBytes, required String fileName}) {
     if (sizeBytes <= 0) {
-      throw const AttachmentValidationException('Attachment file cannot be empty.');
+      throw const AttachmentValidationException(
+        'Attachment file cannot be empty.',
+      );
     }
     if (sizeBytes > maxFileSizeBytes) {
       throw AttachmentValidationException(
@@ -53,12 +57,11 @@ class AttachmentService {
   }
 
   /// Validates voice note file size and format.
-  void validateVoiceNote({
-    required int sizeBytes,
-    required String fileName,
-  }) {
+  void validateVoiceNote({required int sizeBytes, required String fileName}) {
     if (sizeBytes <= 0) {
-      throw const AttachmentValidationException('Voice note file cannot be empty.');
+      throw const AttachmentValidationException(
+        'Voice note file cannot be empty.',
+      );
     }
     if (sizeBytes > maxFileSizeBytes) {
       throw AttachmentValidationException(
@@ -82,7 +85,9 @@ class AttachmentService {
     String? mimeType,
   }) async {
     if (workOrderId.trim().isEmpty) {
-      throw const AttachmentValidationException('Work order ID cannot be empty.');
+      throw const AttachmentValidationException(
+        'Work order ID cannot be empty.',
+      );
     }
 
     validateAttachment(sizeBytes: bytes.length, fileName: fileName);
@@ -92,15 +97,16 @@ class AttachmentService {
     final storagePath = '$workOrderId/$uniqueId$ext';
     final resolvedMime = mimeType ?? _inferMimeType(ext);
 
-    debugPrint('📤 AttachmentService: uploading ${bytes.length} bytes to $bucketName/$storagePath');
+    debugPrint(
+      '📤 AttachmentService: uploading ${bytes.length} bytes to $bucketName/$storagePath',
+    );
 
-    await _effectiveClient.storage.from(bucketName).uploadBinary(
+    await _effectiveClient.storage
+        .from(bucketName)
+        .uploadBinary(
           storagePath,
           bytes,
-          fileOptions: FileOptions(
-            contentType: resolvedMime,
-            upsert: false,
-          ),
+          fileOptions: FileOptions(contentType: resolvedMime, upsert: false),
         );
 
     debugPrint('✅ AttachmentService: successfully uploaded $storagePath');
@@ -113,31 +119,38 @@ class AttachmentService {
     required Uint8List bytes,
     required String fileName,
     String? mimeType,
+    String? storagePath,
+    bool upsert = false,
   }) async {
     if (workOrderId.trim().isEmpty) {
-      throw const AttachmentValidationException('Work order ID cannot be empty.');
+      throw const AttachmentValidationException(
+        'Work order ID cannot be empty.',
+      );
     }
 
     validateVoiceNote(sizeBytes: bytes.length, fileName: fileName);
 
     final ext = _extractExtension(fileName);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final storagePath = 'voice-notes/$workOrderId/$timestamp$ext';
+    final targetPath = storagePath ?? '$workOrderId/voice-notes/$timestamp$ext';
     final resolvedMime = mimeType ?? _inferAudioMimeType(ext);
 
-    debugPrint('📤 AttachmentService: uploading voice ${bytes.length} bytes to $bucketName/$storagePath');
+    debugPrint(
+      '📤 AttachmentService: uploading voice ${bytes.length} bytes to $bucketName/$targetPath',
+    );
 
-    await _effectiveClient.storage.from(bucketName).uploadBinary(
-          storagePath,
+    await _effectiveClient.storage
+        .from(bucketName)
+        .uploadBinary(
+          targetPath,
           bytes,
-          fileOptions: FileOptions(
-            contentType: resolvedMime,
-            upsert: false,
-          ),
+          fileOptions: FileOptions(contentType: resolvedMime, upsert: upsert),
         );
 
-    debugPrint('✅ AttachmentService: successfully uploaded voice note $storagePath');
-    return storagePath;
+    debugPrint(
+      '✅ AttachmentService: successfully uploaded voice note $targetPath',
+    );
+    return targetPath;
   }
 
   /// Generates a short-lived signed URL for secure private viewing or listening.

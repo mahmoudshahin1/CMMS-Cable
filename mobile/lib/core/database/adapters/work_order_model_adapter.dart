@@ -42,28 +42,34 @@ class WorkOrderModelAdapter extends TypeAdapter<WorkOrderModel> {
       activityLogs: fields[16] != null
           ? (fields[16] as List).cast<WorkOrderActivityLog>()
           : const <WorkOrderActivityLog>[],
-      chronology: fields[17] as EventChronology? ??
+      chronology:
+          fields[17] as EventChronology? ??
           EventChronology.fromDateTime(createdAt),
       version: (fields[18] as int?) ?? 1,
       checks: fields[19] != null
           ? (fields[19] as List)
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList()
+                .map((e) => Map<String, dynamic>.from(e as Map))
+                .toList()
           : const <Map<String, dynamic>>[],
       repairSteps: fields[20] != null
           ? (fields[20] as List)
-              .map((e) => RepairStepModel.fromJson(Map<String, dynamic>.from(e as Map)))
-              .toList()
+                .map(
+                  (e) => RepairStepModel.fromJson(
+                    Map<String, dynamic>.from(e as Map),
+                  ),
+                )
+                .toList()
           : const <RepairStepModel>[],
       voiceNoteUrl: fields[21] as String?,
       repairVoiceUrl: fields[22] as String?,
+      voiceNoteLocalPath: fields[23] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, WorkOrderModel obj) {
     writer
-      ..writeByte(23)
+      ..writeByte(24)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -109,6 +115,8 @@ class WorkOrderModelAdapter extends TypeAdapter<WorkOrderModel> {
       ..writeByte(21)
       ..write(obj.voiceNoteUrl)
       ..writeByte(22)
-      ..write(obj.repairVoiceUrl);
+      ..write(obj.repairVoiceUrl)
+      ..writeByte(23)
+      ..write(obj.voiceNoteLocalPath);
   }
 }

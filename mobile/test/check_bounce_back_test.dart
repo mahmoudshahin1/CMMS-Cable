@@ -5,6 +5,7 @@ import 'package:orning_and_evening_remembrances/features/assets/domain/enums/mac
 import 'package:orning_and_evening_remembrances/features/assets/domain/models/machine_model.dart';
 import 'package:orning_and_evening_remembrances/features/auth/data/mock_users.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/data/datasources/work_order_outbox_factory.dart';
+import 'package:orning_and_evening_remembrances/features/work_orders/data/datasources/confirm_test_run_rpc_params.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/data/datasources/work_order_remote_mapper.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/enums/priority.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/enums/work_order_status.dart';
@@ -229,6 +230,37 @@ void main() {
       expect(cmd.payload['outcome'], equals('needs_followup'));
       expect(cmd.payload['comments'], equals('Check lubrication system'));
       expect(cmd.payload['confirmed_downtime_minutes'], equals(60));
+    });
+
+    test('confirm RPC parameters match the outcome-aware SQL contract', () {
+      final cmd = WorkOrderOutboxFactory.confirmTestRun(
+        completedWorkOrder,
+        outcome: 'needs_followup',
+        comments: 'Check lubrication system',
+        confirmedDowntimeMinutes: 60,
+        expectedVersion: 7,
+      );
+      final params = confirmTestRunRpcParams(cmd);
+
+      expect(params.keys, containsAll([
+        'p_command_id',
+        'p_wo_id',
+        'p_expected_version',
+        'p_outcome',
+        'p_comments',
+        'p_confirmed_downtime_minutes',
+        'p_occurred_at',
+      ]));
+      expect(params['p_command_id'], equals(cmd.commandId));
+      expect(params['p_wo_id'], equals(completedWorkOrder.id));
+      expect(params['p_expected_version'], equals(7));
+      expect(params['p_outcome'], equals('needs_followup'));
+      expect(params['p_comments'], equals('Check lubrication system'));
+      expect(params['p_confirmed_downtime_minutes'], equals(60));
+      expect(
+        params['p_occurred_at'],
+        equals(cmd.occurredAt.toUtc().toIso8601String()),
+      );
     });
 
     test('WorkOrderRemoteMapper restores checks array from Supabase row', () {

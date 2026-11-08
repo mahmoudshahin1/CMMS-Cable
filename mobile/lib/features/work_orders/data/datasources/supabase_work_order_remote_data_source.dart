@@ -1,16 +1,19 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/storage/attachment_service.dart';
 import '../../domain/models/work_order_model.dart';
 import '../../../../core/sync/outbox/outbox_command.dart';
 import 'work_order_remote_data_source.dart';
 import 'work_order_remote_mapper.dart';
+import 'confirm_test_run_rpc_params.dart';
 
 /// Real Supabase-backed implementation of [WorkOrderRemoteDataSource].
 class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
   final SupabaseClient _client;
 
   SupabaseWorkOrderRemoteDataSource({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   @override
   Future<List<WorkOrderModel>> fetchWorkOrders() async {
@@ -20,11 +23,11 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
         .order('created_at', ascending: false);
 
     return (rows as List).map((row) {
-      final parts = (row['work_order_parts'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
+      final parts =
+          (row['work_order_parts'] as List?)?.cast<Map<String, dynamic>>() ??
           [];
-      final events = (row['work_order_events'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
+      final events =
+          (row['work_order_events'] as List?)?.cast<Map<String, dynamic>>() ??
           [];
       return WorkOrderRemoteMapper.fromSupabaseRow(
         row as Map<String, dynamic>,
@@ -44,12 +47,10 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
 
     if (row == null) return null;
 
-    final parts = (row['work_order_parts'] as List?)
-            ?.cast<Map<String, dynamic>>() ??
-        [];
-    final events = (row['work_order_events'] as List?)
-            ?.cast<Map<String, dynamic>>() ??
-        [];
+    final parts =
+        (row['work_order_parts'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final events =
+        (row['work_order_events'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     return WorkOrderRemoteMapper.fromSupabaseRow(
       row,
       partsRows: parts,
@@ -66,11 +67,11 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
         .order('updated_at', ascending: true);
 
     return (rows as List).map((row) {
-      final parts = (row['work_order_parts'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
+      final parts =
+          (row['work_order_parts'] as List?)?.cast<Map<String, dynamic>>() ??
           [];
-      final events = (row['work_order_events'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
+      final events =
+          (row['work_order_events'] as List?)?.cast<Map<String, dynamic>>() ??
           [];
       return WorkOrderRemoteMapper.fromSupabaseRow(
         row as Map<String, dynamic>,
@@ -83,7 +84,9 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
   @override
   Future<void> syncWorkOrder(WorkOrderModel workOrder) async {
     // Direct sync fallback if not dispatched via outbox
-    debugPrint('📡 SupabaseWorkOrderRemoteDataSource: syncWorkOrder ${workOrder.id}');
+    debugPrint(
+      '📡 SupabaseWorkOrderRemoteDataSource: syncWorkOrder ${workOrder.id}',
+    );
   }
 
   @override
@@ -101,13 +104,51 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
     final rpcName = _resolveRpcName(outboxCmd.commandType);
     final params = _buildRpcParams(outboxCmd);
 
-    debugPrint('📡 Supabase RPC Call: $rpcName [cmdId: ${outboxCmd.commandId}]');
+    debugPrint(
+      '📡 Supabase RPC Call: $rpcName [cmdId: ${outboxCmd.commandId}]',
+    );
     final response = await _client.rpc(rpcName, params: params);
+
+    if (outboxCmd.commandType == 'create_work_order' &&
+        outboxCmd.payload['voice_note_local_path'] is String) {
+      await _uploadAndAttachVoiceNote(outboxCmd);
+    }
 
     if (response is Map) {
       return Map<String, dynamic>.from(response);
     }
     return {'result': response};
+  }
+
+  Future<void> _uploadAndAttachVoiceNote(OutboxCommand command) async {
+    final localPath = command.payload['voice_note_local_path'] as String;
+    final file = File(localPath);
+    if (!await file.exists()) {
+      throw FileSystemException('Queued voice note file is missing', localPath);
+    }
+    final fileName = Uri.file(localPath).pathSegments.last;
+    final storagePath = '${command.aggregateId}/voice-notes/$fileName';
+    final attachmentService = AttachmentService(client: _client);
+    final uploadedPath = await attachmentService.uploadVoiceNote(
+      workOrderId: command.aggregateId,
+      bytes: await file.readAsBytes(),
+      fileName: fileName,
+      storagePath: storagePath,
+      upsert: true,
+    );
+    final attachCommandId = command.payload['voice_note_command_id'] as String?;
+    if (attachCommandId == null || attachCommandId.isEmpty) {
+      throw StateError('Queued voice note is missing its idempotency key.');
+    }
+    await _client.rpc(
+      'rpc_attach_work_order_voice_note',
+      params: {
+        'p_command_id': attachCommandId,
+        'p_wo_id': command.aggregateId,
+        'p_voice_note_url': uploadedPath,
+        'p_occurred_at': command.occurredAt.toUtc().toIso8601String(),
+      },
+    );
   }
 
   String _resolveRpcName(String commandType) {
@@ -152,7 +193,8 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
         return {
           'p_command_id': cmd.commandId,
           'p_wo_id': cmd.aggregateId,
-          'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
+          'p_expected_version':
+              cmd.expectedVersion ?? p['expected_version'] ?? 1,
           'p_technician_id': p['technician_id'],
           'p_occurred_at': occurredIso,
         };
@@ -160,7 +202,8 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
         return {
           'p_command_id': cmd.commandId,
           'p_wo_id': cmd.aggregateId,
-          'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
+          'p_expected_version':
+              cmd.expectedVersion ?? p['expected_version'] ?? 1,
           'p_occurred_at': occurredIso,
         };
       case 'add_work_order_part':
@@ -178,28 +221,23 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
         return {
           'p_command_id': cmd.commandId,
           'p_wo_id': cmd.aggregateId,
-          'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
+          'p_expected_version':
+              cmd.expectedVersion ?? p['expected_version'] ?? 1,
           'p_root_cause': p['root_cause'] ?? '',
           'p_actions_taken': p['actions_taken'] ?? '',
           'p_repair_steps': p['p_repair_steps'] ?? p['repair_steps'] ?? [],
-          'p_repair_voice_url': p['p_repair_voice_url'] ?? p['repair_voice_url'],
+          'p_repair_voice_url':
+              p['p_repair_voice_url'] ?? p['repair_voice_url'],
           'p_occurred_at': occurredIso,
         };
       case 'confirm_test_run':
-        return {
-          'p_command_id': cmd.commandId,
-          'p_wo_id': cmd.aggregateId,
-          'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
-          'p_outcome': p['outcome'] ?? 'fixed',
-          'p_comments': p['comments'],
-          'p_confirmed_downtime_minutes': p['confirmed_downtime_minutes'],
-          'p_occurred_at': occurredIso,
-        };
+        return confirmTestRunRpcParams(cmd);
       case 'close_work_order':
         return {
           'p_command_id': cmd.commandId,
           'p_wo_id': cmd.aggregateId,
-          'p_expected_version': cmd.expectedVersion ?? p['expected_version'] ?? 1,
+          'p_expected_version':
+              cmd.expectedVersion ?? p['expected_version'] ?? 1,
           'p_occurred_at': occurredIso,
         };
       default:

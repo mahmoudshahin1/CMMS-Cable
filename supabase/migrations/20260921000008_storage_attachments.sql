@@ -18,8 +18,8 @@ ON CONFLICT (id) DO UPDATE SET
   allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp'];
 
 -- 2. Storage RLS Policies (storage.objects)
--- Enable RLS on storage.objects if not already enabled
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Supabase Storage owns storage.objects and manages its RLS lifecycle.
+-- Define bucket-scoped policies here without altering the extension-owned table.
 
 -- 2.1 SELECT Policy: View attachments for authorized work orders
 DROP POLICY IF EXISTS "Authenticated users view work order attachments" ON storage.objects;
