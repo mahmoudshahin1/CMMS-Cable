@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/localization/app_strings.dart';
 import '../../../../../core/theme/app_colors.dart';
-import '../../../../../core/widgets/kpi_metric_card.dart';
+import '../../../../../core/widgets/ring_stat_card.dart';
 import '../../../../auth/domain/enums/user_role.dart';
 import '../../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../domain/enums/machine_status.dart';
@@ -46,37 +46,39 @@ class PlantFactoryKpiBar extends StatelessWidget {
               .length;
         }
 
+        final runningFraction = running / (total > 0 ? total : 1);
+        final downtimeFraction = downtimes / (total > 0 ? total : 1);
+
         return SizedBox(
-          height: 104,
+          height: 116,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
-              KpiMetricCard(
-                title: context.tr('running'),
-                value: '$running/$total',
-                subtitle:
-                    '${((running / (total > 0 ? total : 1)) * 100).toStringAsFixed(0)}% Active',
-                icon: Icons.play_circle_fill_rounded,
-                accentColor: AppColors.runningEmerald,
+              RingStatCard(
+                label: context.tr('running'),
+                centerValue: '$running/$total',
+                footnote: '${(runningFraction * 100).toStringAsFixed(0)}% Active',
+                progress: runningFraction,
+                color: AppColors.runningEmerald,
               ),
               const SizedBox(width: 10),
-              KpiMetricCard(
-                title: context.tr('active_downtime'),
-                value: '$downtimes',
-                subtitle: downtimes > 0
+              RingStatCard(
+                label: context.tr('active_downtime'),
+                centerValue: '$downtimes',
+                footnote: downtimes > 0
                     ? context.tr('requires_action')
                     : context.tr('all_clear'),
-                icon: Icons.warning_amber_rounded,
-                accentColor: AppColors.downMaintenanceRed,
+                progress: downtimes > 0 ? downtimeFraction : 0.0,
+                color: AppColors.downMaintenanceRed,
               ),
               const SizedBox(width: 10),
-              KpiMetricCard(
-                title: hasDeptScope ? 'Dept OEE' : 'Plant OEE',
-                value: '88.4%',
-                subtitle: '+2.1% vs Target',
-                icon: Icons.analytics_rounded,
-                accentColor: context.brandPrimary,
+              RingStatCard(
+                label: hasDeptScope ? 'Dept OEE' : 'Plant OEE',
+                centerValue: '88.4%',
+                footnote: '+2.1% vs Target',
+                progress: 0.884,
+                color: context.brandPrimary,
               ),
             ],
           ),
