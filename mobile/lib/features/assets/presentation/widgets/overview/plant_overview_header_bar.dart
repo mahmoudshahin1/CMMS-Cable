@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/localization/app_strings.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/energya_logo.dart';
+import '../../../../../core/widgets/strand_pattern_background.dart';
 import '../../../../auth/domain/enums/user_role.dart';
 import '../../../../auth/presentation/screens/settings_screen.dart';
 import '../../../../auth/presentation/widgets/persona_indicator_chip.dart';
@@ -17,57 +18,78 @@ class PlantOverviewHeaderBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 10.0),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 8,
-        runSpacing: 10,
+    final navy = context.isDarkMode ? AppColors.darkNavy : AppColors.energyaDeepNavy;
+    final primary = context.isDarkMode ? AppColors.slateCard : AppColors.energyaPrimaryBlue;
+    final secondary = context.isDarkMode ? AppColors.slateBorder : AppColors.energyaSecondaryDeepBlue;
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [navy, primary, secondary],
+        ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
+      child: Stack(
         children: [
-          const EnergyaLogo(height: 22, showContainer: true),
-          const PersonaIndicatorChip(compact: true),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          StrandPatternBackground(
+            strandColors: [AppColors.energyaAccentOrange, Colors.white, Colors.white],
+          ),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 10,
             children: [
-              IconButton(
-                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                padding: EdgeInsets.zero,
-                tooltip: context.tr('settings_title'),
-                visualDensity: VisualDensity.compact,
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
+              const EnergyaLogo(height: 22, showContainer: true),
+              const PersonaIndicatorChip(compact: true),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                    padding: EdgeInsets.zero,
+                    tooltip: context.tr('settings_title'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.settings_rounded,
+                      color: Colors.white70,
+                      size: 18,
                     ),
-                  );
-                },
-                icon: Icon(
-                  Icons.settings_rounded,
-                  color: context.textSecondaryColor,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 4),
-              IconButton(
-                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                padding: EdgeInsets.zero,
-                tooltip: context.tr('tab_work_orders'),
-                visualDensity: VisualDensity.compact,
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const WorkOrdersListScreen(),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                    padding: EdgeInsets.zero,
+                    tooltip: context.tr('tab_work_orders'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const WorkOrdersListScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.build_circle_rounded,
+                      color: Colors.white,
+                      size: 18,
                     ),
-                  );
-                },
-                icon: Icon(
-                  Icons.build_circle_rounded,
-                  color: context.brandPrimary,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 4),
+                  ),
+                  const SizedBox(width: 4),
               RoleGuard(
                 allowedRoles: const [
                   UserRole.operator,
@@ -107,24 +129,26 @@ class PlantOverviewHeaderBar extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
-              IconButton(
-                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                padding: EdgeInsets.zero,
-                tooltip: context.tr('qr_scanner_title'),
-                visualDensity: VisualDensity.compact,
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const QrMachineScannerScreen(),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                    padding: EdgeInsets.zero,
+                    tooltip: context.tr('qr_scanner_title'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const QrMachineScannerScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: Colors.white,
+                      size: 18,
                     ),
-                  );
-                },
-                icon: Icon(
-                  Icons.qr_code_scanner_rounded,
-                  color: context.brandPrimary,
-                  size: 18,
-                ),
+                  ),
+                ],
               ),
             ],
           ),

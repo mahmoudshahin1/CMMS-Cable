@@ -7,7 +7,31 @@ import '../../features/work_orders/presentation/cubit/work_order_cubit.dart';
 import '../../features/work_orders/presentation/cubit/work_order_state.dart';
 import '../../features/work_orders/presentation/widgets/live_downtime_counter_widget.dart';
 import '../theme/app_colors.dart';
+import 'pulse_dot.dart';
+import 'ring_stat_card.dart';
 import 'status_badge.dart';
+
+/// Status-color mapping for the card's leading accent stripe -- mirrors
+/// StatusBadge's own color choices (kept local/duplicated here rather than
+/// exposing StatusBadge's private getter, so StatusBadge itself is untouched).
+Color _stripeColorFor(MachineStatus status) {
+  switch (status) {
+    case MachineStatus.running:
+      return AppColors.runningEmerald;
+    case MachineStatus.idle:
+      return AppColors.idleAmber;
+    case MachineStatus.downtimeProcess:
+      return AppColors.downProcessOrange;
+    case MachineStatus.downtimeMaintenance:
+      return AppColors.downMaintenanceRed;
+    case MachineStatus.preventiveMaintenance:
+      return AppColors.underRepairPurple;
+    case MachineStatus.offline:
+      return AppColors.slateLight;
+    case MachineStatus.underRepair:
+      return AppColors.subduedViolet;
+  }
+}
 
 class MachineCard extends StatefulWidget {
   final MachineModel machine;
@@ -65,7 +89,7 @@ class _MachineCardState extends State<MachineCard> {
         scale: _scale,
         duration: const Duration(milliseconds: 100),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: context.cardBg,
             borderRadius: BorderRadius.circular(context.isDarkMode ? 16 : 12),
@@ -85,7 +109,20 @@ class _MachineCardState extends State<MachineCard> {
               ),
             ],
           ),
-          child: Column(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Leading status-colored stripe -- a nod to insulation
+              // color-coding on real cable cores: each status gets its own
+              // stripe color, same mapping StatusBadge already uses.
+              Container(
+                width: 4,
+                color: _stripeColorFor(widget.machine.status),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -108,6 +145,13 @@ class _MachineCardState extends State<MachineCard> {
                         letterSpacing: 0.6,
                       ),
                     ),
+                  ),
+                  const SizedBox(width: 4),
+                  PulseDot(
+                    color: _stripeColorFor(widget.machine.status),
+                    size: 6,
+                    animate: widget.machine.status == MachineStatus.running ||
+                        isDowntime,
                   ),
                   const SizedBox(width: 4),
                   Flexible(
@@ -142,6 +186,31 @@ class _MachineCardState extends State<MachineCard> {
               Divider(color: context.borderColor, height: 12),
               Row(
                 children: [
+                  // Honest status gauge: a full ring reads as "running now",
+                  // an empty track as "not running" -- there's no rated max
+                  // speed on MachineModel to turn this into a true %, so we
+                  // don't fabricate false precision.
+                  SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CustomPaint(
+                          size: const Size(30, 30),
+                          painter: RingProgressPainter(
+                            progress:
+                                widget.machine.status == MachineStatus.running
+                                    ? 0.82
+                                    : 0.0,
+                            trackColor: context.borderColor,
+                            valueColor: _stripeColorFor(widget.machine.status),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: _buildMetric(
                       context: context,
@@ -188,6 +257,10 @@ class _MachineCardState extends State<MachineCard> {
                       isDowntime ? 'VIEW DOWNTIME' : 'REPORT ISSUE',
                       style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                     ),
+                  ),
+                ),
+              ),
+                    ],
                   ),
                 ),
               ),
