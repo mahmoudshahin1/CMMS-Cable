@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/localization/app_strings.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/strand_pattern_background.dart';
 import '../../../auth/presentation/screens/settings_screen.dart';
 import '../../../auth/presentation/widgets/persona_indicator_chip.dart';
 import '../cubit/analytics_cubit.dart';
@@ -20,8 +22,31 @@ class PlantAnalyticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final navy = context.isDarkMode ? AppColors.darkNavy : AppColors.energyaDeepNavy;
+    final primary = context.isDarkMode ? AppColors.slateCard : AppColors.energyaPrimaryBlue;
+    final secondary = context.isDarkMode ? AppColors.slateBorder : AppColors.energyaSecondaryDeepBlue;
+
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        flexibleSpace: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [navy, primary, secondary],
+                ),
+              ),
+            ),
+            StrandPatternBackground(
+              strandColors: [AppColors.energyaAccentOrange, Colors.white, Colors.white],
+            ),
+          ],
+        ),
         title: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerRight,

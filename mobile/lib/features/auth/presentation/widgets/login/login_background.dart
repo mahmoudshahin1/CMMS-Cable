@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:orning_and_evening_remembrances/core/theme/app_colors.dart';
+import 'package:orning_and_evening_remembrances/core/widgets/strand_pattern_background.dart';
 
 /// Full-screen ambient background with industrial gradients and decorative circles.
 class LoginBackground extends StatelessWidget {
@@ -37,6 +38,16 @@ class LoginBackground extends StatelessWidget {
                     ],
                   ),
           ),
+        ),
+        // "Current & Strand" motif, very subtle -- matches the rest of the
+        // app's gradient headers without competing with the login form.
+        StrandPatternBackground(
+          opacity: 0.07,
+          strandColors: [
+            isDark ? AppColors.cyberCyan : AppColors.energyaPrimaryBlue,
+            isDark ? AppColors.electricBlue : AppColors.energyaAccentOrange,
+            isDark ? AppColors.electricBlue : AppColors.energyaPrimaryBlue,
+          ],
         ),
         // Decorative circle top-right
         Positioned(
