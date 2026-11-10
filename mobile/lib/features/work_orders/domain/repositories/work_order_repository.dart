@@ -9,8 +9,15 @@ abstract class WorkOrderRepository {
   Future<WorkOrderModel?> getWorkOrderById(String id);
   Future<List<WorkOrderModel>> getWorkOrdersByStatus(WorkOrderStatus status);
   Future<List<WorkOrderModel>> getWorkOrdersForTechnician(String technicianId);
-  Future<WorkOrderModel> createWorkOrder(WorkOrderModel workOrder, {UserModel? caller});
-  Future<void> updateWorkOrderStatus(String workOrderId, WorkOrderStatus status, {UserModel? caller});
+  Future<WorkOrderModel> createWorkOrder(
+    WorkOrderModel workOrder, {
+    UserModel? caller,
+  });
+  Future<void> updateWorkOrderStatus(
+    String workOrderId,
+    WorkOrderStatus status, {
+    UserModel? caller,
+  });
   Future<void> assignTechnician(
     String workOrderId,
     String technicianId,
@@ -19,13 +26,18 @@ abstract class WorkOrderRepository {
     String? technicianName,
   });
   Future<void> startRepair(String workOrderId, {required UserModel caller});
-  Future<void> addSparePart(String workOrderId, SparePartModel sparePart, {UserModel? caller});
+  Future<void> addSparePart(
+    String workOrderId,
+    SparePartModel sparePart, {
+    UserModel? caller,
+  });
   Future<void> completeWorkOrder(
     String workOrderId, {
     required String rootCause,
     required String actionsTaken,
     List<RepairStepModel>? repairSteps,
     String? repairVoiceUrl,
+    String? repairVoiceLocalPath,
     UserModel? caller,
   });
   Future<void> confirmTestRun(

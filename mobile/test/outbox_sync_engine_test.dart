@@ -238,6 +238,24 @@ void main() {
     expect(mockWorkOrderRemote.executedCommands.last.commandId, equals('durable-uuid-v4-001'));
   });
 
+  test('repair audio stays retryable until the server confirms its path', () async {
+    final command = OutboxCommand(
+      commandId: 'repair-audio-confirmation-001',
+      commandType: 'complete_work_order',
+      aggregateId: 'WO-REPAIR-AUDIO',
+      payload: {'repair_voice_local_path': r'C:\app\repair.m4a'},
+      occurredAt: DateTime.now(),
+    );
+    await fakeOutbox.enqueue(command);
+
+    await engine.syncNow();
+
+    final saved = fakeOutbox.getCommand(command.commandId)!;
+    expect(saved.status, equals(OutboxCommandStatus.pending));
+    expect(saved.attempts, equals(1));
+    expect(mockWorkOrderRemote.executedCommands.single.commandId, command.commandId);
+  });
+
   test('Self-draining loop: commands enqueued while sync is running are automatically drained', () async {
     final now = DateTime.now();
     final cmd1 = OutboxCommand(

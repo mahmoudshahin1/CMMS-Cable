@@ -41,6 +41,7 @@ class _FakeWorkOrderRepository implements WorkOrderRepository {
     required String actionsTaken,
     List<RepairStepModel>? repairSteps,
     String? repairVoiceUrl,
+    String? repairVoiceLocalPath,
     dynamic caller,
   }) async {}
   @override

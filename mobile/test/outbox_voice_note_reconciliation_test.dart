@@ -60,6 +60,7 @@ void main() {
     String id, {
     String? localPath,
     String? remotePath,
+    String? repairRemotePath,
   }) => WorkOrderModel(
     id: id,
     title: 'Breakdown',
@@ -71,6 +72,7 @@ void main() {
     createdAt: DateTime.now(),
     voiceNoteLocalPath: localPath,
     voiceNoteUrl: remotePath,
+    repairVoiceUrl: repairRemotePath,
   );
 
   test(
@@ -120,6 +122,32 @@ void main() {
       ).get(woId)!;
       expect(saved.voiceNoteUrl, '$woId/voice-notes/voice_note.m4a');
       expect(saved.voiceNoteLocalPath, isNull);
+      expect(await file.exists(), isFalse);
+    },
+  );
+
+  test(
+    'deletes queued repair audio only after matching completion URL',
+    () async {
+      const woId = 'wo-repair-voice-uploaded';
+      final file = File('${tempDir.path}/repair_remarks.m4a');
+      await file.writeAsBytes([1, 2, 3]);
+      await Hive.box<WorkOrderModel>(
+        HiveBoxes.workOrdersBox,
+      ).put(woId, workOrder(woId));
+
+      await OutboxAggregateReconciler.reconcile(
+        aggregateId: woId,
+        commandType: 'complete_work_order',
+        commandPayload: {'repair_voice_local_path': file.path},
+        workOrderRemote: _WorkOrderRemote(
+          workOrder(
+            woId,
+            repairRemotePath: '$woId/repair-voice-notes/repair_remarks.m4a',
+          ),
+        ),
+      );
+
       expect(await file.exists(), isFalse);
     },
   );

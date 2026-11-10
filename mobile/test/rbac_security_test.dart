@@ -191,6 +191,7 @@ class InMemorySecureWorkOrderRepository implements WorkOrderRepository {
     required String actionsTaken,
     List<RepairStepModel>? repairSteps,
     String? repairVoiceUrl,
+    String? repairVoiceLocalPath,
     UserModel? caller,
   }) async {
     if (caller != null && caller.role != UserRole.maintenanceTech) {

@@ -29,9 +29,9 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     WorkOrderLocalDataSource? localDataSource,
     WorkOrderRemoteDataSource? remoteDataSource,
     OutboxSyncEngine? syncEngine,
-  })  : _localDataSource = localDataSource ?? HiveWorkOrderLocalDataSource(),
-        _remoteDataSource = remoteDataSource,
-        _syncEngine = syncEngine;
+  }) : _localDataSource = localDataSource ?? HiveWorkOrderLocalDataSource(),
+       _remoteDataSource = remoteDataSource,
+       _syncEngine = syncEngine;
 
   Future<void> _save(WorkOrderModel updated, [OutboxCommand? cmd]) =>
       WorkOrderRepositorySyncHelper.persistAndSync(
@@ -64,7 +64,9 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     UserModel? caller,
   }) async {
     final effectiveCaller = caller ?? UserDirectoryHelper.currentUser;
-    final machine = WorkOrderRepositorySyncHelper.findMachine(workOrder.machineId);
+    final machine = WorkOrderRepositorySyncHelper.findMachine(
+      workOrder.machineId,
+    );
     WorkOrderSecurityGuard.validateCreate(effectiveCaller, machine);
 
     final chrono = workOrder.chronology ?? EventChronology.now();
@@ -105,14 +107,19 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     final log = WorkOrderActivityLogger.createLog(
       stepName: 'STATUS_CHANGED',
       caller: caller,
-      actionSummary: 'Work order transitioned from ${wo.status.name} to ${status.name}',
+      actionSummary:
+          'Work order transitioned from ${wo.status.name} to ${status.name}',
       details: {'fromStatus': wo.status.name, 'toStatus': status.name},
     );
 
     final updated = wo.copyWith(
       status: status,
-      startedAt: status == WorkOrderStatus.inProgress && wo.startedAt == null ? DateTime.now() : wo.startedAt,
-      completedAt: status == WorkOrderStatus.completed && wo.completedAt == null ? DateTime.now() : wo.completedAt,
+      startedAt: status == WorkOrderStatus.inProgress && wo.startedAt == null
+          ? DateTime.now()
+          : wo.startedAt,
+      completedAt: status == WorkOrderStatus.completed && wo.completedAt == null
+          ? DateTime.now()
+          : wo.completedAt,
       activityLogs: [...wo.activityLogs, log],
     );
     await _save(updated);
@@ -160,7 +167,11 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
     if (wo == null) return;
 
-    final updated = WorkOrderHandshakeMutator.applyAddSparePart(wo, sparePart, caller);
+    final updated = WorkOrderHandshakeMutator.applyAddSparePart(
+      wo,
+      sparePart,
+      caller,
+    );
     await _save(updated, WorkOrderOutboxFactory.addPart(updated, sparePart));
   }
 
@@ -171,6 +182,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
     required String actionsTaken,
     List<RepairStepModel>? repairSteps,
     String? repairVoiceUrl,
+    String? repairVoiceLocalPath,
     UserModel? caller,
   }) async {
     final wo = await _localDataSource.getWorkOrderById(workOrderId);
@@ -192,6 +204,7 @@ class HiveWorkOrderRepository implements WorkOrderRepository {
         actionsTaken: actionsTaken,
         repairSteps: repairSteps,
         repairVoiceUrl: repairVoiceUrl,
+        repairVoiceLocalPath: repairVoiceLocalPath,
       ),
     );
   }

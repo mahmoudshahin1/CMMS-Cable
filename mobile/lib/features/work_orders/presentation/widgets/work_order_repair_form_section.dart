@@ -20,6 +20,7 @@ class WorkOrderRepairFormSection extends StatelessWidget {
   final List<RepairStepModel> repairSteps;
   final ValueChanged<List<RepairStepModel>> onStepsChanged;
   final String? repairVoiceUrl;
+  final String? repairVoiceLocalPath;
   final ValueChanged<String?> onRepairVoiceUrlChanged;
 
   const WorkOrderRepairFormSection({
@@ -35,12 +36,14 @@ class WorkOrderRepairFormSection extends StatelessWidget {
     required this.repairSteps,
     required this.onStepsChanged,
     required this.repairVoiceUrl,
+    this.repairVoiceLocalPath,
     required this.onRepairVoiceUrlChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    final canEdit = !isCompleted &&
+    final canEdit =
+        !isCompleted &&
         workOrder.status == WorkOrderStatus.inProgress &&
         isTech;
 
@@ -74,7 +77,10 @@ class WorkOrderRepairFormSection extends StatelessWidget {
         VoiceNoteRecorderWidget(
           label: 'Repair Remarks Audio (Technician)',
           workOrderId: workOrder.id,
-          initialAudioUrl: repairVoiceUrl ?? workOrder.repairVoiceUrl,
+          initialAudioUrl:
+              repairVoiceUrl ??
+              repairVoiceLocalPath ??
+              workOrder.repairVoiceUrl,
           isEditable: canEdit,
           onAudioUrlChanged: onRepairVoiceUrlChanged,
         ),

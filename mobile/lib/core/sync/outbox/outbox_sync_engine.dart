@@ -9,7 +9,7 @@ import 'outbox_terminal_failure.dart';
 import '../network/network_connectivity_checker.dart';
 import '../../../features/work_orders/data/datasources/work_order_remote_data_source.dart';
 import '../../../features/downtime/data/datasources/downtime_remote_data_source.dart';
-import 'outbox_aggregate_reconciler.dart';
+import 'outbox_command_reconciliation.dart';
 
 export 'outbox_terminal_failure.dart';
 
@@ -138,15 +138,16 @@ class OutboxSyncEngine {
       await _outboxLocal.markInFlight(cmd.commandId);
       try {
         await _dispatchCommand(cmd);
-        await _outboxLocal.markCompleted(cmd.commandId);
-        await _updateCount();
-        if (cmd.commandType == 'create_work_order') {
-          await OutboxAggregateReconciler.reconcile(
-            aggregateId: cmd.aggregateId,
-            commandType: cmd.commandType,
-            workOrderRemote: _workOrderRemote,
+        if (!await OutboxCommandReconciliation.afterSuccess(
+          command: cmd,
+          workOrderRemote: _workOrderRemote,
+        )) {
+          throw StateError(
+            'Server confirmation for work order audio is not available yet.',
           );
         }
+        await _outboxLocal.markCompleted(cmd.commandId);
+        await _updateCount();
       } catch (e) {
         final errStr = e.toString();
         final classification = CommandErrorClassifier.classify(e);
@@ -159,9 +160,8 @@ class OutboxSyncEngine {
             errStr,
             status: classification.terminalStatus,
           );
-          await OutboxAggregateReconciler.reconcile(
-            aggregateId: cmd.aggregateId,
-            commandType: cmd.commandType,
+          await OutboxCommandReconciliation.afterTerminalFailure(
+            command: cmd,
             workOrderRemote: _workOrderRemote,
           );
           _terminalFailureController.add(

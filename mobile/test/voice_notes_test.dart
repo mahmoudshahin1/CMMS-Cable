@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orning_and_evening_remembrances/core/storage/attachment_service.dart';
+import 'package:orning_and_evening_remembrances/core/storage/repair_audio_storage_path.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/models/work_order_model.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/models/repair_step_model.dart';
 import 'package:orning_and_evening_remembrances/features/work_orders/domain/enums/work_order_status.dart';
@@ -167,6 +168,82 @@ void main() {
         expect(cmd.payload['repair_steps'], isNotEmpty);
       },
     );
+
+    test(
+      'complete command queues local repair audio instead of sending its path',
+      () {
+        final wo = WorkOrderModel(
+          id: 'wo-comp-local-audio',
+          title: 'Repair done',
+          description: 'Details',
+          machineId: 'DW01',
+          type: WorkOrderType.breakdown,
+          status: WorkOrderStatus.inProgress,
+          priority: Priority.high,
+          createdAt: DateTime.now(),
+        );
+
+        final command = WorkOrderOutboxFactory.complete(
+          wo,
+          rootCause: 'Bearing wear',
+          actionsTaken: 'Replaced',
+          repairVoiceLocalPath: r'C:\app\repair_remarks.m4a',
+        );
+
+        expect(
+          command.payload['repair_voice_local_path'],
+          r'C:\app\repair_remarks.m4a',
+        );
+        expect(command.payload, isNot(contains('p_repair_voice_url')));
+        expect(command.payload, isNot(contains('repair_voice_url')));
+      },
+    );
+  });
+
+  group('Repair audio Storage path validation', () {
+    test('builds a work-order-scoped private Storage key', () {
+      expect(
+        RepairAudioStoragePath.forFile(
+          workOrderId: 'wo-123',
+          fileName: 'repair_remarks.m4a',
+        ),
+        'wo-123/repair-voice-notes/repair_remarks.m4a',
+      );
+    });
+
+    test('accepts canonical and legacy work-order-scoped audio keys', () {
+      expect(
+        RepairAudioStoragePath.isValid(
+          workOrderId: 'wo-123',
+          path: 'wo-123/repair-voice-notes/repair.m4a',
+        ),
+        isTrue,
+      );
+      expect(
+        RepairAudioStoragePath.isValid(
+          workOrderId: 'wo-123',
+          path: 'voice-notes/wo-123/repair.m4a',
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects local paths, URLs, traversal, and another work order', () {
+      for (final path in [
+        r'C:\app\repair.m4a',
+        'file:///app/repair.m4a',
+        'https://example.com/repair.m4a',
+        'other-wo/repair-voice-notes/repair.m4a',
+        'wo-123/repair-voice-notes/../secret.m4a',
+        'wo-123/repair-voice-notes/repair.txt',
+      ]) {
+        expect(
+          RepairAudioStoragePath.isValid(workOrderId: 'wo-123', path: path),
+          isFalse,
+          reason: path,
+        );
+      }
+    });
   });
 
   group('Voice Note UI Widgets Tests', () {

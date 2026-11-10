@@ -80,6 +80,7 @@ class WorkOrderOutboxFactory {
     required String actionsTaken,
     List<RepairStepModel>? repairSteps,
     String? repairVoiceUrl,
+    String? repairVoiceLocalPath,
     int? expectedVersion,
   }) {
     return OutboxCommand(
@@ -95,7 +96,11 @@ class WorkOrderOutboxFactory {
         'p_repair_steps': (repairSteps ?? wo.repairSteps)
             .map((e) => e.toJson())
             .toList(),
-        if (repairVoiceUrl != null || wo.repairVoiceUrl != null) ...{
+        if (repairVoiceLocalPath != null) ...{
+          'repair_voice_local_path': repairVoiceLocalPath,
+        },
+        if (repairVoiceLocalPath == null &&
+            (repairVoiceUrl != null || wo.repairVoiceUrl != null)) ...{
           'repair_voice_url': repairVoiceUrl ?? wo.repairVoiceUrl,
           'p_repair_voice_url': repairVoiceUrl ?? wo.repairVoiceUrl,
         },

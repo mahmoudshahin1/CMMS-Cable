@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/storage/attachment_service.dart';
+import '../../../../core/storage/repair_audio_storage_path.dart';
 import '../../domain/models/work_order_model.dart';
 import '../../../../core/sync/outbox/outbox_command.dart';
 import 'work_order_remote_data_source.dart';
@@ -102,7 +103,7 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
         : OutboxCommand.fromJson(command as Map<String, dynamic>);
 
     final rpcName = _resolveRpcName(outboxCmd.commandType);
-    final params = _buildRpcParams(outboxCmd);
+    final params = await _buildRpcParams(outboxCmd);
 
     debugPrint(
       '📡 Supabase RPC Call: $rpcName [cmdId: ${outboxCmd.commandId}]',
@@ -118,6 +119,35 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
       return Map<String, dynamic>.from(response);
     }
     return {'result': response};
+  }
+
+  Future<Map<String, dynamic>> _buildRpcParams(OutboxCommand cmd) async {
+    final params = _buildRpcParamsWithoutUpload(cmd);
+    if (cmd.commandType != 'complete_work_order') return params;
+
+    final localPath = cmd.payload['repair_voice_local_path'];
+    if (localPath is! String || localPath.isEmpty) return params;
+    final file = File(localPath);
+    if (!await file.exists()) {
+      throw FileSystemException(
+        'Queued repair voice note file is missing',
+        localPath,
+      );
+    }
+    final fileName = Uri.file(localPath).pathSegments.last;
+    final storagePath = RepairAudioStoragePath.forFile(
+      workOrderId: cmd.aggregateId,
+      fileName: fileName,
+    );
+    final uploadedPath = await AttachmentService(client: _client)
+        .uploadVoiceNote(
+          workOrderId: cmd.aggregateId,
+          bytes: await file.readAsBytes(),
+          fileName: fileName,
+          storagePath: storagePath,
+          upsert: true,
+        );
+    return {...params, 'p_repair_voice_url': uploadedPath};
   }
 
   Future<void> _uploadAndAttachVoiceNote(OutboxCommand command) async {
@@ -172,7 +202,7 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
     }
   }
 
-  Map<String, dynamic> _buildRpcParams(OutboxCommand cmd) {
+  Map<String, dynamic> _buildRpcParamsWithoutUpload(OutboxCommand cmd) {
     final p = cmd.payload;
     final occurredIso = cmd.occurredAt.toUtc().toIso8601String();
 
@@ -218,6 +248,18 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
           'p_occurred_at': occurredIso,
         };
       case 'complete_work_order':
+        final repairVoicePath =
+            p['p_repair_voice_url'] ?? p['repair_voice_url'];
+        if (repairVoicePath != null &&
+            (repairVoicePath is! String ||
+                !RepairAudioStoragePath.isValid(
+                  workOrderId: cmd.aggregateId,
+                  path: repairVoicePath,
+                ))) {
+          throw ArgumentError(
+            'Repair audio must be a private Storage path belonging to this work order.',
+          );
+        }
         return {
           'p_command_id': cmd.commandId,
           'p_wo_id': cmd.aggregateId,
@@ -226,8 +268,7 @@ class SupabaseWorkOrderRemoteDataSource implements WorkOrderRemoteDataSource {
           'p_root_cause': p['root_cause'] ?? '',
           'p_actions_taken': p['actions_taken'] ?? '',
           'p_repair_steps': p['p_repair_steps'] ?? p['repair_steps'] ?? [],
-          'p_repair_voice_url':
-              p['p_repair_voice_url'] ?? p['repair_voice_url'],
+          'p_repair_voice_url': repairVoicePath,
           'p_occurred_at': occurredIso,
         };
       case 'confirm_test_run':

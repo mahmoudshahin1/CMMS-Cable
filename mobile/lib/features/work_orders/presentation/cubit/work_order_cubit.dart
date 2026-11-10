@@ -49,10 +49,12 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
       if (failure.command.commandType.endsWith('_work_order') ||
           failure.command.commandType.endsWith('_part') ||
           failure.command.commandType.contains('test_run')) {
-        emit(WorkOrderError(
-          failure.userMessage,
-          previousWorkOrders: _currentOrders,
-        ));
+        emit(
+          WorkOrderError(
+            failure.userMessage,
+            previousWorkOrders: _currentOrders,
+          ),
+        );
         loadWorkOrders(silent: true);
       }
     });
@@ -71,10 +73,12 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
       final active = all.where((w) => w.status.isActive).toList();
       emit(WorkOrderLoaded(allWorkOrders: all, activeWorkOrders: active));
     } catch (e) {
-      emit(WorkOrderError(
-        'Failed to load work orders: ${e.toString()}',
-        previousWorkOrders: previousOrders,
-      ));
+      emit(
+        WorkOrderError(
+          'Failed to load work orders: ${e.toString()}',
+          previousWorkOrders: previousOrders,
+        ),
+      );
     }
   }
 
@@ -87,30 +91,46 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
     return const [];
   }
 
-  Future<void> createWorkOrder(WorkOrderModel workOrder,
-      {UserModel? caller}) async {
+  Future<void> createWorkOrder(
+    WorkOrderModel workOrder, {
+    UserModel? caller,
+  }) async {
     try {
       await repository.createWorkOrder(workOrder, caller: caller);
       await loadWorkOrders(silent: true);
     } on SecurityException catch (e) {
       emit(WorkOrderError(e.message, previousWorkOrders: _currentOrders));
     } catch (e) {
-      emit(WorkOrderError('Failed to create work order: ${e.toString()}',
-          previousWorkOrders: _currentOrders));
+      emit(
+        WorkOrderError(
+          'Failed to create work order: ${e.toString()}',
+          previousWorkOrders: _currentOrders,
+        ),
+      );
     }
   }
 
-  Future<void> updateWorkOrderStatus(String workOrderId, WorkOrderStatus status,
-      {UserModel? caller}) async {
+  Future<void> updateWorkOrderStatus(
+    String workOrderId,
+    WorkOrderStatus status, {
+    UserModel? caller,
+  }) async {
     try {
-      await repository.updateWorkOrderStatus(workOrderId, status,
-          caller: caller);
+      await repository.updateWorkOrderStatus(
+        workOrderId,
+        status,
+        caller: caller,
+      );
       await loadWorkOrders(silent: true);
     } on SecurityException catch (e) {
       emit(WorkOrderError(e.message, previousWorkOrders: _currentOrders));
     } catch (e) {
-      emit(WorkOrderError('Failed to update status: ${e.toString()}',
-          previousWorkOrders: _currentOrders));
+      emit(
+        WorkOrderError(
+          'Failed to update status: ${e.toString()}',
+          previousWorkOrders: _currentOrders,
+        ),
+      );
     }
   }
 
@@ -133,35 +153,51 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
     } on SecurityException catch (e) {
       emit(WorkOrderError(e.message, previousWorkOrders: _currentOrders));
     } catch (e) {
-      emit(WorkOrderError('Failed to assign technician: ${e.toString()}',
-          previousWorkOrders: _currentOrders));
+      emit(
+        WorkOrderError(
+          'Failed to assign technician: ${e.toString()}',
+          previousWorkOrders: _currentOrders,
+        ),
+      );
     }
   }
 
-  Future<void> startRepair(String workOrderId,
-      {required UserModel caller}) async {
+  Future<void> startRepair(
+    String workOrderId, {
+    required UserModel caller,
+  }) async {
     try {
       await repository.startRepair(workOrderId, caller: caller);
       await loadWorkOrders(silent: true);
     } on SecurityException catch (e) {
       emit(WorkOrderError(e.message, previousWorkOrders: _currentOrders));
     } catch (e) {
-      emit(WorkOrderError('Failed to start repair: ${e.toString()}',
-          previousWorkOrders: _currentOrders));
+      emit(
+        WorkOrderError(
+          'Failed to start repair: ${e.toString()}',
+          previousWorkOrders: _currentOrders,
+        ),
+      );
     }
   }
 
   Future<void> addSparePart(
-      String workOrderId, SparePartModel sparePart,
-      {UserModel? caller}) async {
+    String workOrderId,
+    SparePartModel sparePart, {
+    UserModel? caller,
+  }) async {
     try {
       await repository.addSparePart(workOrderId, sparePart, caller: caller);
       await loadWorkOrders(silent: true);
     } on SecurityException catch (e) {
       emit(WorkOrderError(e.message, previousWorkOrders: _currentOrders));
     } catch (e) {
-      emit(WorkOrderError('Failed to add spare part: ${e.toString()}',
-          previousWorkOrders: _currentOrders));
+      emit(
+        WorkOrderError(
+          'Failed to add spare part: ${e.toString()}',
+          previousWorkOrders: _currentOrders,
+        ),
+      );
     }
   }
 
@@ -171,6 +207,7 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
     required String actionsTaken,
     List<RepairStepModel>? repairSteps,
     String? repairVoiceUrl,
+    String? repairVoiceLocalPath,
     UserModel? caller,
   }) async {
     try {
@@ -180,14 +217,19 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
         actionsTaken: actionsTaken,
         repairSteps: repairSteps,
         repairVoiceUrl: repairVoiceUrl,
+        repairVoiceLocalPath: repairVoiceLocalPath,
         caller: caller,
       );
       await loadWorkOrders(silent: true);
     } on SecurityException catch (e) {
       emit(WorkOrderError(e.message, previousWorkOrders: _currentOrders));
     } catch (e) {
-      emit(WorkOrderError('Failed to complete work order: ${e.toString()}',
-          previousWorkOrders: _currentOrders));
+      emit(
+        WorkOrderError(
+          'Failed to complete work order: ${e.toString()}',
+          previousWorkOrders: _currentOrders,
+        ),
+      );
     }
   }
 
@@ -210,21 +252,31 @@ class WorkOrderCubit extends Cubit<WorkOrderState> {
     } on SecurityException catch (e) {
       emit(WorkOrderError(e.message, previousWorkOrders: _currentOrders));
     } catch (e) {
-      emit(WorkOrderError('Failed to confirm test run: ${e.toString()}',
-          previousWorkOrders: _currentOrders));
+      emit(
+        WorkOrderError(
+          'Failed to confirm test run: ${e.toString()}',
+          previousWorkOrders: _currentOrders,
+        ),
+      );
     }
   }
 
-  Future<void> approveAndClose(String workOrderId,
-      {required UserModel caller}) async {
+  Future<void> approveAndClose(
+    String workOrderId, {
+    required UserModel caller,
+  }) async {
     try {
       await repository.approveAndClose(workOrderId, caller: caller);
       await loadWorkOrders(silent: true);
     } on SecurityException catch (e) {
       emit(WorkOrderError(e.message, previousWorkOrders: _currentOrders));
     } catch (e) {
-      emit(WorkOrderError('Failed to approve and close: ${e.toString()}',
-          previousWorkOrders: _currentOrders));
+      emit(
+        WorkOrderError(
+          'Failed to approve and close: ${e.toString()}',
+          previousWorkOrders: _currentOrders,
+        ),
+      );
     }
   }
 

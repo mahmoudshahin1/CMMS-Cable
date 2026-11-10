@@ -38,10 +38,12 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
   final TextEditingController _rootCauseController = TextEditingController();
   final TextEditingController _actionsTakenController = TextEditingController();
   final TextEditingController _partNameController = TextEditingController();
-  final TextEditingController _partQtyController =
-      TextEditingController(text: '1');
+  final TextEditingController _partQtyController = TextEditingController(
+    text: '1',
+  );
   List<RepairStepModel> _repairSteps = const [];
   String? _repairVoiceUrl;
+  String? _repairVoiceLocalPath;
 
   @override
   void initState() {
@@ -53,8 +55,9 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
 
     if (widget.workOrder.status == WorkOrderStatus.inProgress &&
         widget.workOrder.startedAt != null) {
-      _elapsedSeconds =
-          DateTime.now().difference(widget.workOrder.startedAt!).inSeconds;
+      _elapsedSeconds = DateTime.now()
+          .difference(widget.workOrder.startedAt!)
+          .inSeconds;
       _startTimer();
     }
   }
@@ -98,10 +101,10 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
 
       final currentUser = context.read<AuthCubit>().currentUser;
       context.read<WorkOrderCubit>().addSparePart(
-            widget.workOrder.id,
-            part,
-            caller: currentUser,
-          );
+        widget.workOrder.id,
+        part,
+        caller: currentUser,
+      );
       _partNameController.clear();
       _partQtyController.text = '1';
     }
@@ -110,17 +113,18 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
   void _onCompleteRepairRequested(WorkOrderModel wo) {
     final currentUser = context.read<AuthCubit>().currentUser;
     context.read<WorkOrderCubit>().completeWorkOrder(
-          wo.id,
-          rootCause: _rootCauseController.text.trim().isNotEmpty
-              ? _rootCauseController.text.trim()
-              : 'Maintenance fix completed',
-          actionsTaken: _actionsTakenController.text.trim().isNotEmpty
-              ? _actionsTakenController.text.trim()
-              : 'Machine components repaired & restored',
-          repairSteps: _repairSteps,
-          repairVoiceUrl: _repairVoiceUrl,
-          caller: currentUser,
-        );
+      wo.id,
+      rootCause: _rootCauseController.text.trim().isNotEmpty
+          ? _rootCauseController.text.trim()
+          : 'Maintenance fix completed',
+      actionsTaken: _actionsTakenController.text.trim().isNotEmpty
+          ? _actionsTakenController.text.trim()
+          : 'Machine components repaired & restored',
+      repairSteps: _repairSteps,
+      repairVoiceUrl: _repairVoiceUrl,
+      repairVoiceLocalPath: _repairVoiceLocalPath,
+      caller: currentUser,
+    );
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
@@ -144,11 +148,13 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
           );
         }
 
-        final isCompleted = wo.status == WorkOrderStatus.completed ||
+        final isCompleted =
+            wo.status == WorkOrderStatus.completed ||
             wo.status == WorkOrderStatus.verified ||
             wo.status == WorkOrderStatus.verifiedClosed;
-        final isTech =
-            context.read<AuthCubit>().hasRole([UserRole.maintenanceTech]);
+        final isTech = context.read<AuthCubit>().hasRole([
+          UserRole.maintenanceTech,
+        ]);
 
         return Scaffold(
           appBar: AppBar(
@@ -199,10 +205,13 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                   partQtyController: _partQtyController,
                   onAddSparePart: _addSparePart,
                   repairSteps: _repairSteps,
-                  onStepsChanged: (steps) => setState(() => _repairSteps = steps),
+                  onStepsChanged: (steps) =>
+                      setState(() => _repairSteps = steps),
                   repairVoiceUrl: _repairVoiceUrl,
-                  onRepairVoiceUrlChanged: (url) =>
-                      setState(() => _repairVoiceUrl = url),
+                  onRepairVoiceUrlChanged: (url) => setState(() {
+                    _repairVoiceUrl = null;
+                    _repairVoiceLocalPath = url;
+                  }),
                 ),
                 const SizedBox(height: 20),
                 WorkOrderActivityTimelineWidget(
@@ -220,17 +229,19 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                     onSwipeCompleted: () {
                       final u = context.read<AuthCubit>().currentUser;
                       context.read<WorkOrderCubit>().completeWorkOrder(
-                            wo.id,
-                            rootCause: _rootCauseController.text.trim().isNotEmpty
-                                ? _rootCauseController.text.trim()
-                                : 'Maintenance fix completed',
-                            actionsTaken: _actionsTakenController.text.trim().isNotEmpty
-                                ? _actionsTakenController.text.trim()
-                                : 'Field repair completed',
-                            repairSteps: _repairSteps,
-                            repairVoiceUrl: _repairVoiceUrl,
-                            caller: u,
-                          );
+                        wo.id,
+                        rootCause: _rootCauseController.text.trim().isNotEmpty
+                            ? _rootCauseController.text.trim()
+                            : 'Maintenance fix completed',
+                        actionsTaken:
+                            _actionsTakenController.text.trim().isNotEmpty
+                            ? _actionsTakenController.text.trim()
+                            : 'Field repair completed',
+                        repairSteps: _repairSteps,
+                        repairVoiceUrl: _repairVoiceUrl,
+                        repairVoiceLocalPath: _repairVoiceLocalPath,
+                        caller: u,
+                      );
                       Navigator.of(context).pop();
                     },
                   ),

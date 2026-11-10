@@ -38,6 +38,8 @@ type WorkOrder = {
   closed_by: string | null
   root_cause: string | null
   actions_taken: string | null
+  voice_note_url: string | null
+  repair_voice_url: string | null
   chronology: Record<string, unknown> | null
   version: number
   created_at: string
@@ -73,6 +75,13 @@ const order = ref<WorkOrder | null>(null)
 const events = ref<WorkOrderEvent[]>([])
 const parts = ref<WorkOrderPart[]>([])
 const people = ref<Record<string, string>>({})
+const audioUrls = ref<Record<string, string>>({})
+const audioErrors = ref<Record<string, boolean>>({})
+const repairDuration = computed(() => {
+  if (!order.value?.started_at || !order.value.completed_at) return null
+  const minutes = Math.floor((Date.parse(order.value.completed_at) - Date.parse(order.value.started_at)) / 60000)
+  return Number.isFinite(minutes) && minutes >= 0 ? minutes : null
+})
 const loading = ref(true)
 const error = ref('')
 const notFound = ref(false)
@@ -185,10 +194,13 @@ async function load(silent = false) {
     return
   }
 
+  audioUrls.value = {}
+  audioErrors.value = {}
+
   try {
     const { data, error: orderError } = await supabase
       .from('work_orders')
-      .select('id, title, description, machine_id, type, status, priority, reported_by, assigned_to_technician_id, assigned_by_supervisor_id, started_at, completed_at, closed_at, closed_by, root_cause, actions_taken, chronology, version, created_at, updated_at, machine:machines!work_orders_machine_id_fkey(id, code, name, department)')
+      .select('id, title, description, machine_id, type, status, priority, reported_by, assigned_to_technician_id, assigned_by_supervisor_id, started_at, completed_at, closed_at, closed_by, root_cause, actions_taken, voice_note_url, repair_voice_url, chronology, version, created_at, updated_at, machine:machines!work_orders_machine_id_fkey(id, code, name, department)')
       .eq('id', id)
       .maybeSingle()
 
@@ -213,6 +225,22 @@ async function load(silent = false) {
     order.value = workOrder
     events.value = workOrderEvents
     parts.value = workOrderParts
+
+    // The bucket is private; signing is authorized by the caller's Storage RLS policy.
+    for (const [kind, path] of [['report', workOrder.voice_note_url], ['repair', workOrder.repair_voice_url]] as const) {
+      if (!path) continue
+      try {
+        const { data: signed, error: signedError } = await supabase.storage
+          .from('work-order-attachments').createSignedUrl(path, 3600)
+        if (request !== currentRequest) return
+        if (signedError) throw signedError
+        if (signed?.signedUrl) audioUrls.value[kind] = signed.signedUrl
+        else audioErrors.value[kind] = true
+      } catch {
+        if (request !== currentRequest) return
+        audioErrors.value[kind] = true
+      }
+    }
 
     const profileIds = [...new Set([
       workOrder.reported_by,
@@ -366,12 +394,21 @@ onUnmounted(() => { liveRefresh.dispose();
               <div><dt class="text-xs text-slate-500">{{ t('workOrders.type') }}</dt><dd class="mt-1 font-semibold">{{ typeLabel(order.type, locale.locale) }}</dd></div>
               <div><dt class="text-xs text-slate-500">{{ t('workOrders.priority') }}</dt><dd class="mt-1 font-semibold">{{ priorityInfo(order.priority, locale.locale).label }}</dd></div>
               <div><dt class="text-xs text-slate-500">{{ t('workOrders.reporter') }}</dt><dd class="mt-1 font-semibold">{{ personName(order.reported_by) }}</dd></div>
-              <div><dt class="text-xs text-slate-500">{{ t('workOrders.technician') }}</dt><dd class="mt-1 font-semibold">{{ personName(order.assigned_to_technician_id) }}</dd></div>
+              <div><dt class="text-xs text-slate-500">{{ t('workOrders.currentTechnician') }}</dt><dd class="mt-1 font-semibold">{{ personName(order.assigned_to_technician_id) }}</dd></div>
+              <div><dt class="text-xs text-slate-500">{{ t('workOrders.repairDuration') }}</dt><dd class="mt-1 font-semibold">{{ repairDuration === null ? t('workOrders.notRecorded') : `${repairDuration} ${t('workOrders.minutes')}` }}</dd></div>
               <div><dt class="text-xs text-slate-500">{{ t('workOrders.started') }}</dt><dd class="mt-1 font-semibold">{{ formatDateTime(order.started_at, locale.locale) }}</dd></div>
               <div><dt class="text-xs text-slate-500">{{ t('workOrders.completed') }}</dt><dd class="mt-1 font-semibold">{{ formatDateTime(order.completed_at, locale.locale) }}</dd></div>
               <div><dt class="text-xs text-slate-500">{{ t('workOrders.closed') }}</dt><dd class="mt-1 font-semibold">{{ formatDateTime(order.closed_at, locale.locale) }}</dd></div>
               <div><dt class="text-xs text-slate-500">{{ t('workOrders.version') }}</dt><dd class="mt-1 font-semibold">{{ order.version }}</dd></div>
             </dl>
+          </section>
+
+          <section class="panel p-5">
+            <h2 class="mb-4 flex items-center gap-2 text-lg font-extrabold text-brand-navy"><span class="h-5 w-1.5 rounded-full bg-gradient-to-b from-accent to-brand"></span>{{ t('workOrders.audio') }}</h2>
+            <div class="space-y-4">
+              <div><h3 class="mb-2 text-sm font-semibold text-slate-600">{{ t('workOrders.reportAudio') }}</h3><audio v-if="audioUrls.report" controls preload="none" class="w-full" :src="audioUrls.report" /><p v-else-if="audioErrors.report" class="text-sm text-amber-700">{{ t('workOrders.audioUnavailable') }}</p><p v-else class="text-sm text-slate-500">{{ t('workOrders.noAudio') }}</p></div>
+              <div><h3 class="mb-2 text-sm font-semibold text-slate-600">{{ t('workOrders.repairAudio') }}</h3><audio v-if="audioUrls.repair" controls preload="none" class="w-full" :src="audioUrls.repair" /><p v-else-if="audioErrors.repair" class="text-sm text-amber-700">{{ t('workOrders.audioUnavailable') }}</p><p v-else class="text-sm text-slate-500">{{ t('workOrders.noAudio') }}</p></div>
+            </div>
           </section>
 
           <section class="panel p-5">
