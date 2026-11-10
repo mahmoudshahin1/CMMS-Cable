@@ -16,7 +16,7 @@ USING (
   AND EXISTS (
     SELECT 1 FROM public.work_orders wo
     JOIN public.machines m ON m.id = wo.machine_id
-    WHERE wo.id::text = split_part(name, '/', 1)
+    WHERE wo.id::text = split_part(storage.objects.name, '/', 1)
       AND (
         private.current_app_role() IN ('ADMIN', 'admin', 'PLANT_MANAGER', 'plant_manager', 'SUPERVISOR', 'supervisor', 'MAINTENANCE_SUPERVISOR', 'maintenance_supervisor')
         OR m.department = private.current_app_department()
@@ -30,7 +30,7 @@ WITH CHECK (
   AND EXISTS (
     SELECT 1 FROM public.work_orders wo
     JOIN public.machines m ON m.id = wo.machine_id
-    WHERE wo.id::text = split_part(name, '/', 1)
+    WHERE wo.id::text = split_part(storage.objects.name, '/', 1)
       AND (
         private.current_app_role() IN ('ADMIN', 'admin', 'PLANT_MANAGER', 'plant_manager', 'SUPERVISOR', 'supervisor', 'MAINTENANCE_SUPERVISOR', 'maintenance_supervisor')
         OR m.department = private.current_app_department()
@@ -48,7 +48,7 @@ USING (
   AND EXISTS (
     SELECT 1 FROM public.work_orders wo
     JOIN public.machines m ON m.id = wo.machine_id
-    WHERE wo.id::text = split_part(name, '/', 1)
+    WHERE wo.id::text = split_part(storage.objects.name, '/', 1)
       AND (
         private.current_app_role() IN ('ADMIN', 'admin', 'PLANT_MANAGER', 'plant_manager', 'SUPERVISOR', 'supervisor', 'MAINTENANCE_SUPERVISOR', 'maintenance_supervisor')
         OR m.department = private.current_app_department()
@@ -66,7 +66,7 @@ WITH CHECK (
   AND EXISTS (
     SELECT 1 FROM public.work_orders wo
     JOIN public.machines m ON m.id = wo.machine_id
-    WHERE wo.id::text = split_part(name, '/', 1)
+    WHERE wo.id::text = split_part(storage.objects.name, '/', 1)
       AND (
         private.current_app_role() IN ('ADMIN', 'admin', 'PLANT_MANAGER', 'plant_manager', 'SUPERVISOR', 'supervisor', 'MAINTENANCE_SUPERVISOR', 'maintenance_supervisor')
         OR m.department = private.current_app_department()

@@ -18,8 +18,8 @@ USING (
     FROM public.work_orders wo
     JOIN public.machines m ON m.id = wo.machine_id
     WHERE wo.id::text = CASE
-      WHEN split_part(name, '/', 1) = 'voice-notes' THEN split_part(name, '/', 2)
-      ELSE split_part(name, '/', 1)
+      WHEN split_part(storage.objects.name, '/', 1) = 'voice-notes' THEN split_part(storage.objects.name, '/', 2)
+      ELSE split_part(storage.objects.name, '/', 1)
     END
     AND (
       private.current_app_role() IN ('ADMIN', 'admin', 'PLANT_MANAGER', 'plant_manager', 'SUPERVISOR', 'supervisor', 'MAINTENANCE_SUPERVISOR', 'maintenance_supervisor')
@@ -40,8 +40,8 @@ WITH CHECK (
     FROM public.work_orders wo
     JOIN public.machines m ON m.id = wo.machine_id
     WHERE wo.id::text = CASE
-      WHEN split_part(name, '/', 1) = 'voice-notes' THEN split_part(name, '/', 2)
-      ELSE split_part(name, '/', 1)
+      WHEN split_part(storage.objects.name, '/', 1) = 'voice-notes' THEN split_part(storage.objects.name, '/', 2)
+      ELSE split_part(storage.objects.name, '/', 1)
     END
     AND (
       private.current_app_role() IN ('ADMIN', 'admin', 'PLANT_MANAGER', 'plant_manager', 'SUPERVISOR', 'supervisor', 'MAINTENANCE_SUPERVISOR', 'maintenance_supervisor')
@@ -61,8 +61,8 @@ USING (
     SELECT 1 FROM public.work_orders wo
     JOIN public.machines m ON m.id = wo.machine_id
     WHERE wo.id::text = CASE
-      WHEN split_part(name, '/', 1) = 'voice-notes' THEN split_part(name, '/', 2)
-      ELSE split_part(name, '/', 1)
+      WHEN split_part(storage.objects.name, '/', 1) = 'voice-notes' THEN split_part(storage.objects.name, '/', 2)
+      ELSE split_part(storage.objects.name, '/', 1)
     END
     AND (
       private.current_app_role() IN ('ADMIN', 'admin', 'PLANT_MANAGER', 'plant_manager', 'SUPERVISOR', 'supervisor', 'MAINTENANCE_SUPERVISOR', 'maintenance_supervisor')
@@ -78,8 +78,8 @@ WITH CHECK (
     SELECT 1 FROM public.work_orders wo
     JOIN public.machines m ON m.id = wo.machine_id
     WHERE wo.id::text = CASE
-      WHEN split_part(name, '/', 1) = 'voice-notes' THEN split_part(name, '/', 2)
-      ELSE split_part(name, '/', 1)
+      WHEN split_part(storage.objects.name, '/', 1) = 'voice-notes' THEN split_part(storage.objects.name, '/', 2)
+      ELSE split_part(storage.objects.name, '/', 1)
     END
     AND (
       private.current_app_role() IN ('ADMIN', 'admin', 'PLANT_MANAGER', 'plant_manager', 'SUPERVISOR', 'supervisor', 'MAINTENANCE_SUPERVISOR', 'maintenance_supervisor')
