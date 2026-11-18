@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:nav_bar/nav_bar.dart';
 import '../role_nav_config.dart';
+import '../../theme/app_colors.dart';
 
 /// Compact animated bottom navigation bar powered by nav_bar 0.1.1.
-/// Features a high-contrast Midnight Slate floating pod with glowing accents.
+/// Floating pod carries the "Current & Strand" brand language: the selected
+/// tab glows with the app's own brand-accent color (same
+/// context.brandAccent used everywhere else -- orange in light mode, cyan
+/// in dark mode) instead of a generic unbranded cyan/slate theme.
 class AnimatedBottomNavBar extends StatelessWidget {
   final List<RoleNavTab> tabs;
   final int selectedIndex;
@@ -18,28 +22,30 @@ class AnimatedBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor = Color(0xFF38BDF8); // Electric Sky Blue
+    final activeColor = context.brandAccent;
+    final podBgColor = context.brandNavy;
     const inactiveColor = Color(0xFF94A3B8); // High-contrast Slate
-    const podBgColor = Color(0xFF0F172A); // Midnight Slate
+
+    final glowGradient = LinearGradient(
+      colors: [
+        activeColor.withValues(alpha: 0.55),
+        activeColor,
+        activeColor.withValues(alpha: 0.55),
+      ],
+    );
 
     final futuristicTheme = FuturisticTheme(
-      name: 'MidnightCable',
-      glowGradient: const LinearGradient(
-        colors: [
-          Color(0xFF0284C7),
-          Color(0xFF38BDF8),
-          Color(0xFF0284C7),
-        ],
-      ),
+      name: 'EnergyaCurrent',
+      glowGradient: glowGradient,
       accentColor: activeColor,
       baseColor: podBgColor,
       particleColor: activeColor,
       backgroundColor: podBgColor,
-      customColors: const {
+      customColors: {
         'baseColor': podBgColor,
-        'borderColor': Color(0x6638BDF8),
-        'shadowColor': Color(0x99000000),
-        'glowColor': Color(0x6638BDF8),
+        'borderColor': activeColor.withValues(alpha: 0.4),
+        'shadowColor': const Color(0x99000000),
+        'glowColor': activeColor.withValues(alpha: 0.4),
       },
     );
 
